@@ -20,6 +20,7 @@
 // @connect      api.together.xyz
 // @connect      integrate.api.nvidia.com
 // @connect      localhost
+// @connect      *
 // @run-at       document-idle
 // @noframes
 // ==/UserScript==
@@ -245,6 +246,111 @@ ${body || "(no extractable text)"}
       render(`<b style="color:#e5484d">debait error</b><br><br>${esc(e.message)}`);
     }
   }
+
+  // ---- Alt+hover link preview (debait BEFORE you click) ---------------------
+  // GM_xmlhttpRequest fetches the target cross-origin (no CORS); we parse it with
+  // DOMParser (scripts not executed), debait it, and show a tooltip. Alt-gated so
+  // we never fire LLM calls accidentally. Cached per URL (30 min).
+  const TIP_ID = "debait-tooltip";
+  const previewCache = new Map();
+  const PREVIEW_TTL = 30 * 60 * 1000;
+  let tipTimer = null, tipAnchor = null;
+
+  function tip() {
+    let el = document.getElementById(TIP_ID);
+    if (el) return el;
+    el = document.createElement("div");
+    el.id = TIP_ID;
+    el.style.cssText = [
+      "position:fixed", "z-index:2147483647", "max-width:320px", "background:#0f1115",
+      "color:#e6e6e6", "font:12px/1.45 system-ui,sans-serif", "border:1px solid #2a2f3a",
+      "border-radius:10px", "box-shadow:0 6px 24px rgba(0,0,0,.5)", "padding:10px", "pointer-events:none",
+    ].join(";");
+    document.body.appendChild(el);
+    return el;
+  }
+  function hideTip() { document.getElementById(TIP_ID)?.remove(); }
+  function placeTip(x, y) {
+    const el = tip();
+    el.style.left = Math.min(x + 14, window.innerWidth - 340) + "px";
+    el.style.top = Math.min(y + 14, window.innerHeight - 160) + "px";
+  }
+
+  function extractHtmlString(html, url) {
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    const meta = (sel) => doc.querySelector(sel)?.content?.trim() || "";
+    const originalTitle = meta('meta[property="og:title"]') || doc.querySelector("title")?.textContent?.trim() || "";
+    const description = meta('meta[name="description"]') || meta('meta[property="og:description"]');
+    const root = doc.querySelector("article") || doc.querySelector("main") || doc.body;
+    if (root) root.querySelectorAll("script,style,noscript,nav,aside,footer,header,form").forEach((n) => n.remove());
+    const text = (root?.textContent || "").replace(/[ \t\r\f\v]+/g, " ").replace(/\n{3,}/g, "\n\n").trim();
+    return { originalTitle, description, text, url };
+  }
+
+  function fetchTarget(url) {
+    return new Promise((resolve, reject) => {
+      GM_xmlhttpRequest({
+        method: "GET", url, timeout: 15000,
+        onload: (r) => (r.status >= 200 && r.status < 300 ? resolve(r.responseText) : reject(new Error(`HTTP ${r.status}`))),
+        onerror: () => reject(new Error("fetch failed")),
+        ontimeout: () => reject(new Error("timeout")),
+      });
+    });
+  }
+
+  async function previewLink(a, x, y) {
+    const url = a.href;
+    placeTip(x, y);
+    tip().innerHTML = `<b style="color:#58a6ff">🪝🚫 debait</b> \u00b7 reading\u2026<br><span style="color:#888">${esc(url).slice(0, 80)}</span>`;
+    try {
+      let result;
+      const hit = previewCache.get(url);
+      if (hit && Date.now() - hit.at < PREVIEW_TTL) {
+        result = hit.result;
+      } else {
+        const article = extractHtmlString(await fetchTarget(url), url);
+        if (!article.text || article.text.length < 200) {
+          result = { thin_fetch: true, originalTitle: article.originalTitle, description: article.description };
+        } else {
+          result = parseResult(await callProvider(buildPrompt(article)));
+          result.originalTitle = article.originalTitle;
+        }
+        previewCache.set(url, { at: Date.now(), result });
+      }
+      if (tipAnchor !== a) return;
+      if (result.thin_fetch)
+        return void (tip().innerHTML = `<b style="color:#ffb224">🪝🚫 debait</b> \u00b7 couldn't read body (JS-rendered/paywalled).<br>${esc(result.description || result.originalTitle || "")}`);
+      const n = result.clickbait_score ?? 0;
+      tip().innerHTML = `
+        <b style="color:#58a6ff">🪝🚫 ${esc(result.honest_title || "")}</b>
+        <div style="height:6px;background:#222;border-radius:3px;overflow:hidden;margin:6px 0 4px">
+          <div style="height:100%;width:${n}%;background:${scoreColor(n)}"></div></div>
+        <div><b style="color:${scoreColor(n)}">${n}/100</b> \u00b7 ${esc(result.substance_verdict || "")} \u00b7 worth clicking: <b>${result.worth_clicking ? "yes" : "no"}</b></div>
+        <div style="color:#bbb;margin-top:4px">${esc(result.summary || "")}</div>`;
+    } catch (e) {
+      if (tipAnchor === a) tip().innerHTML = `<b style="color:#e5484d">debait</b> \u00b7 ${esc(e.message)}`;
+    }
+  }
+
+  function isPreviewable(a) {
+    if (!a || !a.href || !/^https?:$/.test(a.protocol)) return false;
+    return a.href.split("#")[0] !== location.href.split("#")[0];
+  }
+
+  document.addEventListener("mouseover", (e) => {
+    if (!e.altKey) return;
+    const a = e.target.closest?.("a[href]");
+    if (!isPreviewable(a)) return;
+    tipAnchor = a;
+    clearTimeout(tipTimer);
+    const { clientX: x, clientY: y } = e;
+    tipTimer = setTimeout(() => previewLink(a, x, y), 350);
+  });
+  document.addEventListener("mouseout", (e) => {
+    if (e.target.closest?.("a[href]") === tipAnchor) { clearTimeout(tipTimer); tipAnchor = null; hideTip(); }
+  });
+  window.addEventListener("keyup", (e) => { if (e.key === "Alt") { clearTimeout(tipTimer); hideTip(); } });
+  window.addEventListener("scroll", hideTip, { passive: true });
 
   addButton();
 })();

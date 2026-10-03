@@ -16,6 +16,19 @@ button; click it to analyze the current article.
    - optionally **set model / base URL override**
 4. Visit any article and click the floating 🪝🚫 button (or use the menu command).
 
+## Preview before you click (Alt+hover)
+
+Hold **Alt** and hover any link. After a short dwell, the script **fetches that
+target URL** (via `GM_xmlhttpRequest`, cross-origin), extracts and debaits it, and
+shows a tooltip with the honest title, clickbait score, verdict, *worth clicking*,
+and summary — before you open the page. Cached per URL (30 min).
+
+- Requires the `@connect *` grant (fetch arbitrary link targets); Tampermonkey
+  asks to allow it on first use.
+- Server-rendered pages only; JS-rendered/paywalled targets fall back to the
+  link's meta description.
+- Alt-gated on purpose so it never fires LLM calls accidentally.
+
 ## Notes
 
 - Supports the same providers as the CLI/extension.
@@ -23,4 +36,4 @@ button; click it to analyze the current article.
   provider host — add your own if you use a custom base URL.
 - Keys are stored locally per provider via `GM_setValue`.
 - Anthropic is called with `anthropic-dangerous-direct-browser-access: true`.
-- Like the extension, it only reads the **current** page.
+- Click the floating button to debait the **current** page; Alt+hover to preview **other** pages.
