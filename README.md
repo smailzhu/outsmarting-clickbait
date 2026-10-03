@@ -68,7 +68,7 @@ Multi-provider, from one shared layer ([`shared/providers.js`](shared/providers.
 |----------|----|-------------|---------------|---------|
 | OpenAI | `openai` | openai | gpt-4o-mini | `OPENAI_API_KEY` |
 | Anthropic (Claude) | `anthropic` | anthropic | claude-3-5-haiku-latest | `ANTHROPIC_API_KEY` |
-| Google Gemini | `gemini` | gemini | gemini-1.5-flash | `GEMINI_API_KEY` |
+| Google Gemini | `gemini` | gemini | gemini-flash-latest | `GEMINI_API_KEY` |
 | Groq | `groq` | openai | llama-3.3-70b-versatile | `GROQ_API_KEY` |
 | OpenRouter | `openrouter` | openai | openai/gpt-4o-mini | `OPENROUTER_API_KEY` |
 | DeepSeek | `deepseek` | openai | deepseek-chat | `DEEPSEEK_API_KEY` |
