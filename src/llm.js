@@ -12,7 +12,30 @@
 //   <PROVIDER>_API_KEY       e.g. OPENAI_API_KEY, ANTHROPIC_API_KEY, GEMINI_API_KEY
 
 import { spawn } from "node:child_process";
-import { PROVIDERS, resolveProvider, callProvider } from "../shared/providers.js";
+import { PROVIDERS, resolveProvider, callProvider, listModels as providerListModels } from "../shared/providers.js";
+
+function providerConfig(providerId) {
+  const def = PROVIDERS[providerId];
+  if (!def) throw new Error(`Unknown provider: ${providerId}`);
+  const cfg = resolveProvider({
+    provider: providerId,
+    base: process.env.DEBAIT_BASE_URL,
+    model: process.env.DEBAIT_MODEL,
+    key: process.env[def.keyEnv] || process.env.DEBAIT_API_KEY,
+  });
+  if (!cfg.key && providerId !== "ollama") {
+    throw new Error(`No API key for "${providerId}". Set ${def.keyEnv} (or DEBAIT_API_KEY).`);
+  }
+  return cfg;
+}
+
+// List the model IDs available to the configured key for a provider.
+export async function listModels(providerId = chooseBackend()) {
+  if (providerId === "codex") {
+    throw new Error("The codex backend has no model list. Pick a provider: --models <provider> or DEBAIT_PROVIDER.");
+  }
+  return providerListModels(providerConfig(providerId));
+}
 
 // Returns "codex" or a provider id.
 export function chooseBackend() {
@@ -31,18 +54,7 @@ export async function complete(prompt, { backend = chooseBackend() } = {}) {
 }
 
 async function completeProvider(prompt, providerId) {
-  const def = PROVIDERS[providerId];
-  if (!def) throw new Error(`Unknown backend/provider: ${providerId}`);
-  const cfg = resolveProvider({
-    provider: providerId,
-    base: process.env.DEBAIT_BASE_URL,
-    model: process.env.DEBAIT_MODEL,
-    key: process.env[def.keyEnv] || process.env.DEBAIT_API_KEY,
-  });
-  if (!cfg.key) {
-    throw new Error(`No API key for "${providerId}". Set ${def.keyEnv} (or DEBAIT_API_KEY).`);
-  }
-  return callProvider(cfg, prompt);
+  return callProvider(providerConfig(providerId), prompt);
 }
 
 // Shell out to the Codex CLI in non-interactive mode.

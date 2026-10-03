@@ -7,7 +7,7 @@
 
 import { loadArticle, extractArticle } from "./extract.js";
 import { debait } from "./summarize.js";
-import { chooseBackend } from "./llm.js";
+import { chooseBackend, listModels } from "./llm.js";
 
 function parseArgs(argv) {
   const args = { _: [], flags: {} };
@@ -17,6 +17,7 @@ function parseArgs(argv) {
     else if (a === "--stdin") args.flags.stdin = true;
     else if (a === "--url") args.flags.url = argv[++i];
     else if (a === "--backend") args.flags.backend = argv[++i];
+    else if (a === "--models") args.flags.models = true;
     else if (a === "-h" || a === "--help") args.flags.help = true;
     else args._.push(a);
   }
@@ -47,6 +48,9 @@ Providers: openai, anthropic, gemini, groq, openrouter, deepseek, xai,
                                 GEMINI_API_KEY, GROQ_API_KEY ...
   DEBAIT_MODEL=<model>          override model
   DEBAIT_BASE_URL=<url>         override API base URL (e.g. a gateway / local server)
+
+  --models [provider]           list model IDs available to your key, then exit
+                                (e.g. debait --models openai)
 `;
 
 function color(s, c) {
@@ -96,6 +100,20 @@ function renderHuman(a, r) {
 
 async function main() {
   const { _, flags } = parseArgs(process.argv.slice(2));
+
+  if (flags.models) {
+    const provider = flags.backend || _[0] || chooseBackend();
+    try {
+      const models = await listModels(provider);
+      console.error(color(`Models available to your key for "${provider}":`, "dim"));
+      console.log(models.join("\n"));
+    } catch (e) {
+      console.error(color(`Could not list models: ${e.message}`, "red"));
+      process.exit(2);
+    }
+    return;
+  }
+
   if (flags.help || (!_.length && !flags.stdin)) {
     console.log(HELP);
     process.exit(flags.help ? 0 : 1);

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { resolveProvider, buildRequest, parseResponse, PROVIDERS } from "../shared/providers.js";
+import { resolveProvider, buildRequest, parseResponse, buildModelsRequest, parseModels, PROVIDERS } from "../shared/providers.js";
 
 test("resolveProvider fills defaults and trims trailing slash", () => {
   const c = resolveProvider({ provider: "openai", base: "https://x.test/v1/", key: "k" });
@@ -51,4 +51,24 @@ test("parseResponse extracts text per format", () => {
   assert.equal(parseResponse("openai", { choices: [{ message: { content: "A" } }] }), "A");
   assert.equal(parseResponse("anthropic", { content: [{ text: "B" }] }), "B");
   assert.equal(parseResponse("gemini", { candidates: [{ content: { parts: [{ text: "C" }] } }] }), "C");
+});
+
+test("buildModelsRequest targets the right endpoint per format", () => {
+  assert.match(buildModelsRequest(resolveProvider({ provider: "openai", key: "k" })).url, /\/models$/);
+  const anth = buildModelsRequest(resolveProvider({ provider: "anthropic", key: "k" }));
+  assert.equal(anth.headers["x-api-key"], "k");
+  assert.match(anth.url, /\/models\?limit=/);
+  assert.match(buildModelsRequest(resolveProvider({ provider: "gemini", key: "gk" })).url, /\/models\?pageSize=1000&key=gk/);
+});
+
+test("parseModels extracts ids per format", () => {
+  assert.deepEqual(parseModels("openai", { data: [{ id: "gpt-4o-mini" }, { id: "gpt-4o" }] }), ["gpt-4o-mini", "gpt-4o"]);
+  assert.deepEqual(
+    parseModels("gemini", { models: [{ name: "models/gemini-flash-latest", supportedGenerationMethods: ["generateContent"] }, { name: "models/embedding-001", supportedGenerationMethods: ["embedContent"] }] }),
+    ["gemini-flash-latest"]
+  );
+});
+
+test("xai default is no longer the retired grok-2", () => {
+  assert.notEqual(PROVIDERS.xai.model, "grok-2-latest");
 });

@@ -72,7 +72,7 @@ Multi-provider, from one shared layer ([`shared/providers.js`](shared/providers.
 | Groq | `groq` | openai | llama-3.3-70b-versatile | `GROQ_API_KEY` |
 | OpenRouter | `openrouter` | openai | openai/gpt-4o-mini | `OPENROUTER_API_KEY` |
 | DeepSeek | `deepseek` | openai | deepseek-chat | `DEEPSEEK_API_KEY` |
-| xAI (Grok) | `xai` | openai | grok-2-latest | `XAI_API_KEY` |
+| xAI (Grok) | `xai` | openai | grok-3 | `XAI_API_KEY` |
 | Mistral | `mistral` | openai | mistral-small-latest | `MISTRAL_API_KEY` |
 | Together | `together` | openai | Llama-3.3-70B-Turbo | `TOGETHER_API_KEY` |
 | NVIDIA (NIM) | `nvidia` | openai | meta/llama-3.3-70b-instruct | `NVIDIA_API_KEY` |

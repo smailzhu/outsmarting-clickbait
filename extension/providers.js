@@ -20,7 +20,7 @@ export const PROVIDERS = {
   groq:       { format: "openai",    base: "https://api.groq.com/openai/v1",         model: "llama-3.3-70b-versatile", keyEnv: "GROQ_API_KEY" },
   openrouter: { format: "openai",    base: "https://openrouter.ai/api/v1",           model: "openai/gpt-4o-mini",      keyEnv: "OPENROUTER_API_KEY" },
   deepseek:   { format: "openai",    base: "https://api.deepseek.com/v1",            model: "deepseek-chat",           keyEnv: "DEEPSEEK_API_KEY" },
-  xai:        { format: "openai",    base: "https://api.x.ai/v1",                    model: "grok-2-latest",           keyEnv: "XAI_API_KEY" },
+  xai:        { format: "openai",    base: "https://api.x.ai/v1",                    model: "grok-3",                  keyEnv: "XAI_API_KEY" },
   mistral:    { format: "openai",    base: "https://api.mistral.ai/v1",              model: "mistral-small-latest",    keyEnv: "MISTRAL_API_KEY" },
   together:   { format: "openai",    base: "https://api.together.xyz/v1",            model: "meta-llama/Llama-3.3-70B-Instruct-Turbo", keyEnv: "TOGETHER_API_KEY" },
   nvidia:     { format: "openai",    base: "https://integrate.api.nvidia.com/v1",    model: "meta/llama-3.3-70b-instruct", keyEnv: "NVIDIA_API_KEY" },
@@ -108,6 +108,38 @@ export function parseResponse(format, data) {
 
 // Convenience one-shot using global fetch (works in Node 20+, extension SW, and
 // userscript pages — though userscripts prefer GM_xmlhttpRequest for CORS).
+// ---- model discovery ------------------------------------------------------
+// Build a GET request that lists the models available to this key.
+export function buildModelsRequest(cfg, { browser = false } = {}) {
+  const { format, base, key } = cfg;
+  if (format === "anthropic") {
+    const headers = { "x-api-key": key, "anthropic-version": "2023-06-01" };
+    if (browser) headers["anthropic-dangerous-direct-browser-access"] = "true";
+    return { url: `${base}/models?limit=1000`, headers };
+  }
+  if (format === "gemini") {
+    return { url: `${base}/models?pageSize=1000&key=${encodeURIComponent(key)}`, headers: {} };
+  }
+  return { url: `${base}/models`, headers: key ? { authorization: `Bearer ${key}` } : {} };
+}
+
+export function parseModels(format, data) {
+  if (format === "gemini") {
+    return (data?.models || [])
+      .filter((m) => !m.supportedGenerationMethods || m.supportedGenerationMethods.includes("generateContent"))
+      .map((m) => (m.name || "").replace(/^models\//, ""))
+      .filter(Boolean);
+  }
+  return (data?.data || []).map((m) => m.id).filter(Boolean);
+}
+
+export async function listModels(cfg, { browser = false } = {}) {
+  const req = buildModelsRequest(cfg, { browser });
+  const res = await fetch(req.url, { headers: req.headers });
+  if (!res.ok) throw new Error(`API ${res.status}: ${(await res.text()).slice(0, 200)}`);
+  return parseModels(cfg.format, await res.json()).sort();
+}
+
 export async function callProvider(cfg, prompt, { browser = false } = {}) {
   if (!cfg.key) throw new Error(`No API key for provider "${cfg.id}".`);
   const req = buildRequest(cfg, prompt, { browser });

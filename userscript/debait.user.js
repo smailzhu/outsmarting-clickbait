@@ -37,7 +37,7 @@
     groq:       { format: "openai",    base: "https://api.groq.com/openai/v1",         model: "llama-3.3-70b-versatile" },
     openrouter: { format: "openai",    base: "https://openrouter.ai/api/v1",           model: "openai/gpt-4o-mini" },
     deepseek:   { format: "openai",    base: "https://api.deepseek.com/v1",            model: "deepseek-chat" },
-    xai:        { format: "openai",    base: "https://api.x.ai/v1",                    model: "grok-2-latest" },
+    xai:        { format: "openai",    base: "https://api.x.ai/v1",                    model: "grok-3" },
     mistral:    { format: "openai",    base: "https://api.mistral.ai/v1",              model: "mistral-small-latest" },
     together:   { format: "openai",    base: "https://api.together.xyz/v1",            model: "meta-llama/Llama-3.3-70B-Instruct-Turbo" },
     nvidia:     { format: "openai",    base: "https://integrate.api.nvidia.com/v1",    model: "meta/llama-3.3-70b-instruct" },
