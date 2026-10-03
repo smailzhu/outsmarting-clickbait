@@ -1,54 +1,48 @@
 // Pluggable LLM backend.
 //
-// Two backends, auto-selected:
-//   1. "openai"  — if OPENAI_API_KEY is set, calls an OpenAI-compatible
-//                  chat completions endpoint (OPENAI_BASE_URL overridable).
-//   2. "codex"   — otherwise, shells out to the `codex exec` CLI if present.
+// Backends, auto-selected:
+//   1. a provider (openai, anthropic, gemini, groq, openrouter, deepseek, xai,
+//      mistral, together, ollama) — if its API key env var is set, or forced.
+//   2. "codex" — otherwise, shells out to the `codex exec` CLI if present.
 //
-// Override explicitly with DEBAIT_BACKEND=openai|codex.
+// Env:
+//   DEBAIT_PROVIDER=<id>     force provider (see shared/providers.js)
+//   DEBAIT_BACKEND=codex     force the codex CLI
+//   DEBAIT_MODEL / DEBAIT_BASE_URL   override model / base for the provider
+//   <PROVIDER>_API_KEY       e.g. OPENAI_API_KEY, ANTHROPIC_API_KEY, GEMINI_API_KEY
 
 import { spawn } from "node:child_process";
+import { PROVIDERS, resolveProvider, callProvider } from "../shared/providers.js";
 
+// Returns "codex" or a provider id.
 export function chooseBackend() {
-  const forced = process.env.DEBAIT_BACKEND;
-  if (forced) return forced;
-  if (process.env.OPENAI_API_KEY) return "openai";
+  if (process.env.DEBAIT_BACKEND === "codex") return "codex";
+  if (process.env.DEBAIT_PROVIDER) return process.env.DEBAIT_PROVIDER.toLowerCase();
+  // Pick the first provider whose key env var is present.
+  for (const [id, def] of Object.entries(PROVIDERS)) {
+    if (process.env[def.keyEnv]) return id;
+  }
   return "codex";
 }
 
 export async function complete(prompt, { backend = chooseBackend() } = {}) {
-  if (backend === "openai") return completeOpenAI(prompt);
   if (backend === "codex") return completeCodex(prompt);
-  throw new Error(`Unknown backend: ${backend}`);
+  return completeProvider(prompt, backend);
 }
 
-async function completeOpenAI(prompt) {
-  const base = process.env.OPENAI_BASE_URL || "https://api.openai.com/v1";
-  const model = process.env.DEBAIT_MODEL || "gpt-4o-mini";
-  const res = await fetch(`${base}/chat/completions`, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-    },
-    body: JSON.stringify({
-      model,
-      temperature: 0.2,
-      messages: [
-        {
-          role: "system",
-          content:
-            "You are a precise editor. You always respond with the exact format requested, nothing else.",
-        },
-        { role: "user", content: prompt },
-      ],
-    }),
+async function completeProvider(prompt, providerId) {
+  const def = PROVIDERS[providerId];
+  if (!def) throw new Error(`Unknown backend/provider: ${providerId}`);
+  const cfg = resolveProvider({
+    provider: providerId,
+    base: process.env.DEBAIT_BASE_URL,
+    model: process.env.DEBAIT_MODEL,
+    key: process.env[def.keyEnv] || process.env.DEBAIT_API_KEY,
   });
-  if (!res.ok) {
-    throw new Error(`OpenAI API error ${res.status}: ${await res.text()}`);
+  if (!cfg.key) {
+    throw new Error(`No API key for "${providerId}". Set ${def.keyEnv} (or DEBAIT_API_KEY).`);
   }
-  const data = await res.json();
-  return data.choices?.[0]?.message?.content ?? "";
+  return callProvider(cfg, prompt);
 }
 
 // Shell out to the Codex CLI in non-interactive mode.

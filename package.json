@@ -8,6 +8,7 @@
   },
   "scripts": {
     "start": "node src/cli.js",
+    "sync": "node scripts/sync.mjs",
     "test": "node --test"
   },
   "engines": {

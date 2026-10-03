@@ -60,22 +60,37 @@ debait https://example.com/some-viral-article --json
 cat examples/sample-clickbait.html | node src/cli.js --stdin --url https://example.com/x
 ```
 
-### Backends
+### Providers / backends
 
-The LLM backend is auto-selected:
+Multi-provider, from one shared layer ([`shared/providers.js`](shared/providers.js)):
 
-| Condition | Backend |
-|-----------|---------|
-| `OPENAI_API_KEY` is set | OpenAI-compatible Chat Completions API |
-| otherwise | the [`codex`](https://developers.openai.com/codex) CLI via `codex exec` |
+| Provider | id | Wire format | Default model | Key env |
+|----------|----|-------------|---------------|---------|
+| OpenAI | `openai` | openai | gpt-4o-mini | `OPENAI_API_KEY` |
+| Anthropic (Claude) | `anthropic` | anthropic | claude-3-5-haiku-latest | `ANTHROPIC_API_KEY` |
+| Google Gemini | `gemini` | gemini | gemini-1.5-flash | `GEMINI_API_KEY` |
+| Groq | `groq` | openai | llama-3.3-70b-versatile | `GROQ_API_KEY` |
+| OpenRouter | `openrouter` | openai | openai/gpt-4o-mini | `OPENROUTER_API_KEY` |
+| DeepSeek | `deepseek` | openai | deepseek-chat | `DEEPSEEK_API_KEY` |
+| xAI (Grok) | `xai` | openai | grok-2-latest | `XAI_API_KEY` |
+| Mistral | `mistral` | openai | mistral-small-latest | `MISTRAL_API_KEY` |
+| Together | `together` | openai | Llama-3.3-70B-Turbo | `TOGETHER_API_KEY` |
+| Ollama (local) | `ollama` | openai | llama3.1 | — |
+| Codex CLI | `codex` | — (shells out) | — | — |
 
-Override with env vars:
+**CLI auto-selection:** the first provider whose key env var is set, else the
+[`codex`](https://developers.openai.com/codex) CLI. Override:
 
 ```bash
-DEBAIT_BACKEND=openai   # force backend: openai | codex
-DEBAIT_MODEL=gpt-4o-mini
-OPENAI_BASE_URL=https://api.openai.com/v1   # for compatible gateways
+debait <url> --backend anthropic        # or: DEBAIT_PROVIDER=anthropic
+export ANTHROPIC_API_KEY=...             # provider key
+DEBAIT_MODEL=claude-3-5-sonnet-latest    # override model
+DEBAIT_BASE_URL=https://my-gateway/v1    # override base (gateways / local)
+DEBAIT_BACKEND=codex                     # force the codex CLI
 ```
+
+The userscript and extension expose the same provider list in their settings.
+After editing `shared/providers.js`, run `npm run sync` to copy it into the extension.
 
 ## Example
 

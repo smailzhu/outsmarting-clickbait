@@ -1,8 +1,12 @@
-// Service worker: holds settings, performs the CORS-free LLM call, and wires
-// up the context menu. Content scripts cannot call arbitrary APIs due to page
-// CORS, so they delegate here.
+// Service worker: holds settings, performs the CORS-free multi-provider LLM
+// call, and wires up the context menu. Content scripts can't call arbitrary
+// APIs (page CORS), so they delegate here.
+//
+// providers.js is synced from ../shared/providers.js via `npm run sync`.
 
-const DEFAULTS = { base: "https://api.openai.com/v1", model: "gpt-4o-mini", key: "" };
+import { resolveProvider, callProvider, PROVIDERS } from "./providers.js";
+
+const DEFAULTS = { provider: "openai", base: "", model: "", key: "" };
 
 async function settings() {
   const s = await chrome.storage.sync.get(DEFAULTS);
@@ -10,23 +14,12 @@ async function settings() {
 }
 
 async function complete(prompt) {
-  const { base, model, key } = await settings();
-  if (!key) throw new Error("No API key set. Open the extension Options and paste your OpenAI key.");
-  const res = await fetch(`${base}/chat/completions`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
-    body: JSON.stringify({
-      model,
-      temperature: 0.2,
-      messages: [
-        { role: "system", content: "You are a precise editor. Respond with exactly the requested format, nothing else." },
-        { role: "user", content: prompt },
-      ],
-    }),
-  });
-  if (!res.ok) throw new Error(`API ${res.status}: ${(await res.text()).slice(0, 300)}`);
-  const data = await res.json();
-  return data.choices?.[0]?.message?.content ?? "";
+  const s = await settings();
+  if (!PROVIDERS[s.provider]) throw new Error(`Unknown provider "${s.provider}".`);
+  const cfg = resolveProvider({ provider: s.provider, base: s.base, model: s.model, key: s.key });
+  if (!cfg.key) throw new Error(`No API key set for "${s.provider}". Open Options and paste your key.`);
+  // browser:true adds Anthropic's direct-browser-access header when needed.
+  return callProvider(cfg, prompt, { browser: true });
 }
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {

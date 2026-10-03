@@ -13,13 +13,26 @@
 </head>
 <body>
   <h1>🪝🚫 debait settings</h1>
-  <p class="hint">Your API key is stored in <code>chrome.storage.sync</code> and only sent to the endpoint below.</p>
-  <label for="key">OpenAI API key</label>
-  <input id="key" type="password" placeholder="sk-..." />
-  <label for="base">API base URL</label>
-  <input id="base" type="text" placeholder="https://api.openai.com/v1" />
-  <label for="model">Model</label>
-  <input id="model" type="text" placeholder="gpt-4o-mini" />
+  <p class="hint">Your API key is stored in <code>chrome.storage.sync</code> and only sent to the selected provider.</p>
+  <label for="provider">Provider</label>
+  <select id="provider" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:6px">
+    <option value="openai">OpenAI</option>
+    <option value="anthropic">Anthropic (Claude)</option>
+    <option value="gemini">Google Gemini</option>
+    <option value="groq">Groq</option>
+    <option value="openrouter">OpenRouter</option>
+    <option value="deepseek">DeepSeek</option>
+    <option value="xai">xAI (Grok)</option>
+    <option value="mistral">Mistral</option>
+    <option value="together">Together</option>
+    <option value="ollama">Ollama (local)</option>
+  </select>
+  <label for="key">API key</label>
+  <input id="key" type="password" placeholder="sk-... (not needed for local Ollama)" />
+  <label for="base">API base URL <span class="hint">(optional — overrides provider default)</span></label>
+  <input id="base" type="text" placeholder="leave blank for default" />
+  <label for="model">Model <span class="hint">(optional — overrides provider default)</span></label>
+  <input id="model" type="text" placeholder="leave blank for default" />
   <div>
     <button id="save">Save</button>
     <span id="status"></span>

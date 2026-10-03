@@ -10,6 +10,15 @@
 // @grant        GM_getValue
 // @grant        GM_registerMenuCommand
 // @connect      api.openai.com
+// @connect      api.anthropic.com
+// @connect      generativelanguage.googleapis.com
+// @connect      api.groq.com
+// @connect      openrouter.ai
+// @connect      api.deepseek.com
+// @connect      api.x.ai
+// @connect      api.mistral.ai
+// @connect      api.together.xyz
+// @connect      localhost
 // @run-at       document-idle
 // @noframes
 // ==/UserScript==
@@ -18,20 +27,45 @@
 (function () {
   "use strict";
 
-  // ---- config (stored via GM_setValue) --------------------------------------
-  const CFG = {
-    get key() { return GM_getValue("openai_key", ""); },
-    get base() { return GM_getValue("openai_base", "https://api.openai.com/v1"); },
-    get model() { return GM_getValue("model", "gpt-4o-mini"); },
+  // ---- providers ------------------------------------------------------------
+  const SYSTEM = "You are a precise editor. Respond with exactly the requested format, nothing else.";
+  const PROVIDERS = {
+    openai:     { format: "openai",    base: "https://api.openai.com/v1",              model: "gpt-4o-mini" },
+    anthropic:  { format: "anthropic", base: "https://api.anthropic.com/v1",           model: "claude-3-5-haiku-latest" },
+    gemini:     { format: "gemini",    base: "https://generativelanguage.googleapis.com/v1beta", model: "gemini-1.5-flash" },
+    groq:       { format: "openai",    base: "https://api.groq.com/openai/v1",         model: "llama-3.3-70b-versatile" },
+    openrouter: { format: "openai",    base: "https://openrouter.ai/api/v1",           model: "openai/gpt-4o-mini" },
+    deepseek:   { format: "openai",    base: "https://api.deepseek.com/v1",            model: "deepseek-chat" },
+    xai:        { format: "openai",    base: "https://api.x.ai/v1",                    model: "grok-2-latest" },
+    mistral:    { format: "openai",    base: "https://api.mistral.ai/v1",              model: "mistral-small-latest" },
+    together:   { format: "openai",    base: "https://api.together.xyz/v1",            model: "meta-llama/Llama-3.3-70B-Instruct-Turbo" },
+    ollama:     { format: "openai",    base: "http://localhost:11434/v1",              model: "llama3.1" },
   };
 
-  GM_registerMenuCommand("debait: set OpenAI API key", () => {
-    const k = prompt("OpenAI API key (stored locally in your userscript manager):", CFG.key);
-    if (k !== null) GM_setValue("openai_key", k.trim());
+  // ---- config (stored via GM_setValue) --------------------------------------
+  const CFG = {
+    get provider() { return GM_getValue("provider", "openai"); },
+    get key() { return GM_getValue(`key_${this.provider}`, ""); },
+    get base() { return (GM_getValue("base", "") || PROVIDERS[this.provider].base).replace(/\/+$/, ""); },
+    get model() { return GM_getValue("model", "") || PROVIDERS[this.provider].model; },
+  };
+
+  GM_registerMenuCommand("debait: choose provider", () => {
+    const p = prompt(`Provider \u2014 one of:\n${Object.keys(PROVIDERS).join(", ")}`, CFG.provider);
+    if (p !== null && PROVIDERS[p.trim()]) GM_setValue("provider", p.trim());
+    else if (p !== null) alert("Unknown provider.");
   });
-  GM_registerMenuCommand("debait: set model", () => {
-    const m = prompt("Model:", CFG.model);
+  GM_registerMenuCommand("debait: set API key (current provider)", () => {
+    const k = prompt(`API key for "${CFG.provider}" (stored locally):`, CFG.key);
+    if (k !== null) GM_setValue(`key_${CFG.provider}`, k.trim());
+  });
+  GM_registerMenuCommand("debait: set model override", () => {
+    const m = prompt("Model (blank = provider default):", GM_getValue("model", ""));
     if (m !== null) GM_setValue("model", m.trim());
+  });
+  GM_registerMenuCommand("debait: set base URL override", () => {
+    const b = prompt("Base URL (blank = provider default):", GM_getValue("base", ""));
+    if (b !== null) GM_setValue("base", b.trim());
   });
   GM_registerMenuCommand("debait: analyze this page", run);
 
@@ -92,25 +126,48 @@ ${body || "(no extractable text)"}
     return { originalTitle, description, text, url: location.href };
   }
 
+  // ---- build request per wire format ----------------------------------------
+  function buildRequest(prompt) {
+    const format = PROVIDERS[CFG.provider].format;
+    const { base, model, key } = CFG;
+    if (format === "anthropic") {
+      return {
+        url: `${base}/messages`,
+        headers: { "Content-Type": "application/json", "x-api-key": key, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
+        data: JSON.stringify({ model, max_tokens: 1024, temperature: 0.2, system: SYSTEM, messages: [{ role: "user", content: prompt }] }),
+        pick: (j) => (j.content || []).map((p) => p.text || "").join(""),
+      };
+    }
+    if (format === "gemini") {
+      return {
+        url: `${base}/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`,
+        headers: { "Content-Type": "application/json" },
+        data: JSON.stringify({ systemInstruction: { parts: [{ text: SYSTEM }] }, contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { temperature: 0.2 } }),
+        pick: (j) => (j.candidates?.[0]?.content?.parts || []).map((p) => p.text || "").join(""),
+      };
+    }
+    return {
+      url: `${base}/chat/completions`,
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
+      data: JSON.stringify({ model, temperature: 0.2, messages: [{ role: "system", content: SYSTEM }, { role: "user", content: prompt }] }),
+      pick: (j) => j.choices?.[0]?.message?.content || "",
+    };
+  }
+
   // ---- LLM call via GM_xmlhttpRequest (bypasses page CORS) -------------------
-  function callOpenAI(prompt) {
+  function callProvider(prompt) {
     return new Promise((resolve, reject) => {
-      if (!CFG.key) return reject(new Error("No API key. Use the Tampermonkey menu → 'debait: set OpenAI API key'."));
+      if (!CFG.key && CFG.provider !== "ollama")
+        return reject(new Error(`No API key for "${CFG.provider}". Use the menu to set it.`));
+      const req = buildRequest(prompt);
       GM_xmlhttpRequest({
         method: "POST",
-        url: `${CFG.base}/chat/completions`,
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${CFG.key}` },
-        data: JSON.stringify({
-          model: CFG.model,
-          temperature: 0.2,
-          messages: [
-            { role: "system", content: "You are a precise editor. Respond with exactly the requested format, nothing else." },
-            { role: "user", content: prompt },
-          ],
-        }),
+        url: req.url,
+        headers: req.headers,
+        data: req.data,
         onload: (r) => {
           if (r.status < 200 || r.status >= 300) return reject(new Error(`API ${r.status}: ${r.responseText.slice(0, 300)}`));
-          try { resolve(JSON.parse(r.responseText).choices[0].message.content); }
+          try { resolve(req.pick(JSON.parse(r.responseText))); }
           catch (e) { reject(e); }
         },
         onerror: () => reject(new Error("Network error calling the API.")),
@@ -180,7 +237,7 @@ ${body || "(no extractable text)"}
     render(`<b style="color:#58a6ff">🪝🚫 debait</b><br><br>Reading the page…`);
     try {
       const article = extractPage();
-      const out = await callOpenAI(buildPrompt(article));
+      const out = await callProvider(buildPrompt(article));
       renderResult(article, parseResult(out));
     } catch (e) {
       render(`<b style="color:#e5484d">debait error</b><br><br>${esc(e.message)}`);

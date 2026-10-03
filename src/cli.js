@@ -38,9 +38,15 @@ Usage:
   debait <url> [--json] [--backend openai|codex]
   debait --stdin [--url <url>] [--json]        # read raw HTML from stdin
 
-Backend selection (auto): OPENAI_API_KEY → openai, else codex CLI.
-  DEBAIT_BACKEND=openai|codex   force a backend
-  DEBAIT_MODEL=<model>          override model (openai backend)
+Backend (auto): first provider whose API key env var is set, else codex CLI.
+Providers: openai, anthropic, gemini, groq, openrouter, deepseek, xai,
+           mistral, together, ollama.
+
+  --backend <provider|codex>    force a backend (also DEBAIT_PROVIDER / DEBAIT_BACKEND=codex)
+  <PROVIDER>_API_KEY            key per provider, e.g. OPENAI_API_KEY, ANTHROPIC_API_KEY,
+                                GEMINI_API_KEY, GROQ_API_KEY ...
+  DEBAIT_MODEL=<model>          override model
+  DEBAIT_BASE_URL=<url>         override API base URL (e.g. a gateway / local server)
 `;
 
 function color(s, c) {
