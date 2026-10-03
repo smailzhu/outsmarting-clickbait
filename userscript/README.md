@@ -23,8 +23,15 @@ target URL** (via `GM_xmlhttpRequest`, cross-origin), extracts and debaits it, a
 shows a tooltip with the honest title, clickbait score, verdict, *worth clicking*,
 and summary — before you open the page. Cached per URL (30 min).
 
-- Requires the `@connect *` grant (fetch arbitrary link targets); Tampermonkey
-  asks to allow it on first use.
+- All **provider API hosts** are declared with explicit `@connect` tags, so the
+  debait calls themselves trigger **no connect dialog**.
+- **Preview** fetches whatever link you hover — arbitrary hosts that can't be
+  pre-listed — so it needs the wildcard `@connect *`. Tampermonkey shows a
+  one-time "connect to any domain" prompt for `*` by design; that's the only
+  dialog, and it can't be narrowed without dropping preview.
+  *If you don't want the wildcard:* delete the `// @connect *` line (and the
+  Alt+hover preview block) to keep only current-page debaiting, or replace `*`
+  with explicit `@connect <host>` tags for the sites you actually browse.
 - Server-rendered pages only; JS-rendered/paywalled targets fall back to the
   link's meta description.
 - Alt-gated on purpose so it never fires LLM calls accidentally.
