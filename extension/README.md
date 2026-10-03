@@ -14,15 +14,37 @@ article and overlays an honest title, summary, key points, and a clickbait score
    Keys are remembered per provider, so you can switch freely.
 5. Visit any article → click the toolbar icon or right-click → *debait this page*.
 
+## Preview before you click (Alt+hover)
+
+Hold **Alt** and hover any link. After a short dwell, the background worker
+**fetches that target URL, extracts it, and debaits it** — showing a tooltip with
+the honest title, clickbait score, substance verdict, *worth clicking*, and a
+summary, **before you open the page**. Results are cached per URL (30 min) so
+re-hovering is instant and each link costs at most one LLM call.
+
+**Limitations (by design):**
+- Only works on **server-rendered** pages. JS-rendered or paywalled targets can't
+  be read by a plain fetch → the tooltip says "couldn't read body" and falls back
+  to the link's meta description.
+- Needs broad host access (`https://*/*`) so the worker can fetch arbitrary link
+  targets — that's why the extension asks to "read data on all websites."
+- Alt-gated on purpose: auto-debaiting *every* link in a feed would mean one LLM
+  call per link (slow + costly + rate-limited). Hover = bounded, on-demand cost.
+  For true whole-feed annotation you'd want a caching backend proxy (see repo NOTES).
+
 ## How it works
 
 ```
-content.js   — extracts the article from the live DOM, renders the overlay
-prompt.js    — shared prompt/parse logic (globalThis.DebaitPrompt)
-providers.js — multi-provider request builder (synced from ../shared via `npm run sync`)
-background.js — holds settings, makes the CORS-free API call (service worker)
-popup/options — trigger + provider/key settings (chrome.storage.sync)
+content.js     — extract current page (DOM), overlay panel, Alt+hover tooltip
+prompt.js      — shared prompt/parse for content script (globalThis.DebaitPrompt)
+prompt.esm.js  — same logic as an ES module for the service worker (synced)
+extract.js     — pure HTML→text extractor for the worker (synced; no DOM needed)
+providers.js   — multi-provider request builder (synced from ../shared)
+background.js  — settings, CORS-free API call, + link preview (fetch+extract+cache)
+popup/options  — trigger + provider/key settings (chrome.storage.sync)
 ```
+
+Synced files come from `../shared/*` via `npm run sync` — edit the shared copy, not these.
 
 `host_permissions` covers all built-in provider API hosts. If you point a provider
 at a custom base URL, Chrome may prompt for that host (covered by `optional_host_permissions`).

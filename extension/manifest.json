@@ -15,9 +15,10 @@
     "https://api.mistral.ai/*",
     "https://api.together.xyz/*",
     "https://integrate.api.nvidia.com/*",
-    "http://localhost/*"
+    "http://localhost/*",
+    "https://*/*",
+    "http://*/*"
   ],
-  "optional_host_permissions": ["https://*/*", "http://*/*"],
   "background": { "service_worker": "background.js", "type": "module" },
   "action": { "default_popup": "popup.html", "default_title": "debait this page" },
   "options_page": "options.html",

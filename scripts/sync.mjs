@@ -6,7 +6,11 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const copies = [["shared/providers.js", "extension/providers.js"]];
+const copies = [
+  ["shared/providers.js", "extension/providers.js"],
+  ["shared/prompt.js", "extension/prompt.esm.js"],
+  ["shared/extract.js", "extension/extract.js"],
+];
 
 for (const [from, to] of copies) {
   copyFileSync(join(root, from), join(root, to));
