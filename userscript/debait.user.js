@@ -179,48 +179,79 @@ ${body || "(no extractable text)"}
   }
 
   // ---- UI -------------------------------------------------------------------
-  const PANEL_ID = "debait-panel";
-  function scoreColor(n) { return n >= 60 ? "#e5484d" : n >= 30 ? "#ffb224" : "#30a46c"; }
+  const PANEL_ID = "debait-panel-host";
+  function scoreColor(n) { return n >= 60 ? "#ff6b6e" : n >= 30 ? "#ffc14d" : "#4ac97e"; }
+
+  // All panel styles live inside a Shadow DOM so the host page's CSS can't bleed
+  // in (the usual cause of unreadable overlays). :host all:initial resets
+  // inherited color/font/letter-spacing/etc.
+  const PANEL_CSS = `
+:host { all: initial; }
+.wrap { position:fixed; top:16px; right:16px; width:380px; max-height:82vh; overflow:auto;
+  background:#0f1115; color:#f3f4f6;
+  font:14px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,system-ui,sans-serif;
+  text-align:left; letter-spacing:normal; word-break:break-word;
+  border:1px solid #30363d; border-radius:12px; box-shadow:0 10px 40px rgba(0,0,0,.6); padding:16px; }
+.wrap * { box-sizing:border-box; margin:0; }
+.hd { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+.brand { color:#6cb6ff; font-weight:700; font-size:15px; }
+.x { cursor:pointer; color:#9aa4b2; font-size:16px; line-height:1; padding:2px 7px; border-radius:6px; }
+.x:hover { background:#20262e; color:#fff; }
+.lbl { color:#9aa4b2; font-size:11px; letter-spacing:.07em; text-transform:uppercase; margin-top:6px; }
+.orig { color:#c9d1d9; margin:2px 0 6px; }
+.title { font-weight:600; font-size:15px; margin:2px 0 10px; }
+.bar { height:8px; background:#21262d; border-radius:4px; overflow:hidden; margin:6px 0; }
+.bar > i { display:block; height:100%; }
+.meta { margin-bottom:10px; }
+.sum { color:#e6edf3; margin-bottom:10px; }
+ul { margin:4px 0 10px; padding-left:20px; } li { margin:3px 0; }
+pre { white-space:pre-wrap; color:#c9d1d9; }
+`;
 
   function panel() {
-    let el = document.getElementById(PANEL_ID);
-    if (el) return el;
-    el = document.createElement("div");
-    el.id = PANEL_ID;
-    el.style.cssText = [
-      "position:fixed", "z-index:2147483647", "top:16px", "right:16px", "width:360px",
-      "max-height:80vh", "overflow:auto", "background:#0f1115", "color:#e6e6e6",
-      "font:13px/1.5 system-ui,sans-serif", "border:1px solid #2a2f3a",
-      "border-radius:12px", "box-shadow:0 8px 30px rgba(0,0,0,.5)", "padding:14px",
-    ].join(";");
-    document.body.appendChild(el);
-    return el;
+    let host = document.getElementById(PANEL_ID);
+    if (host && host.__content) return host.__content;
+    host = document.createElement("div");
+    host.id = PANEL_ID;
+    host.style.cssText = "all:initial; position:fixed; z-index:2147483647;";
+    const root = host.attachShadow({ mode: "open" });
+    const style = document.createElement("style");
+    style.textContent = PANEL_CSS;
+    const content = document.createElement("div");
+    content.className = "wrap";
+    root.append(style, content);
+    document.body.appendChild(host);
+    host.__content = content;
+    return content;
   }
 
-  function render(html) { panel().innerHTML = html; }
+  function closePanel() { document.getElementById(PANEL_ID)?.remove(); }
+  function render(html) {
+    panel().innerHTML = html;
+    document.getElementById(PANEL_ID)?.shadowRoot?.querySelector(".x")?.addEventListener("click", closePanel);
+  }
+  function hd() { return `<div class="hd"><span class="brand">🪝🚫 debait</span><span class="x" title="close">✕</span></div>`; }
   function esc(s) { return String(s ?? "").replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c])); }
 
   function renderResult(a, r) {
-    if (r.parse_error) return render(`<b>debait</b><br>Could not parse model output.<pre style="white-space:pre-wrap">${esc(r.raw)}</pre>`);
+    if (r.parse_error) return render(`${hd()}Could not parse model output.<pre>${esc(r.raw)}</pre>`);
     const n = r.clickbait_score ?? 0;
+    const col = scoreColor(n);
+    const kp = Array.isArray(r.key_points) && r.key_points.length
+      ? `<div class="lbl">Key points</div><ul>${r.key_points.map((p) => `<li>${esc(p)}</li>`).join("")}</ul>` : "";
+    const sig = Array.isArray(r.clickbait_signals) && r.clickbait_signals.length
+      ? `<div class="lbl">Bait signals</div><ul>${r.clickbait_signals.map((s) => `<li>⚑ ${esc(s)}</li>`).join("")}</ul>` : "";
     render(`
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <b style="color:#58a6ff">🪝🚫 debait</b>
-        <span style="cursor:pointer;color:#888" onclick="document.getElementById('${PANEL_ID}').remove()">✕</span>
-      </div>
-      <div style="color:#888;font-size:11px">ORIGINAL</div>
-      <div style="margin-bottom:8px">${esc(a.originalTitle)}</div>
-      <div style="color:#888;font-size:11px">HONEST TITLE</div>
-      <div style="font-weight:600;margin-bottom:10px">${esc(r.honest_title)}</div>
-      <div style="height:8px;background:#222;border-radius:4px;overflow:hidden;margin-bottom:4px">
-        <div style="height:100%;width:${n}%;background:${scoreColor(n)}"></div>
-      </div>
-      <div style="margin-bottom:10px"><b style="color:${scoreColor(n)}">${n}/100 clickbait</b>
-        · ${esc(r.substance_verdict)} · worth clicking: <b>${r.worth_clicking ? "yes" : "no"}</b></div>
-      <div style="color:#888;font-size:11px">SUMMARY</div>
-      <div style="margin-bottom:10px">${esc(r.summary)}</div>
-      ${Array.isArray(r.key_points) && r.key_points.length ? `<div style="color:#888;font-size:11px">KEY POINTS</div><ul style="margin:4px 0 10px;padding-left:18px">${r.key_points.map((p) => `<li>${esc(p)}</li>`).join("")}</ul>` : ""}
-      ${Array.isArray(r.clickbait_signals) && r.clickbait_signals.length ? `<div style="color:#888;font-size:11px">BAIT SIGNALS</div><ul style="margin:4px 0 0;padding-left:18px">${r.clickbait_signals.map((s) => `<li>⚑ ${esc(s)}</li>`).join("")}</ul>` : ""}
+      ${hd()}
+      <div class="lbl">Original</div>
+      <div class="orig">${esc(a.originalTitle)}</div>
+      <div class="lbl">Honest title</div>
+      <div class="title">${esc(r.honest_title)}</div>
+      <div class="bar"><i style="width:${n}%;background:${col}"></i></div>
+      <div class="meta"><b style="color:${col}">${n}/100 clickbait</b> · ${esc(r.substance_verdict)} · worth clicking: <b>${r.worth_clicking ? "yes" : "no"}</b></div>
+      <div class="lbl">Summary</div>
+      <div class="sum">${esc(r.summary)}</div>
+      ${kp}${sig}
     `);
   }
 
