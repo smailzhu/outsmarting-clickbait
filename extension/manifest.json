@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "debait — outsmart clickbait",
+  "version": "0.1.0",
+  "description": "Reads the current article and shows an honest title, summary, and clickbait score. Inspired by wiwi.blog/blog/outsmarting-clickbait.",
+  "permissions": ["storage", "activeTab", "scripting", "contextMenus"],
+  "host_permissions": ["https://api.openai.com/*"],
+  "optional_host_permissions": ["https://*/*", "http://*/*"],
+  "background": { "service_worker": "background.js", "type": "module" },
+  "action": { "default_popup": "popup.html", "default_title": "debait this page" },
+  "options_page": "options.html",
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["prompt.js", "content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

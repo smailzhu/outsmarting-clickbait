@@ -7,6 +7,18 @@ A tiny prototype of the idea from Wiwi Kuan's post
 > and hand you an honest, non-sensational title plus the actual substance — so
 > the bait loses its power.
 
+Ships in three forms from one shared prompt:
+
+| Form | Where | Entry |
+|------|-------|-------|
+| **CLI** | terminal (OpenAI API or `codex` CLI) | `src/cli.js` |
+| **Userscript** | Tampermonkey / Violentmonkey, any browser | [`userscript/`](userscript/) |
+| **Extension** | Chromium (MV3): Chrome / Edge / Brave | [`extension/`](extension/) |
+
+The prompt + result parsing live once in [`shared/prompt.js`](shared/prompt.js);
+the browser builds reuse it. **In-browser builds require an OpenAI-compatible API
+key** — the `codex` CLI backend is CLI-only.
+
 `debait` fetches an article, reads the whole thing with an LLM, and prints:
 
 - an **honest title** (no hype, no curiosity gap),
