@@ -1,0 +1,18 @@
+{
+  "name": "outsmarting-clickbait",
+  "version": "0.1.0",
+  "description": "An honest-title summarizer: strips the bait out of clickbait by producing a dispassionate title, summary, and a clickbait score for any article URL.",
+  "type": "module",
+  "bin": {
+    "debait": "./src/cli.js"
+  },
+  "scripts": {
+    "start": "node src/cli.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT",
+  "dependencies": {}
+}
