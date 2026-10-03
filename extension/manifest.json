@@ -14,6 +14,7 @@
     "https://api.x.ai/*",
     "https://api.mistral.ai/*",
     "https://api.together.xyz/*",
+    "https://integrate.api.nvidia.com/*",
     "http://localhost/*"
   ],
   "optional_host_permissions": ["https://*/*", "http://*/*"],

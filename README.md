@@ -75,6 +75,7 @@ Multi-provider, from one shared layer ([`shared/providers.js`](shared/providers.
 | xAI (Grok) | `xai` | openai | grok-2-latest | `XAI_API_KEY` |
 | Mistral | `mistral` | openai | mistral-small-latest | `MISTRAL_API_KEY` |
 | Together | `together` | openai | Llama-3.3-70B-Turbo | `TOGETHER_API_KEY` |
+| NVIDIA (NIM) | `nvidia` | openai | meta/llama-3.3-70b-instruct | `NVIDIA_API_KEY` |
 | Ollama (local) | `ollama` | openai | llama3.1 | — |
 | Codex CLI | `codex` | — (shells out) | — | — |
 

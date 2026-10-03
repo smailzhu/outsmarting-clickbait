@@ -18,6 +18,7 @@
 // @connect      api.x.ai
 // @connect      api.mistral.ai
 // @connect      api.together.xyz
+// @connect      integrate.api.nvidia.com
 // @connect      localhost
 // @run-at       document-idle
 // @noframes
@@ -39,6 +40,7 @@
     xai:        { format: "openai",    base: "https://api.x.ai/v1",                    model: "grok-2-latest" },
     mistral:    { format: "openai",    base: "https://api.mistral.ai/v1",              model: "mistral-small-latest" },
     together:   { format: "openai",    base: "https://api.together.xyz/v1",            model: "meta-llama/Llama-3.3-70B-Instruct-Turbo" },
+    nvidia:     { format: "openai",    base: "https://integrate.api.nvidia.com/v1",    model: "meta/llama-3.3-70b-instruct" },
     ollama:     { format: "openai",    base: "http://localhost:11434/v1",              model: "llama3.1" },
   };
 
