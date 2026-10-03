@@ -90,6 +90,18 @@ DEBAIT_BASE_URL=https://my-gateway/v1    # override base (gateways / local)
 DEBAIT_BACKEND=codex                     # force the codex CLI
 ```
 
+**Output language.** By default the honest title + summary come back in the
+article's own language (`auto`). Force one with `--lang` / `DEBAIT_LANG`:
+
+```bash
+debait <url> --lang English
+debait <url> --lang "繁體中文"      # or 日本語, Español, es, ...
+DEBAIT_LANG="繁體中文" debait <url>
+```
+JSON keys and the `substance_verdict` enum always stay English. The extension
+(Options → Output language) and userscript (menu → *set output language*) expose
+the same setting.
+
 The userscript and extension expose the same provider list in their settings.
 After editing `shared/providers.js`, run `npm run sync` to copy it into the extension.
 

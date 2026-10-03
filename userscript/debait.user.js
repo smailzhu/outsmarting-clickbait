@@ -51,6 +51,7 @@
     get key() { return GM_getValue(`key_${this.provider}`, ""); },
     get base() { return (GM_getValue("base", "") || PROVIDERS[this.provider].base).replace(/\/+$/, ""); },
     get model() { return GM_getValue("model", "") || PROVIDERS[this.provider].model; },
+    get language() { return GM_getValue("language", ""); },
   };
 
   GM_registerMenuCommand("debait: choose provider", () => {
@@ -61,6 +62,10 @@
   GM_registerMenuCommand("debait: set API key (current provider)", () => {
     const k = prompt(`API key for "${CFG.provider}" (stored locally):`, CFG.key);
     if (k !== null) GM_setValue(`key_${CFG.provider}`, k.trim());
+  });
+  GM_registerMenuCommand("debait: set output language", () => {
+    const l = prompt("Output language for title/summary (blank = auto, match article):\ne.g. English, \u7e41\u9ad4\u4e2d\u6587, \u65e5\u672c\u8a9e, Espa\u00f1ol", CFG.language);
+    if (l !== null) GM_setValue("language", l.trim());
   });
   GM_registerMenuCommand("debait: set model override", () => {
     const m = prompt("Model (blank = provider default):", GM_getValue("model", ""));
@@ -74,8 +79,10 @@
 
   // ---- shared prompt (inlined copy of shared/prompt.js) ---------------------
   const MAX_CHARS = 12000;
-  function buildPrompt({ originalTitle, description, text, url }) {
+  function buildPrompt({ originalTitle, description, text, url }, { language } = {}) {
     const body = (text || "").slice(0, MAX_CHARS);
+    const l = String(language || "").trim();
+    const langTarget = !l || l.toLowerCase() === "auto" ? "the same language as the article" : l;
     return `You are given a web article. Read it and report its actual substance,
 ignoring any sensational framing. Judge it the way a skeptical editor would.
 
@@ -95,6 +102,7 @@ Rules:
 - "worth_clicking" is whether a reader learns anything beyond what your summary already tells them.
 - Do not repeat false claims as fact; attribute them ("the article claims...").
 - Be terse and dispassionate.
+- Write "honest_title", "summary", "key_points" and "clickbait_signals" in ${langTarget}. Keep the JSON keys and the "substance_verdict" value in English.
 
 URL: ${url || "(unknown)"}
 ORIGINAL TITLE: ${originalTitle || "(none)"}
@@ -271,7 +279,7 @@ pre { white-space:pre-wrap; color:#c9d1d9; }
     render(`<b style="color:#58a6ff">🪝🚫 debait</b><br><br>Reading the page…`);
     try {
       const article = extractPage();
-      const out = await callProvider(buildPrompt(article));
+      const out = await callProvider(buildPrompt(article, { language: CFG.language }));
       renderResult(article, parseResult(out));
     } catch (e) {
       render(`<b style="color:#e5484d">debait error</b><br><br>${esc(e.message)}`);
@@ -343,7 +351,7 @@ pre { white-space:pre-wrap; color:#c9d1d9; }
         if (!article.text || article.text.length < 200) {
           result = { thin_fetch: true, originalTitle: article.originalTitle, description: article.description };
         } else {
-          result = parseResult(await callProvider(buildPrompt(article)));
+          result = parseResult(await callProvider(buildPrompt(article, { language: CFG.language })));
           result.originalTitle = article.originalTitle;
         }
         previewCache.set(url, { at: Date.now(), result });

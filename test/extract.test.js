@@ -27,6 +27,16 @@ test("buildPrompt embeds the article and asks for JSON", () => {
   assert.match(p, /AI tools could summarize articles/i);
 });
 
+test("buildPrompt language: auto by default, explicit when given", () => {
+  const a = extractArticle(html);
+  assert.match(buildPrompt(a), /same language as the article/);
+  assert.match(buildPrompt(a, { language: "auto" }), /same language as the article/);
+  const p = buildPrompt(a, { language: "\u7e41\u9ad4\u4e2d\u6587" });
+  assert.match(p, /in \u7e41\u9ad4\u4e2d\u6587/);
+  // Structure stays English so parsing/UI don't break.
+  assert.match(p, /substance_verdict" value in English/);
+});
+
 test("parseResult tolerates code fences and surrounding prose", () => {
   const r = parseResult('here you go:\n```json\n{"honest_title":"x","clickbait_score":90}\n```');
   assert.equal(r.honest_title, "x");

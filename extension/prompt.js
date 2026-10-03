@@ -3,8 +3,10 @@
 // for content.js (loaded immediately after this file in the manifest).
 (function () {
   const MAX_CHARS = 12000;
-  function buildPrompt({ originalTitle, description, text, url }) {
+  function buildPrompt({ originalTitle, description, text, url }, { language } = {}) {
     const body = (text || "").slice(0, MAX_CHARS);
+    const l = String(language || "").trim();
+    const langTarget = !l || l.toLowerCase() === "auto" ? "the same language as the article" : l;
     return `You are given a web article. Read it and report its actual substance,
 ignoring any sensational framing. Judge it the way a skeptical editor would.
 
@@ -24,6 +26,7 @@ Rules:
 - "worth_clicking" is whether a reader learns anything beyond what your summary already tells them.
 - Do not repeat false claims as fact; attribute them ("the article claims...").
 - Be terse and dispassionate.
+- Write "honest_title", "summary", "key_points" and "clickbait_signals" in ${langTarget}. Keep the JSON keys and the "substance_verdict" value in English.
 
 URL: ${url || "(unknown)"}
 ORIGINAL TITLE: ${originalTitle || "(none)"}

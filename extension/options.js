@@ -1,7 +1,7 @@
 // Stores provider + base + model + a per-provider key map so switching
 // providers keeps each key. The active `key` mirrors the current provider's key
 // for the background worker.
-const DEFAULTS = { provider: "openai", base: "", model: "", key: "", keys: {} };
+const DEFAULTS = { provider: "openai", base: "", model: "", key: "", keys: {}, language: "" };
 const $ = (id) => document.getElementById(id);
 
 let state = { ...DEFAULTS };
@@ -11,6 +11,7 @@ async function load() {
   $("provider").value = state.provider;
   $("base").value = state.base || "";
   $("model").value = state.model || "";
+  $("language").value = state.language || "";
   $("key").value = state.keys?.[state.provider] || state.key || "";
 }
 
@@ -31,6 +32,7 @@ $("save").addEventListener("click", async () => {
     keys: state.keys,
     base: $("base").value.trim(),
     model: $("model").value.trim(),
+    language: $("language").value.trim(),
   });
   $("status").textContent = "Saved ✓";
   setTimeout(() => ($("status").textContent = ""), 1500);

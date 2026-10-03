@@ -8,7 +8,7 @@ import { buildPrompt, parseResult } from "../shared/prompt.js";
 export { buildPrompt, parseResult };
 
 export async function debait(article, opts = {}) {
-  const prompt = buildPrompt(article);
+  const prompt = buildPrompt(article, { language: opts.language });
   const raw = await complete(prompt, opts);
   return parseResult(raw);
 }

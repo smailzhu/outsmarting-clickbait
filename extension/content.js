@@ -164,7 +164,8 @@ function renderResult(a, r) {
 async function run() {
   render(`<b style="color:#58a6ff">🪝🚫 debait</b><br><br>Reading the page…`);
   const article = extractPage();
-  const prompt = globalThis.DebaitPrompt.buildPrompt(article);
+  const { language } = await chrome.storage.sync.get({ language: "" });
+  const prompt = globalThis.DebaitPrompt.buildPrompt(article, { language });
   const resp = await chrome.runtime.sendMessage({ type: "debait:complete", prompt });
   if (!resp?.ok) return render(`<b style="color:#e5484d">debait error</b><br><br>${esc(resp?.error || "unknown")}`);
   renderResult(article, globalThis.DebaitPrompt.parseResult(resp.text));

@@ -4,7 +4,19 @@
 
 export const MAX_CHARS = 12000;
 
-export function buildPrompt({ originalTitle, description, text, url }) {
+// Returns the rule line controlling the OUTPUT language of the content fields.
+// "auto" (or empty) => match the article's own language.
+// anything else      => write content in that language (name or code: "English",
+//                       "\u7e41\u9ad4\u4e2d\u6587", "es", "\u65e5\u672c\u8a9e", ...).
+// JSON keys and the substance_verdict enum ALWAYS stay English so parsing/UI hold.
+export function languageInstruction(language) {
+  const l = String(language || "").trim();
+  const target =
+    !l || l.toLowerCase() === "auto" ? "the same language as the article" : l;
+  return `- Write "honest_title", "summary", "key_points" and "clickbait_signals" in ${target}. Keep the JSON keys and the "substance_verdict" value in English.`;
+}
+
+export function buildPrompt({ originalTitle, description, text, url }, { language } = {}) {
   const body = (text || "").slice(0, MAX_CHARS);
   return `You are given a web article. Read it and report its actual substance,
 ignoring any sensational framing. Judge it the way a skeptical editor would.
@@ -25,6 +37,7 @@ Rules:
 - "worth_clicking" is whether a reader learns anything beyond what your summary already tells them.
 - Do not repeat false claims as fact; attribute them ("the article claims...").
 - Be terse and dispassionate.
+${languageInstruction(language)}
 
 URL: ${url || "(unknown)"}
 ORIGINAL TITLE: ${originalTitle || "(none)"}

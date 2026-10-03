@@ -8,7 +8,7 @@ import { resolveProvider, callProvider, PROVIDERS } from "./providers.js";
 import { buildPrompt, parseResult } from "./prompt.esm.js";
 import { extractArticle } from "./extract.js";
 
-const DEFAULTS = { provider: "openai", base: "", model: "", key: "" };
+const DEFAULTS = { provider: "openai", base: "", model: "", key: "", language: "" };
 
 async function settings() {
   const s = await chrome.storage.sync.get(DEFAULTS);
@@ -53,7 +53,8 @@ async function preview(url) {
       // Too little to judge from the body — likely JS-rendered/paywalled.
       return { thin_fetch: true, originalTitle: article.originalTitle, description: article.description, url };
     }
-    const result = parseResult(await complete(buildPrompt(article)));
+    const { language } = await settings();
+    const result = parseResult(await complete(buildPrompt(article, { language })));
     return { ...result, originalTitle: article.originalTitle, url };
   })();
 
