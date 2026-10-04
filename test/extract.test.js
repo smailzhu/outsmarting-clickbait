@@ -50,6 +50,13 @@ test("extractArticle meta parsing is quote-aware (no false attr matches)", () =>
     extractArticle(`<meta data-note="name='description'" content="wrong"><meta name="description" content="right"><article>Body</article>`).description,
     "right"
   );
+  // "data.name" is one attribute name, not "name".
+  assert.equal(extractArticle(`<meta data.name="description" content="wrong"><article>Body</article>`).description, "");
+});
+
+test("extractArticle: a <script> written inside <style> CSS text doesn't drop content", () => {
+  assert.equal(extractArticle('<style>p::after { content: "<script>"; }</style><article>Story</article>').text, "Story");
+  assert.equal(extractArticle('<script>a="<style>"</script><style>b="<script>"</style><article>Keep</article>').text, "Keep");
 });
 
 test("extractArticle is near-linear on pathological unclosed <script>", () => {

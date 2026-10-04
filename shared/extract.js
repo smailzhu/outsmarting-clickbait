@@ -69,23 +69,26 @@ function stripBlocks(src, tag) {
   return out;
 }
 
-// Raw-text elements (script/style): their content is CDATA-like, so a literal
-// "<script>" inside the text is NOT a nested element. Content ends at the first
-// closing tag; no depth counting.
-function stripRawText(src, tag) {
-  const openRe = new RegExp(`<${tag}(?=[\\s/>])`, "gi");
-  const closeRe = new RegExp(`</${tag}\\s*>`, "gi");
+// Raw-text elements (script/style/noscript): their content is CDATA-like, so a
+// literal "<script>" (or "<style>") inside the text is NOT a nested/other
+// element. We scan ALL of them in a SINGLE left-to-right pass: once inside one
+// raw element we skip straight to ITS closing tag, so e.g. a "<script>" written
+// inside a <style> CSS string can't be mistaken for a script opener.
+const RAW_OPEN = /<(script|style|noscript)(?=[\\s/>])/gi;
+function stripRawText(src) {
   let out = "";
   let i = 0;
   let m;
-  while ((m = openRe.exec(src))) {
-    if (m.index < i) continue;
+  RAW_OPEN.lastIndex = 0;
+  while ((m = RAW_OPEN.exec(src))) {
+    if (m.index < i) continue; // opener lies inside an already-removed block
     out += src.slice(i, m.index) + " ";
-    closeRe.lastIndex = openRe.lastIndex;
+    const closeRe = new RegExp(`</${m[1]}\\s*>`, "gi");
+    closeRe.lastIndex = RAW_OPEN.lastIndex;
     const c = closeRe.exec(src);
     if (!c) { i = src.length; break; } // unclosed raw text -> drop to EOF
     i = c.index + c[0].length;
-    openRe.lastIndex = i;
+    RAW_OPEN.lastIndex = i;
   }
   out += src.slice(i);
   return out;
@@ -117,7 +120,7 @@ const META_TAG = /<meta\b(?:[^>"']|"[^"]*"|'[^']*')*>/gi;
 // '>' or an attr-like substring inside a quoted value is not mis-parsed.
 function parseAttrs(tag) {
   const attrs = {};
-  const re = /([-\w:]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/g;
+  const re = /([-\w:.]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/g;
   let m;
   while ((m = re.exec(tag))) {
     const name = m[1].toLowerCase();
@@ -155,8 +158,8 @@ export function extractArticle(html, url = "") {
   const description =
     metaContent(html, "name", "description") || metaContent(html, "property", "og:description");
 
-  // 1. Remove scripts/styles everywhere (raw-text: first close wins, no nesting).
-  let body = stripRawText(stripRawText(stripRawText(html, "script"), "style"), "noscript");
+  // 1. Remove scripts/styles/noscript everywhere (single raw-text pass).
+  let body = stripRawText(html);
 
   // 2. Remove clearly non-content chrome BEFORE selecting the main region, so a
   //    teaser <article> nested inside an <aside>/<nav> doesn't win over the real
