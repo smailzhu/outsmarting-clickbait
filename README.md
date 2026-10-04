@@ -163,6 +163,20 @@ Extraction is deliberately dependency-free and heuristic (strip
 `script/style/nav/aside/footer`, prefer `<article>`). For production you'd swap
 in Readability + a headless browser for JS-rendered pages.
 
+## UI language (i18n)
+
+Two independent things:
+
+- **Output language** (the honest title + summary) — chosen by you, any
+  language, via the `language` setting / `--lang` (see Providers above).
+- **Interface language** (buttons, labels, tooltips) — the extension uses
+  Chrome's native i18n and currently ships **English** and **繁體中文**
+  (`extension/_locales/`); it follows your browser UI language. The userscript
+  overlay auto-selects en/zh_TW from `navigator.language`.
+
+Add a locale by copying `extension/_locales/en/messages.json` to
+`extension/_locales/<code>/messages.json` and translating the values.
+
 ## Privacy & keys
 
 Full policy: [PRIVACY.md](PRIVACY.md). Chrome Web Store listing material: [store/STORE_LISTING.md](store/STORE_LISTING.md).

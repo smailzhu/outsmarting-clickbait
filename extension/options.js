@@ -11,9 +11,21 @@ async function renderUsage(cap) {
   const today = new Date().toISOString().slice(0, 10);
   const { debaitUsage } = await chrome.storage.local.get({ debaitUsage: { day: "", count: 0 } });
   const used = debaitUsage.day === today ? debaitUsage.count : 0;
-  $("usage").textContent = `Preview calls today: ${used}` + (cap > 0 ? ` / ${cap}` : " (no cap)");
+  $("usage").textContent = `${t("usagePrefix")} ${used}` + (cap > 0 ? ` / ${cap}` : ` ${t("usageNoCap")}`);
 }
 const $ = (id) => document.getElementById(id);
+
+// Apply localized UI strings (data-i18n = textContent).
+for (const el of document.querySelectorAll("[data-i18n]")) {
+  const m = chrome.i18n.getMessage(el.dataset.i18n);
+  if (m) el.textContent = m;
+}
+for (const el of document.querySelectorAll("[data-i18n-ph]")) {
+  const m = chrome.i18n.getMessage(el.dataset.i18nPh);
+  if (m) el.placeholder = m;
+}
+document.documentElement.lang = (chrome.i18n.getUILanguage && chrome.i18n.getUILanguage()) || "en";
+const t = (k) => chrome.i18n.getMessage(k) || k;
 
 let state = { ...DEFAULTS };
 
@@ -53,7 +65,7 @@ $("save").addEventListener("click", async () => {
     dailyCap: intOr($("dailyCap").value, 200),
   });
   await renderUsage(intOr($("dailyCap").value, 200));
-  $("status").textContent = "Saved ✓";
+  $("status").textContent = t("optSaved");
   setTimeout(() => ($("status").textContent = ""), 1500);
 });
 

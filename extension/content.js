@@ -74,27 +74,27 @@ function isPreviewable(a) {
 async function previewLink(a, x, y) {
   const url = a.href;
   placeTip(x, y);
-  tip().innerHTML = `<b style="color:#58a6ff">🪝🚫 debait</b> · reading…<br><span style="color:#888">${esc(url).slice(0, 80)}</span>`;
+  tip().innerHTML = `<b style="color:#58a6ff">🪝🚫 ${t("brand")}</b> · ${t("tipReading")}<br><span style="color:#888">${esc(url).slice(0, 80)}</span>`;
   let resp;
   try { resp = await chrome.runtime.sendMessage({ type: "debait:preview", url }); }
-  catch (e) { if (tipAnchor === a) tip().innerHTML = `<b style="color:#e5484d">debait</b> error: ${esc(e?.message || String(e))}`; return; }
+  catch (e) { if (tipAnchor === a) tip().innerHTML = `<b style="color:#e5484d">${t("errGeneric")}</b> · ${esc(e?.message || String(e))}`; return; }
   if (tipAnchor !== a) return; // user moved on
-  if (!resp?.ok) return void (tip().innerHTML = `<b style="color:#e5484d">debait</b> · ${esc(resp?.error || "error")}`);
+  if (!resp?.ok) return void (tip().innerHTML = `<b style="color:#e5484d">${t("errGeneric")}</b> · ${esc(resp?.error || t("errUnknown"))}`);
   const r = resp.result;
   if (r.capped)
-    return void (tip().innerHTML = `<b style="color:#ffb224">🪝🚫 debait</b> · daily preview limit reached (${r.used}/${r.cap}). Raise it in Options.`);
+    return void (tip().innerHTML = `<b style="color:#ffb224">🪝🚫 ${t("brand")}</b> · ${esc(t("tipCapped", [String(r.used), String(r.cap)]))}`);
   if (r.rate_limited)
-    return void (tip().innerHTML = `<b style="color:#ffb224">🪝🚫 debait</b> · rate limited by provider. Cooling down ~${r.retryIn}s (hover again later).`);
+    return void (tip().innerHTML = `<b style="color:#ffb224">🪝🚫 ${t("brand")}</b> · ${esc(t("tipRateLimited", [String(r.retryIn)]))}`);
   if (r.throttled)
-    return void (tip().innerHTML = `<b style="color:#ffb224">🪝🚫 debait</b> · slow down — hover one link at a time. Try again in a moment.`);
+    return void (tip().innerHTML = `<b style="color:#ffb224">🪝🚫 ${t("brand")}</b> · ${esc(t("tipThrottled"))}`);
   if (r.thin_fetch)
-    return void (tip().innerHTML = `<b style="color:#ffb224">🪝🚫 debait</b> · couldn't read body (JS-rendered/paywalled).<br>${esc(r.description || r.originalTitle || "")}`);
+    return void (tip().innerHTML = `<b style="color:#ffb224">🪝🚫 ${t("brand")}</b> · ${esc(t("tipThin"))}<br>${esc(r.description || r.originalTitle || "")}`);
   const n = clampScore(r.clickbait_score);
   tip().innerHTML = `
     <b style="color:#58a6ff">🪝🚫 ${esc(r.honest_title || "")}</b>
     <div style="height:6px;background:#222;border-radius:3px;overflow:hidden;margin:6px 0 4px">
       <div style="height:100%;width:${n}%;background:${scoreColor(n)}"></div></div>
-    <div><b style="color:${scoreColor(n)}">${n}/100</b> · ${esc(r.substance_verdict || "")} · worth clicking: <b>${r.worth_clicking ? "yes" : "no"}</b></div>
+    <div><b style="color:${scoreColor(n)}">${n}/100</b> · ${esc(verdict(r.substance_verdict))} · ${esc(t("metaWorth"))} <b>${r.worth_clicking ? t("yes") : t("no")}</b></div>
     <div style="color:#bbb;margin-top:4px">${esc(r.summary || "")}</div>`;
 }
 
@@ -119,6 +119,9 @@ const scoreColor = (n) => (n >= 60 ? "#ff6b6e" : n >= 30 ? "#ffc14d" : "#4ac97e"
 // Model output is untrusted: coerce the score to a finite int in [0,100] so it
 // can't inject markup via the style attribute or text.
 const clampScore = (v) => { let n; try { n = Math.round(Number(v)); } catch { return 0; } return Number.isFinite(n) ? Math.max(0, Math.min(100, n)) : 0; };
+// i18n: resolve a localized string (falls back to the key), and the verdict enum.
+const t = (k, subs) => chrome.i18n.getMessage(k, subs) || k;
+const verdict = (v) => chrome.i18n.getMessage(`verdict_${v}`) || v || "";
 
 // Styles live in a Shadow DOM so the host page's CSS cannot bleed into the
 // panel (the usual cause of unreadable overlays).
@@ -166,41 +169,41 @@ const render = (html) => {
   panel().innerHTML = html;
   document.getElementById(PANEL_ID)?.shadowRoot?.querySelector(".x")?.addEventListener("click", closePanel);
 };
-const hd = () => `<div class="hd"><span class="brand">🪝🚫 debait</span><span class="x" title="close">✕</span></div>`;
+const hd = () => `<div class="hd"><span class="brand">🪝🚫 ${t("brand")}</span><span class="x" title="${esc(t("closeTitle"))}">✕</span></div>`;
 
 function renderResult(a, r) {
-  if (!r || r.parse_error) return render(`${hd()}Could not parse model output.<pre>${esc(r && r.raw)}</pre>`);
+  if (!r || r.parse_error) return render(`${hd()}${esc(t("errParse"))}<pre>${esc(r && r.raw)}</pre>`);
   const n = clampScore(r.clickbait_score);
   const col = scoreColor(n);
   const kp = Array.isArray(r.key_points) && r.key_points.length
-    ? `<div class="lbl">Key points</div><ul>${r.key_points.map((p) => `<li>${esc(p)}</li>`).join("")}</ul>` : "";
+    ? `<div class="lbl">${esc(t("labelKeyPoints"))}</div><ul>${r.key_points.map((p) => `<li>${esc(p)}</li>`).join("")}</ul>` : "";
   const sig = Array.isArray(r.clickbait_signals) && r.clickbait_signals.length
-    ? `<div class="lbl">Bait signals</div><ul>${r.clickbait_signals.map((s) => `<li>⚑ ${esc(s)}</li>`).join("")}</ul>` : "";
+    ? `<div class="lbl">${esc(t("labelBaitSignals"))}</div><ul>${r.clickbait_signals.map((s) => `<li>⚑ ${esc(s)}</li>`).join("")}</ul>` : "";
   render(`
     ${hd()}
-    <div class="lbl">Original</div>
+    <div class="lbl">${esc(t("labelOriginal"))}</div>
     <div class="orig">${esc(a.originalTitle)}</div>
-    <div class="lbl">Honest title</div>
+    <div class="lbl">${esc(t("labelHonest"))}</div>
     <div class="title">${esc(r.honest_title)}</div>
     <div class="bar"><i style="width:${n}%;background:${col}"></i></div>
-    <div class="meta"><b style="color:${col}">${n}/100 clickbait</b> · ${esc(r.substance_verdict)} · worth clicking: <b>${r.worth_clicking ? "yes" : "no"}</b></div>
-    <div class="lbl">Summary</div>
+    <div class="meta"><b style="color:${col}">${n}/100 ${esc(t("metaClickbait"))}</b> · ${esc(verdict(r.substance_verdict))} · ${esc(t("metaWorth"))} <b>${r.worth_clicking ? t("yes") : t("no")}</b></div>
+    <div class="lbl">${esc(t("labelSummary"))}</div>
     <div class="sum">${esc(r.summary)}</div>
     ${kp}${sig}
   `);
 }
 
 async function run() {
-  render(`<b style="color:#58a6ff">🪝🚫 debait</b><br><br>Reading the page…`);
+  render(`<b style="color:#58a6ff">🪝🚫 ${t("brand")}</b><br><br>${esc(t("panelReading"))}`);
   try {
     const article = extractPage();
     const { language } = await chrome.storage.sync.get({ language: "" });
     const prompt = globalThis.DebaitPrompt.buildPrompt(article, { language });
     const resp = await chrome.runtime.sendMessage({ type: "debait:complete", prompt });
-    if (!resp?.ok) return render(`<b style="color:#e5484d">debait error</b><br><br>${esc(resp?.error || "unknown")}`);
+    if (!resp?.ok) return render(`<b style="color:#e5484d">${esc(t("errGeneric"))}</b><br><br>${esc(resp?.error || t("errUnknown"))}`);
     renderResult(article, globalThis.DebaitPrompt.parseResult(resp.text));
   } catch (e) {
-    render(`<b style="color:#e5484d">debait error</b><br><br>${esc(e?.message || String(e))}`);
+    render(`<b style="color:#e5484d">${esc(t("errGeneric"))}</b><br><br>${esc(e?.message || String(e))}`);
   }
 }
 

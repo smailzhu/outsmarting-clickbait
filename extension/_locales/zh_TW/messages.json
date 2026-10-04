@@ -1,0 +1,181 @@
+{
+  "appName": {
+    "message": "debait — 識破騙點閱"
+  },
+  "appDesc": {
+    "message": "在你點擊前，讀取連結背後的文章，顯示誠實標題、摘要與騙點閱分數。"
+  },
+  "ctxDebaitPage": {
+    "message": "debait 這個頁面"
+  },
+  "popupAnalyze": {
+    "message": "分析這個頁面"
+  },
+  "popupSettings": {
+    "message": "設定（API 金鑰）"
+  },
+  "optTitle": {
+    "message": "debait 設定"
+  },
+  "optStoredHint": {
+    "message": "你的 API 金鑰儲存在 chrome.storage.sync，且只會傳送給所選的供應商。"
+  },
+  "optProvider": {
+    "message": "供應商"
+  },
+  "optKey": {
+    "message": "API 金鑰"
+  },
+  "optBase": {
+    "message": "API 基底網址"
+  },
+  "optOverrideHint": {
+    "message": "（選填 — 覆寫供應商預設值）"
+  },
+  "optModel": {
+    "message": "模型"
+  },
+  "optLanguage": {
+    "message": "輸出語言"
+  },
+  "optLanguageHint": {
+    "message": "（標題與摘要；留空＝自動，與文章一致）"
+  },
+  "optLimitsTitle": {
+    "message": "懸停預覽限制"
+  },
+  "optLimitsHint": {
+    "message": "預覽會在你點擊前抓取並摘要連結。這些上限可避免密集懸停耗盡供應商配額。"
+  },
+  "optDwell": {
+    "message": "懸停延遲（毫秒）"
+  },
+  "optDwellHint": {
+    "message": "觸發預覽前的等待時間"
+  },
+  "optInterval": {
+    "message": "預覽之間的最小間隔（毫秒）"
+  },
+  "optDailyCap": {
+    "message": "每日預覽上限"
+  },
+  "optDailyCapHint": {
+    "message": "（0 ＝ 無限制）"
+  },
+  "optSave": {
+    "message": "儲存"
+  },
+  "optSaved": {
+    "message": "已儲存 ✓"
+  },
+  "usagePrefix": {
+    "message": "今日預覽呼叫次數："
+  },
+  "usageNoCap": {
+    "message": "（無上限）"
+  },
+  "brand": {
+    "message": "debait"
+  },
+  "labelOriginal": {
+    "message": "原始標題"
+  },
+  "labelHonest": {
+    "message": "誠實標題"
+  },
+  "labelSummary": {
+    "message": "摘要"
+  },
+  "labelKeyPoints": {
+    "message": "重點"
+  },
+  "labelBaitSignals": {
+    "message": "騙點閱手法"
+  },
+  "metaClickbait": {
+    "message": "騙點閱"
+  },
+  "metaWorth": {
+    "message": "值得點擊："
+  },
+  "yes": {
+    "message": "是"
+  },
+  "no": {
+    "message": "否"
+  },
+  "verdict_substantial": {
+    "message": "有料"
+  },
+  "verdict_thin": {
+    "message": "貧乏"
+  },
+  "verdict_empty": {
+    "message": "空洞"
+  },
+  "panelReading": {
+    "message": "正在讀取頁面…"
+  },
+  "errGeneric": {
+    "message": "debait 錯誤"
+  },
+  "errParse": {
+    "message": "無法解析模型輸出。"
+  },
+  "errUnknown": {
+    "message": "未知錯誤"
+  },
+  "tipReading": {
+    "message": "讀取中…"
+  },
+  "tipThin": {
+    "message": "無法讀取內文（JS 動態產生或付費牆）。"
+  },
+  "tipThrottled": {
+    "message": "慢一點 — 一次懸停一個連結，稍後再試。"
+  },
+  "tipRateLimited": {
+    "message": "供應商限流中，約 $SECS$ 秒後恢復（稍後再懸停）。",
+    "placeholders": {
+      "secs": {
+        "content": "$1"
+      }
+    }
+  },
+  "tipCapped": {
+    "message": "已達每日預覽上限（$USED$/$CAP$）。可在選項中調高。",
+    "placeholders": {
+      "used": {
+        "content": "$1"
+      },
+      "cap": {
+        "content": "$2"
+      }
+    }
+  },
+  "closeTitle": {
+    "message": "關閉"
+  },
+  "errUnknownProvider": {
+    "message": "未知的供應商「$PROVIDER$」。",
+    "placeholders": {
+      "provider": {
+        "content": "$1"
+      }
+    }
+  },
+  "errNoKey": {
+    "message": "尚未設定「$PROVIDER$」的 API 金鑰。請在選項中貼上金鑰。",
+    "placeholders": {
+      "provider": {
+        "content": "$1"
+      }
+    }
+  },
+  "phKeyOllama": {
+    "message": "sk-...（本機 Ollama 免填）"
+  },
+  "phBlankDefault": {
+    "message": "留空以使用預設值"
+  }
+}

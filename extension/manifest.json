@@ -1,9 +1,13 @@
 {
   "manifest_version": 3,
-  "name": "debait — outsmart clickbait",
+  "name": "__MSG_appName__",
   "version": "0.1.0",
-  "description": "Reads the current article and shows an honest title, summary, and clickbait score. Inspired by wiwi.blog/blog/outsmarting-clickbait.",
-  "permissions": ["storage", "activeTab", "contextMenus"],
+  "description": "__MSG_appDesc__",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "contextMenus"
+  ],
   "host_permissions": [
     "https://api.openai.com/*",
     "https://api.anthropic.com/*",
@@ -25,10 +29,13 @@
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
   },
-  "background": { "service_worker": "background.js", "type": "module" },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
   "action": {
     "default_popup": "popup.html",
-    "default_title": "debait this page",
+    "default_title": "__MSG_ctxDebaitPage__",
     "default_icon": {
       "16": "icons/icon16.png",
       "32": "icons/icon32.png",
@@ -39,9 +46,15 @@
   "options_page": "options.html",
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
-      "js": ["prompt.js", "content.js"],
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "prompt.js",
+        "content.js"
+      ],
       "run_at": "document_idle"
     }
-  ]
+  ],
+  "default_locale": "en"
 }

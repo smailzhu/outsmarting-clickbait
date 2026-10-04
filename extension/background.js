@@ -22,9 +22,9 @@ async function settings() {
 
 async function complete(prompt) {
   const s = await settings();
-  if (!PROVIDERS[s.provider]) throw new Error(`Unknown provider "${s.provider}".`);
+  if (!PROVIDERS[s.provider]) throw new Error(chrome.i18n.getMessage("errUnknownProvider", [s.provider]));
   const cfg = resolveProvider({ provider: s.provider, base: s.base, model: s.model, key: s.key });
-  if (!cfg.key && s.provider !== "ollama") throw new Error(`No API key set for "${s.provider}". Open Options and paste your key.`);
+  if (!cfg.key && s.provider !== "ollama") throw new Error(chrome.i18n.getMessage("errNoKey", [s.provider]));
   return callProvider(cfg, prompt, { browser: true });
 }
 
@@ -151,7 +151,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
 });
 
 chrome.runtime.onInstalled.addListener(() => {
-  chrome.contextMenus.create({ id: "debait-run", title: "debait this page", contexts: ["page", "selection"] });
+  chrome.contextMenus.create({ id: "debait-run", title: chrome.i18n.getMessage("ctxDebaitPage"), contexts: ["page", "selection"] });
 });
 
 chrome.contextMenus.onClicked.addListener((info, tab) => {

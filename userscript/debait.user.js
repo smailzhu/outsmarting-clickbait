@@ -45,6 +45,46 @@
     ollama:     { format: "openai",    base: "http://localhost:11434/v1",              model: "llama3.1" },
   };
 
+  // ---- i18n (UI chrome) -----------------------------------------------------
+  const I18N = {
+    en: {
+      brand: "debait", labelOriginal: "Original", labelHonest: "Honest title",
+      labelSummary: "Summary", labelKeyPoints: "Key points", labelBaitSignals: "Bait signals",
+      metaClickbait: "clickbait", metaWorth: "worth clicking:", yes: "yes", no: "no",
+      verdict_substantial: "substantial", verdict_thin: "thin", verdict_empty: "empty",
+      panelReading: "Reading the page\u2026", errGeneric: "debait error",
+      errParse: "Could not parse model output.", closeTitle: "close",
+      tipReading: "reading\u2026", tipThin: "couldn't read body (JS-rendered/paywalled).",
+      tipThrottled: "slow down \u2014 hover one link at a time. Try again in a moment.",
+      tipRateLimited: "rate limited by provider. Cooling down ~$1s (hover again later).",
+      tipCapped: "daily preview limit reached ($1/$2). Raise it via the menu.",
+      errNoKey: "No API key for \"$1\". Use the menu to set it.", launcherTitle: "debait this page",
+    },
+    zh_TW: {
+      brand: "debait", labelOriginal: "\u539f\u59cb\u6a19\u984c", labelHonest: "\u8aa0\u5be6\u6a19\u984c",
+      labelSummary: "\u6458\u8981", labelKeyPoints: "\u91cd\u9ede", labelBaitSignals: "\u9a19\u9ede\u95b1\u624b\u6cd5",
+      metaClickbait: "\u9a19\u9ede\u95b1", metaWorth: "\u503c\u5f97\u9ede\u64ca\uff1a", yes: "\u662f", no: "\u5426",
+      verdict_substantial: "\u6709\u6599", verdict_thin: "\u8ca7\u4e4f", verdict_empty: "\u7a7a\u6d1e",
+      panelReading: "\u6b63\u5728\u8b80\u53d6\u9801\u9762\u2026", errGeneric: "debait \u932f\u8aa4",
+      errParse: "\u7121\u6cd5\u89e3\u6790\u6a21\u578b\u8f38\u51fa\u3002", closeTitle: "\u95dc\u9589",
+      tipReading: "\u8b80\u53d6\u4e2d\u2026", tipThin: "\u7121\u6cd5\u8b80\u53d6\u5167\u6587\uff08JS \u52d5\u614b\u7522\u751f\u6216\u4ed8\u8cbb\u7246\uff09\u3002",
+      tipThrottled: "\u6162\u4e00\u9ede \u2014 \u4e00\u6b21\u61f8\u505c\u4e00\u500b\u9023\u7d50\uff0c\u7a0d\u5f8c\u518d\u8a66\u3002",
+      tipRateLimited: "\u4f9b\u61c9\u5546\u9650\u6d41\u4e2d\uff0c\u7d04 $1 \u79d2\u5f8c\u6062\u5fa9\uff08\u7a0d\u5f8c\u518d\u61f8\u505c\uff09\u3002",
+      tipCapped: "\u5df2\u9054\u6bcf\u65e5\u9810\u89bd\u4e0a\u9650\uff08$1/$2\uff09\u3002\u53ef\u5728\u9078\u55ae\u4e2d\u8abf\u9ad8\u3002",
+      errNoKey: "\u5c1a\u672a\u8a2d\u5b9a\u300c$1\u300d\u7684 API \u91d1\u9470\uff0c\u8acb\u7528\u9078\u55ae\u8a2d\u5b9a\u3002", launcherTitle: "debait \u9019\u500b\u9801\u9762",
+    },
+  };
+  const UI_LANG = (() => {
+    const l = (navigator.language || "en").toLowerCase();
+    return (l.startsWith("zh-tw") || l.startsWith("zh-hant") || l === "zh-hk") ? "zh_TW" : "en";
+  })();
+  function t(k, ...subs) {
+    let m = (I18N[UI_LANG] && I18N[UI_LANG][k]) || I18N.en[k] || k;
+    subs.forEach((v, i) => { m = m.replace("$" + (i + 1), String(v)); });
+    return m;
+  }
+  const verdict = (v) => (I18N.en["verdict_" + v] ? t("verdict_" + v) : (v || ""));
+
   // ---- config (stored via GM_setValue) --------------------------------------
   const CFG = {
     get provider() { return GM_getValue("provider", "openai"); },
@@ -190,7 +230,7 @@ ${body || "(no extractable text — the page may be JS-rendered or paywalled)"}
   function callProvider(prompt) {
     return new Promise((resolve, reject) => {
       if (!CFG.key && CFG.provider !== "ollama")
-        return reject(new Error(`No API key for "${CFG.provider}". Use the menu to set it.`));
+        return reject(new Error(t("errNoKey", CFG.provider)));
       const req = buildRequest(prompt);
       GM_xmlhttpRequest({
         method: "POST",
@@ -264,26 +304,26 @@ pre { white-space:pre-wrap; color:#c9d1d9; }
     panel().innerHTML = html;
     document.getElementById(PANEL_ID)?.shadowRoot?.querySelector(".x")?.addEventListener("click", closePanel);
   }
-  function hd() { return `<div class="hd"><span class="brand">🪝🚫 debait</span><span class="x" title="close">✕</span></div>`; }
+  function hd() { return `<div class="hd"><span class="brand">🪝🚫 ${t("brand")}</span><span class="x" title="${esc(t("closeTitle"))}">✕</span></div>`; }
   function esc(s) { return String(s ?? "").replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c])); }
 
   function renderResult(a, r) {
-    if (r.parse_error) return render(`${hd()}Could not parse model output.<pre>${esc(r.raw)}</pre>`);
+    if (r.parse_error) return render(`${hd()}${esc(t("errParse"))}<pre>${esc(r.raw)}</pre>`);
     const n = clampScore(r.clickbait_score);
     const col = scoreColor(n);
     const kp = Array.isArray(r.key_points) && r.key_points.length
-      ? `<div class="lbl">Key points</div><ul>${r.key_points.map((p) => `<li>${esc(p)}</li>`).join("")}</ul>` : "";
+      ? `<div class="lbl">${esc(t("labelKeyPoints"))}</div><ul>${r.key_points.map((p) => `<li>${esc(p)}</li>`).join("")}</ul>` : "";
     const sig = Array.isArray(r.clickbait_signals) && r.clickbait_signals.length
-      ? `<div class="lbl">Bait signals</div><ul>${r.clickbait_signals.map((s) => `<li>⚑ ${esc(s)}</li>`).join("")}</ul>` : "";
+      ? `<div class="lbl">${esc(t("labelBaitSignals"))}</div><ul>${r.clickbait_signals.map((s) => `<li>⚑ ${esc(s)}</li>`).join("")}</ul>` : "";
     render(`
       ${hd()}
-      <div class="lbl">Original</div>
+      <div class="lbl">${esc(t("labelOriginal"))}</div>
       <div class="orig">${esc(a.originalTitle)}</div>
-      <div class="lbl">Honest title</div>
+      <div class="lbl">${esc(t("labelHonest"))}</div>
       <div class="title">${esc(r.honest_title)}</div>
       <div class="bar"><i style="width:${n}%;background:${col}"></i></div>
-      <div class="meta"><b style="color:${col}">${n}/100 clickbait</b> · ${esc(r.substance_verdict)} · worth clicking: <b>${r.worth_clicking ? "yes" : "no"}</b></div>
-      <div class="lbl">Summary</div>
+      <div class="meta"><b style="color:${col}">${n}/100 ${esc(t("metaClickbait"))}</b> · ${esc(verdict(r.substance_verdict))} · ${esc(t("metaWorth"))} <b>${r.worth_clicking ? t("yes") : t("no")}</b></div>
+      <div class="lbl">${esc(t("labelSummary"))}</div>
       <div class="sum">${esc(r.summary)}</div>
       ${kp}${sig}
     `);
@@ -295,20 +335,20 @@ pre { white-space:pre-wrap; color:#c9d1d9; }
     const b = document.createElement("button");
     b.id = "debait-btn";
     b.textContent = "🪝🚫";
-    b.title = "debait this page";
+    b.title = t("launcherTitle");
     b.style.cssText = "position:fixed;z-index:2147483646;bottom:18px;right:18px;width:44px;height:44px;border-radius:50%;border:none;background:#58a6ff;color:#001;font-size:18px;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.4)";
     b.onclick = run;
     document.body.appendChild(b);
   }
 
   async function run() {
-    render(`<b style="color:#58a6ff">🪝🚫 debait</b><br><br>Reading the page…`);
+    render(`<b style="color:#58a6ff">🪝🚫 ${t("brand")}</b><br><br>${esc(t("panelReading"))}`);
     try {
       const article = extractPage();
       const out = await callProvider(buildPrompt(article, { language: CFG.language }));
       renderResult(article, parseResult(out));
     } catch (e) {
-      render(`<b style="color:#e5484d">debait error</b><br><br>${esc(e.message)}`);
+      render(`<b style="color:#e5484d">${esc(t("errGeneric"))}</b><br><br>${esc(e.message)}`);
     }
   }
 
@@ -397,7 +437,7 @@ pre { white-space:pre-wrap; color:#c9d1d9; }
     // Cache per URL *and* settings so changing provider/model/language refreshes.
     const cacheKey = [url, CFG.provider, CFG.model, CFG.base, CFG.language].join("\n");
     placeTip(x, y);
-    tip().innerHTML = `<b style="color:#58a6ff">🪝🚫 debait</b> \u00b7 reading\u2026<br><span style="color:#888">${esc(url).slice(0, 80)}</span>`;
+    tip().innerHTML = `<b style="color:#58a6ff">🪝🚫 ${t("brand")}</b> \u00b7 ${esc(t("tipReading"))}<br><span style="color:#888">${esc(url).slice(0, 80)}</span>`;
     try {
       let result;
       const hit = previewCache.get(cacheKey);
@@ -433,19 +473,19 @@ pre { white-space:pre-wrap; color:#c9d1d9; }
       }
       if (tipAnchor !== a) return;
       if (result.capped)
-        return void (tip().innerHTML = `<b style="color:#ffb224">🪝🚫 debait</b> \u00b7 daily preview limit reached (${result.used}/${result.cap}). Raise it via the menu.`);
+        return void (tip().innerHTML = `<b style="color:#ffb224">🪝🚫 ${t("brand")}</b> \u00b7 ${esc(t("tipCapped", result.used, result.cap))}`);
       if (result.rate_limited)
-        return void (tip().innerHTML = `<b style="color:#ffb224">🪝🚫 debait</b> \u00b7 rate limited by provider. Cooling down ~${result.retryIn}s (hover again later).`);
+        return void (tip().innerHTML = `<b style="color:#ffb224">🪝🚫 ${t("brand")}</b> \u00b7 ${esc(t("tipRateLimited", result.retryIn))}`);
       if (result.throttled)
-        return void (tip().innerHTML = `<b style="color:#ffb224">🪝🚫 debait</b> \u00b7 slow down \u2014 hover one link at a time. Try again in a moment.`);
+        return void (tip().innerHTML = `<b style="color:#ffb224">🪝🚫 ${t("brand")}</b> \u00b7 ${esc(t("tipThrottled"))}`);
       if (result.thin_fetch)
-        return void (tip().innerHTML = `<b style="color:#ffb224">🪝🚫 debait</b> \u00b7 couldn't read body (JS-rendered/paywalled).<br>${esc(result.description || result.originalTitle || "")}`);
+        return void (tip().innerHTML = `<b style="color:#ffb224">🪝🚫 ${t("brand")}</b> \u00b7 ${esc(t("tipThin"))}<br>${esc(result.description || result.originalTitle || "")}`);
       const n = clampScore(result.clickbait_score);
       tip().innerHTML = `
         <b style="color:#58a6ff">🪝🚫 ${esc(result.honest_title || "")}</b>
         <div style="height:6px;background:#222;border-radius:3px;overflow:hidden;margin:6px 0 4px">
           <div style="height:100%;width:${n}%;background:${scoreColor(n)}"></div></div>
-        <div><b style="color:${scoreColor(n)}">${n}/100</b> \u00b7 ${esc(result.substance_verdict || "")} \u00b7 worth clicking: <b>${result.worth_clicking ? "yes" : "no"}</b></div>
+        <div><b style="color:${scoreColor(n)}">${n}/100</b> \u00b7 ${esc(verdict(result.substance_verdict))} \u00b7 ${esc(t("metaWorth"))} <b>${result.worth_clicking ? t("yes") : t("no")}</b></div>
         <div style="color:#bbb;margin-top:4px">${esc(result.summary || "")}</div>`;
     } catch (e) {
       if (tipAnchor === a) tip().innerHTML = `<b style="color:#e5484d">debait</b> \u00b7 ${esc(e.message)}`;

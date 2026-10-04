@@ -1,0 +1,181 @@
+{
+  "appName": {
+    "message": "debait — outsmart clickbait"
+  },
+  "appDesc": {
+    "message": "Reads the article behind a link and shows an honest title, summary, and clickbait score — before you click."
+  },
+  "ctxDebaitPage": {
+    "message": "debait this page"
+  },
+  "popupAnalyze": {
+    "message": "Analyze this page"
+  },
+  "popupSettings": {
+    "message": "Settings (API key)"
+  },
+  "optTitle": {
+    "message": "debait settings"
+  },
+  "optStoredHint": {
+    "message": "Your API key is stored in chrome.storage.sync and only sent to the selected provider."
+  },
+  "optProvider": {
+    "message": "Provider"
+  },
+  "optKey": {
+    "message": "API key"
+  },
+  "optBase": {
+    "message": "API base URL"
+  },
+  "optOverrideHint": {
+    "message": "(optional — overrides provider default)"
+  },
+  "optModel": {
+    "message": "Model"
+  },
+  "optLanguage": {
+    "message": "Output language"
+  },
+  "optLanguageHint": {
+    "message": "(title & summary; blank = auto, match the article)"
+  },
+  "optLimitsTitle": {
+    "message": "Hover preview limits"
+  },
+  "optLimitsHint": {
+    "message": "Preview fetches + summarizes a link before you click. These caps stop bursty hovering from blowing your provider quota."
+  },
+  "optDwell": {
+    "message": "Hover dwell (ms)"
+  },
+  "optDwellHint": {
+    "message": "before a preview fires"
+  },
+  "optInterval": {
+    "message": "Min interval between previews (ms)"
+  },
+  "optDailyCap": {
+    "message": "Daily preview cap"
+  },
+  "optDailyCapHint": {
+    "message": "(0 = unlimited)"
+  },
+  "optSave": {
+    "message": "Save"
+  },
+  "optSaved": {
+    "message": "Saved ✓"
+  },
+  "usagePrefix": {
+    "message": "Preview calls today:"
+  },
+  "usageNoCap": {
+    "message": "(no cap)"
+  },
+  "brand": {
+    "message": "debait"
+  },
+  "labelOriginal": {
+    "message": "Original"
+  },
+  "labelHonest": {
+    "message": "Honest title"
+  },
+  "labelSummary": {
+    "message": "Summary"
+  },
+  "labelKeyPoints": {
+    "message": "Key points"
+  },
+  "labelBaitSignals": {
+    "message": "Bait signals"
+  },
+  "metaClickbait": {
+    "message": "clickbait"
+  },
+  "metaWorth": {
+    "message": "worth clicking:"
+  },
+  "yes": {
+    "message": "yes"
+  },
+  "no": {
+    "message": "no"
+  },
+  "verdict_substantial": {
+    "message": "substantial"
+  },
+  "verdict_thin": {
+    "message": "thin"
+  },
+  "verdict_empty": {
+    "message": "empty"
+  },
+  "panelReading": {
+    "message": "Reading the page…"
+  },
+  "errGeneric": {
+    "message": "debait error"
+  },
+  "errParse": {
+    "message": "Could not parse model output."
+  },
+  "errUnknown": {
+    "message": "unknown"
+  },
+  "tipReading": {
+    "message": "reading…"
+  },
+  "tipThin": {
+    "message": "couldn't read body (JS-rendered/paywalled)."
+  },
+  "tipThrottled": {
+    "message": "slow down — hover one link at a time. Try again in a moment."
+  },
+  "tipRateLimited": {
+    "message": "rate limited by provider. Cooling down ~$SECS$s (hover again later).",
+    "placeholders": {
+      "secs": {
+        "content": "$1"
+      }
+    }
+  },
+  "tipCapped": {
+    "message": "daily preview limit reached ($USED$/$CAP$). Raise it in Options.",
+    "placeholders": {
+      "used": {
+        "content": "$1"
+      },
+      "cap": {
+        "content": "$2"
+      }
+    }
+  },
+  "closeTitle": {
+    "message": "close"
+  },
+  "errUnknownProvider": {
+    "message": "Unknown provider \"$PROVIDER$\".",
+    "placeholders": {
+      "provider": {
+        "content": "$1"
+      }
+    }
+  },
+  "errNoKey": {
+    "message": "No API key set for \"$PROVIDER$\". Open Options and paste your key.",
+    "placeholders": {
+      "provider": {
+        "content": "$1"
+      }
+    }
+  },
+  "phKeyOllama": {
+    "message": "sk-... (not needed for local Ollama)"
+  },
+  "phBlankDefault": {
+    "message": "leave blank for default"
+  }
+}

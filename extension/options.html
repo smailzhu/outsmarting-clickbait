@@ -12,9 +12,9 @@
   </style>
 </head>
 <body>
-  <h1>🪝🚫 debait settings</h1>
-  <p class="hint">Your API key is stored in <code>chrome.storage.sync</code> and only sent to the selected provider.</p>
-  <label for="provider">Provider</label>
+  <h1>🪝🚫 <span data-i18n="optTitle">debait settings</span></h1>
+  <p class="hint" data-i18n="optStoredHint">Your API key is stored in chrome.storage.sync and only sent to the selected provider.</p>
+  <label for="provider" data-i18n="optProvider">Provider</label>
   <select id="provider" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:6px">
     <option value="openai">OpenAI</option>
     <option value="anthropic">Anthropic (Claude)</option>
@@ -28,27 +28,27 @@
     <option value="nvidia">NVIDIA (NIM / build.nvidia.com)</option>
     <option value="ollama">Ollama (local)</option>
   </select>
-  <label for="key">API key</label>
-  <input id="key" type="password" placeholder="sk-... (not needed for local Ollama)" />
-  <label for="base">API base URL <span class="hint">(optional — overrides provider default)</span></label>
-  <input id="base" type="text" placeholder="leave blank for default" />
-  <label for="model">Model <span class="hint">(optional — overrides provider default)</span></label>
-  <input id="model" type="text" placeholder="leave blank for default" />
-  <label for="language">Output language <span class="hint">(title &amp; summary; blank = auto, match the article)</span></label>
+  <label for="key" data-i18n="optKey">API key</label>
+  <input id="key" type="password" data-i18n-ph="phKeyOllama" placeholder="sk-... (not needed for local Ollama)" />
+  <label for="base"><span data-i18n="optBase">API base URL</span> <span class="hint" data-i18n="optOverrideHint">(optional — overrides provider default)</span></label>
+  <input id="base" type="text" data-i18n-ph="phBlankDefault" placeholder="leave blank for default" />
+  <label for="model"><span data-i18n="optModel">Model</span> <span class="hint" data-i18n="optOverrideHint">(optional — overrides provider default)</span></label>
+  <input id="model" type="text" data-i18n-ph="phBlankDefault" placeholder="leave blank for default" />
+  <label for="language"><span data-i18n="optLanguage">Output language</span> <span class="hint" data-i18n="optLanguageHint">(title &amp; summary; blank = auto, match the article)</span></label>
   <input id="language" type="text" placeholder="auto — or English, 繁體中文, 日本語, Español" />
 
-  <h2 style="font-size:15px;margin:22px 0 4px">Hover preview limits</h2>
-  <p class="hint">Preview fetches + summarizes a link before you click. These caps stop bursty hovering from blowing your provider quota.</p>
-  <label for="previewDwellMs">Hover dwell (ms) <span class="hint">before a preview fires</span></label>
+  <h2 style="font-size:15px;margin:22px 0 4px" data-i18n="optLimitsTitle">Hover preview limits</h2>
+  <p class="hint" data-i18n="optLimitsHint">Preview fetches + summarizes a link before you click. These caps stop bursty hovering from blowing your provider quota.</p>
+  <label for="previewDwellMs"><span data-i18n="optDwell">Hover dwell (ms)</span> <span class="hint" data-i18n="optDwellHint">before a preview fires</span></label>
   <input id="previewDwellMs" type="number" min="0" step="50" placeholder="500" />
-  <label for="previewMinIntervalMs">Min interval between previews (ms)</label>
+  <label for="previewMinIntervalMs" data-i18n="optInterval">Min interval between previews (ms)</label>
   <input id="previewMinIntervalMs" type="number" min="0" step="100" placeholder="1500" />
-  <label for="dailyCap">Daily preview cap <span class="hint">(0 = unlimited)</span></label>
+  <label for="dailyCap"><span data-i18n="optDailyCap">Daily preview cap</span> <span class="hint" data-i18n="optDailyCapHint">(0 = unlimited)</span></label>
   <input id="dailyCap" type="number" min="0" step="10" placeholder="200" />
   <p class="hint" id="usage"></p>
 
   <div style="margin-top:16px">
-    <button id="save">Save</button>
+    <button id="save" data-i18n="optSave">Save</button>
     <span id="status"></span>
   </div>
   <script src="options.js"></script>
