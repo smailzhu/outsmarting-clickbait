@@ -157,9 +157,11 @@ ${body || "(no extractable text — the page may be JS-rendered or paywalled)"}
         pick: (j) => (j.candidates?.[0]?.content?.parts || []).map((p) => p.text || "").join(""),
       };
     }
+    const headers = { "Content-Type": "application/json" };
+    if (key) headers.Authorization = `Bearer ${key}`; // omit for keyless (local Ollama)
     return {
       url: `${base}/chat/completions`,
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
+      headers,
       data: JSON.stringify({ model, temperature: 0.2, messages: [{ role: "system", content: SYSTEM }, { role: "user", content: prompt }] }),
       pick: (j) => j.choices?.[0]?.message?.content || "",
     };
@@ -193,7 +195,7 @@ ${body || "(no extractable text — the page may be JS-rendered or paywalled)"}
   function scoreColor(n) { return n >= 60 ? "#ff6b6e" : n >= 30 ? "#ffc14d" : "#4ac97e"; }
   // Model output is untrusted: coerce the score to a finite int in [0,100] so it
   // cannot inject markup via the style attribute or text.
-  function clampScore(v) { const n = Math.round(Number(v)); return Number.isFinite(n) ? Math.max(0, Math.min(100, n)) : 0; }
+  function clampScore(v) { let n; try { n = Math.round(Number(v)); } catch { return 0; } return Number.isFinite(n) ? Math.max(0, Math.min(100, n)) : 0; }
 
   // All panel styles live inside a Shadow DOM so the host page's CSS can't bleed
   // in (the usual cause of unreadable overlays). :host all:initial resets
@@ -313,7 +315,7 @@ pre { white-space:pre-wrap; color:#c9d1d9; }
     document.body.appendChild(el);
     return el;
   }
-  function hideTip() { tipAnchor = null; document.getElementById(TIP_ID)?.remove(); }
+  function hideTip() { tipAnchor = null; clearTimeout(tipTimer); document.getElementById(TIP_ID)?.remove(); }
   function placeTip(x, y) {
     const el = tip();
     el.style.left = Math.min(x + 14, window.innerWidth - 340) + "px";

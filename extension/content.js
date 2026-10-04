@@ -37,7 +37,7 @@ function tip() {
   document.body.appendChild(el);
   return el;
 }
-function hideTip() { tipAnchor = null; document.getElementById(TIP_ID)?.remove(); }
+function hideTip() { tipAnchor = null; clearTimeout(tipTimer); document.getElementById(TIP_ID)?.remove(); }
 function placeTip(x, y) {
   const el = tip();
   const pad = 14;
@@ -94,7 +94,7 @@ const esc = (s) => String(s ?? "").replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<"
 const scoreColor = (n) => (n >= 60 ? "#ff6b6e" : n >= 30 ? "#ffc14d" : "#4ac97e");
 // Model output is untrusted: coerce the score to a finite int in [0,100] so it
 // can't inject markup via the style attribute or text.
-const clampScore = (v) => { const n = Math.round(Number(v)); return Number.isFinite(n) ? Math.max(0, Math.min(100, n)) : 0; };
+const clampScore = (v) => { let n; try { n = Math.round(Number(v)); } catch { return 0; } return Number.isFinite(n) ? Math.max(0, Math.min(100, n)) : 0; };
 
 // Styles live in a Shadow DOM so the host page's CSS cannot bleed into the
 // panel (the usual cause of unreadable overlays).

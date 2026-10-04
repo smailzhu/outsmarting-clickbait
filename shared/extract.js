@@ -2,8 +2,13 @@
 // No fetch, no DOM -> usable in an MV3 service worker (which has neither
 // DOMParser nor a document). Shared by the CLI and the extension.
 //
-// Block removal uses indexOf-based scanning (linear) instead of lazy regex,
-// which is O(n^2) on pathological input like thousands of unclosed <script>.
+// Tag scanning uses case-insensitive regexes with forward lastIndex (linear,
+// no catastrophic backtracking) and tracks nesting depth. We deliberately do
+// NOT lowercase a copy of the source for indexing: some code points change
+// LENGTH under toLowerCase() (e.g. "\u0130".toLowerCase() === "i\u0307"),
+// which would desync offsets. Known limitation: a literal "</tag>" embedded in
+// an attribute value can truncate a block early; acceptable for a heuristic
+// extractor whose output is only fed to an LLM (and always HTML-escaped in UI).
 
 const MAX_HTML = 3_000_000; // hard cap on input size (defense in depth)
 
@@ -30,58 +35,72 @@ export function decodeEntities(s) {
     .replace(/&[a-z]+;/gi, (m) => NAMED[m] ?? m);
 }
 
-const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-
-// Is the char after "<tag" a real tag boundary ( >, whitespace, or / )?
-function isTagBoundary(ch) {
-  return ch === undefined || ch === ">" || ch === "/" || /\s/.test(ch);
+// A single regex that matches either an opening <tag ...> start or a closing
+// </tag> for the given tag name. Used to walk balanced (nesting-aware) blocks.
+function tokenRe(tag) {
+  return new RegExp(`<${tag}(?=[\\s/>])|</${tag}\\s*>`, "gi");
 }
+const isClose = (tok) => tok[1] === "/";
 
-// Linear removal of <tag>...</tag> blocks (case-insensitive). Unclosed opener
-// drops the remainder. No backtracking.
+// Remove every balanced <tag>...</tag> block (nesting-aware). An unbalanced
+// opener drops the remainder (matches browser-ish "swallow to EOF" behaviour).
 function stripBlocks(src, tag) {
-  const lower = src.toLowerCase();
-  const open = "<" + tag;
-  const close = "</" + tag + ">";
+  const re = tokenRe(tag);
   let out = "";
-  let i = 0;
-  for (;;) {
-    let start = lower.indexOf(open, i);
-    while (start !== -1 && !isTagBoundary(lower[start + open.length])) {
-      start = lower.indexOf(open, start + open.length);
+  let i = 0; // copy cursor
+  let blockStart = -1;
+  let depth = 0;
+  let m;
+  while ((m = re.exec(src))) {
+    if (depth === 0 && !isClose(m[0])) {
+      out += src.slice(i, m.index); // keep text before the block
+      blockStart = m.index;
+      depth = 1;
+    } else if (isClose(m[0])) {
+      if (depth > 0) {
+        depth--;
+        if (depth === 0) { out += " "; i = re.lastIndex; blockStart = -1; }
+      }
+    } else {
+      depth++; // nested opener
     }
-    if (start === -1) { out += src.slice(i); break; }
-    out += src.slice(i, start) + " ";
-    const end = lower.indexOf(close, start);
-    if (end === -1) break; // unclosed -> drop the rest
-    i = end + close.length;
   }
+  out += blockStart === -1 ? src.slice(i) : ""; // unbalanced opener: drop rest
   return out;
 }
 
-// Return the first <tag>...</tag> block (with a proper boundary), or null.
+// Return the first balanced <tag>...</tag> block (nesting-aware), or null.
 function firstBlock(src, tag) {
-  const lower = src.toLowerCase();
-  const open = "<" + tag;
-  let start = lower.indexOf(open);
-  while (start !== -1 && !isTagBoundary(lower[start + open.length])) {
-    start = lower.indexOf(open, start + open.length);
+  const re = tokenRe(tag);
+  let start = -1;
+  let depth = 0;
+  let m;
+  while ((m = re.exec(src))) {
+    if (!isClose(m[0])) {
+      if (depth === 0) start = m.index;
+      depth++;
+    } else if (depth > 0) {
+      depth--;
+      if (depth === 0) return src.slice(start, re.lastIndex);
+    }
   }
-  if (start === -1) return null;
-  const close = "</" + tag + ">";
-  const end = lower.indexOf(close, start);
-  if (end === -1) return null;
-  return src.slice(start, end + close.length);
+  return null;
 }
 
-// Find a <meta> tag matching attr="val" in ANY attribute order, with EITHER
-// quote style, and return its decoded content.
+// Match a <meta ...> tag while skipping '>' that appears inside quoted
+// attribute values.
+const META_TAG = /<meta\b(?:[^>"']|"[^"]*"|'[^']*')*>/gi;
+const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+// Find a <meta> tag whose attribute `attr` equals `val` (any order, either
+// quote), return its decoded content. Attribute name must be preceded by a
+// non [-\w] boundary so `name` doesn't match `data-name`.
 function metaContent(html, attr, val) {
-  const metaRe = /<meta\b[^>]*>/gi;
-  const attrRe = new RegExp(`${attr}\\s*=\\s*(["'])\\s*${escapeRe(val)}\\s*\\1`, "i");
-  const contentRe = /content\s*=\s*(["'])([\s\S]*?)\1/i;
+  const attrRe = new RegExp(`(?<![-\\w])${attr}\\s*=\\s*(["'])\\s*${escapeRe(val)}\\s*\\1`, "i");
+  const contentRe = /(?<![-\w])content\s*=\s*(["'])([\s\S]*?)\1/i;
   let m;
-  while ((m = metaRe.exec(html))) {
+  META_TAG.lastIndex = 0;
+  while ((m = META_TAG.exec(html))) {
     if (attrRe.test(m[0])) {
       const c = m[0].match(contentRe);
       if (c) return decodeEntities(c[2]).trim();
@@ -103,17 +122,20 @@ export function extractArticle(html, url = "") {
   const description =
     metaContent(html, "name", "description") || metaContent(html, "property", "og:description");
 
-  // Remove scripts/styles everywhere first.
+  // 1. Remove scripts/styles everywhere.
   let body = stripBlocks(stripBlocks(stripBlocks(html, "script"), "style"), "noscript");
 
-  // Prefer a main content region; keep its own <header>/lead.
+  // 2. Remove clearly non-content chrome BEFORE selecting the main region, so a
+  //    teaser <article> nested inside an <aside>/<nav> doesn't win over the real
+  //    story. (header/footer handled after, to preserve an article's own lead.)
+  body = stripBlocks(stripBlocks(stripBlocks(body, "nav"), "aside"), "form");
+
+  // 3. Prefer a main content region; keep its own <header>/lead.
   const region = firstBlock(body, "article") || firstBlock(body, "main");
   const scoped = Boolean(region);
   if (scoped) body = region;
 
-  // Strip navigational chrome. Only drop page-level header/footer when NOT
-  // scoped to an article/main, so article leads are preserved.
-  body = stripBlocks(stripBlocks(stripBlocks(body, "nav"), "aside"), "form");
+  // 4. Only drop page-level header/footer when NOT scoped to article/main.
   if (!scoped) body = stripBlocks(stripBlocks(body, "header"), "footer");
 
   const text = decodeEntities(stripTags(body))

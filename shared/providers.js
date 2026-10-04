@@ -135,12 +135,15 @@ export function parseModels(format, data) {
   return (data?.data || []).map((m) => m.id).filter(Boolean);
 }
 
-// fetch with an abort deadline so a stalled provider can't hang forever.
-async function fetchWithTimeout(url, opts = {}, ms = 60000) {
+// fetch + read the FULL body under a single abort deadline, so a provider that
+// sends headers then stalls mid-body can't hang forever. Returns {ok,status,text}.
+async function fetchTextWithTimeout(url, opts = {}, ms = 60000) {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), ms);
   try {
-    return await fetch(url, { ...opts, signal: ctrl.signal });
+    const res = await fetch(url, { ...opts, signal: ctrl.signal });
+    const text = await res.text(); // read within the timeout window
+    return { ok: res.ok, status: res.status, text };
   } catch (e) {
     if (e && e.name === "AbortError") throw new Error(`Request timed out after ${ms}ms.`);
     throw e;
@@ -149,28 +152,41 @@ async function fetchWithTimeout(url, opts = {}, ms = 60000) {
   }
 }
 
+function parseJson(text) {
+  try { return JSON.parse(text); } catch { throw new Error("Provider returned non-JSON response."); }
+}
+
+// Set/replace a query param on a URL (replaces, so cursors don't accumulate).
+function withParam(url, key, value) {
+  const u = new URL(url);
+  u.searchParams.set(key, value);
+  return u.toString();
+}
+
 // Build the URL for the next page of a models listing, or null when done.
 function nextModelsPageUrl(cfg, currentUrl, data) {
   if (cfg.format === "gemini" && data?.nextPageToken) {
-    return `${currentUrl}&pageToken=${encodeURIComponent(data.nextPageToken)}`;
+    return withParam(currentUrl, "pageToken", data.nextPageToken);
   }
   if (cfg.format === "anthropic" && data?.has_more && data?.last_id) {
-    return `${currentUrl}&after_id=${encodeURIComponent(data.last_id)}`;
+    return withParam(currentUrl, "after_id", data.last_id);
   }
   return null; // openai-compatible list in a single page
 }
 
 export async function listModels(cfg, { browser = false, maxPages = 20 } = {}) {
-  const { headers } = buildModelsRequest(cfg, { browser });
-  let url = buildModelsRequest(cfg, { browser }).url;
+  const { headers, url: firstUrl } = buildModelsRequest(cfg, { browser });
+  let url = firstUrl;
+  let prevUrl = null;
   const all = [];
   for (let page = 0; page < maxPages; page++) {
-    const res = await fetchWithTimeout(url, { headers }, 30000);
-    if (!res.ok) throw new Error(`API ${res.status}: ${(await res.text()).slice(0, 200)}`);
-    const data = await res.json();
+    const res = await fetchTextWithTimeout(url, { headers }, 30000);
+    if (!res.ok) throw new Error(`API ${res.status}: ${res.text.slice(0, 200)}`);
+    const data = parseJson(res.text);
     all.push(...parseModels(cfg.format, data));
     const next = nextModelsPageUrl(cfg, url, data);
-    if (!next) break;
+    if (!next || next === url || next === prevUrl) break; // guard against loops
+    prevUrl = url;
     url = next;
   }
   return [...new Set(all)].sort();
@@ -179,9 +195,9 @@ export async function listModels(cfg, { browser = false, maxPages = 20 } = {}) {
 export async function callProvider(cfg, prompt, { browser = false, timeoutMs = 60000 } = {}) {
   if (!cfg.key && cfg.id !== "ollama") throw new Error(`No API key for provider "${cfg.id}".`);
   const req = buildRequest(cfg, prompt, { browser });
-  const res = await fetchWithTimeout(req.url, { method: req.method, headers: req.headers, body: req.body }, timeoutMs);
-  if (!res.ok) throw new Error(`API ${res.status}: ${(await res.text()).slice(0, 300)}`);
-  const data = await res.json();
+  const res = await fetchTextWithTimeout(req.url, { method: req.method, headers: req.headers, body: req.body }, timeoutMs);
+  if (!res.ok) throw new Error(`API ${res.status}: ${res.text.slice(0, 300)}`);
+  const data = parseJson(res.text);
   const text = parseResponse(cfg.format, data);
   if (!text) throw new Error("Empty response from provider.");
   return text;

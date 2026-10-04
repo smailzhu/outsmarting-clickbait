@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { resolveProvider, buildRequest, parseResponse, buildModelsRequest, parseModels, PROVIDERS } from "../shared/providers.js";
+import { resolveProvider, buildRequest, parseResponse, buildModelsRequest, parseModels, listModels, PROVIDERS } from "../shared/providers.js";
 
 test("resolveProvider fills defaults and trims trailing slash", () => {
   const c = resolveProvider({ provider: "openai", base: "https://x.test/v1/", key: "k" });
@@ -83,4 +83,26 @@ test("openai-format request omits Authorization when there is no key (Ollama)", 
 test("openai-format request includes Authorization when a key is set", () => {
   const r = buildRequest(resolveProvider({ provider: "openai", key: "sk-x" }), "hi");
   assert.equal(r.headers.authorization, "Bearer sk-x");
+});
+
+test("listModels paginates and replaces the cursor (no accumulation, terminates)", async () => {
+  const realFetch = global.fetch;
+  const calls = [];
+  const mk = (obj) => ({ ok: true, status: 200, text: async () => JSON.stringify(obj) });
+  global.fetch = async (url) => {
+    calls.push(url);
+    return url.includes("pageToken")
+      ? mk({ models: [{ name: "models/b" }] }) // last page: no nextPageToken
+      : mk({ models: [{ name: "models/a" }], nextPageToken: "T1" });
+  };
+  try {
+    const models = await listModels(resolveProvider({ provider: "gemini", key: "k" }));
+    assert.deepEqual(models, ["a", "b"]);
+    assert.equal(calls.length, 2);
+    assert.ok(calls[1].includes("pageToken=T1"));
+    // cursor replaced, not accumulated:
+    assert.equal((calls[1].match(/pageToken/g) || []).length, 1);
+  } finally {
+    global.fetch = realFetch;
+  }
 });
