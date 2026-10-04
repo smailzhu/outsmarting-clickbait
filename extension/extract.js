@@ -74,7 +74,7 @@ function stripBlocks(src, tag) {
 // element. We scan ALL of them in a SINGLE left-to-right pass: once inside one
 // raw element we skip straight to ITS closing tag, so e.g. a "<script>" written
 // inside a <style> CSS string can't be mistaken for a script opener.
-const RAW_OPEN = /<(script|style|noscript)(?=[\\s/>])/gi;
+const RAW_OPEN = /<(script|style|noscript)(?=[\s/>])/gi;
 function stripRawText(src) {
   let out = "";
   let i = 0;

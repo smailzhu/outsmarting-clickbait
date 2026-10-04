@@ -59,6 +59,13 @@ test("extractArticle: a <script> written inside <style> CSS text doesn't drop co
   assert.equal(extractArticle('<script>a="<style>"</script><style>b="<script>"</style><article>Keep</article>').text, "Keep");
 });
 
+test("extractArticle strips <script>/<style> WITH attributes (boundary is \\s / >)", () => {
+  assert.equal(extractArticle('<script type="text/javascript">LEAK</script><p>Real</p>').text, "Real");
+  assert.equal(extractArticle('<style media="screen">LEAK</style><p>Real</p>').text, "Real");
+  // <scripts> is a different tag, not a raw element: content is preserved.
+  assert.match(extractArticle('<scripts>Before</scripts><p>Real</p>').text, /Before/);
+});
+
 test("extractArticle is near-linear on pathological unclosed <script>", () => {
   const start = Date.now();
   extractArticle("<script>".repeat(200000));
