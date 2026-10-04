@@ -9,7 +9,8 @@
   "scripts": {
     "start": "node src/cli.js",
     "sync": "node scripts/sync.mjs",
-    "test": "node --test"
+    "test": "node --test",
+    "pack": "node scripts/pack.mjs"
   },
   "engines": {
     "node": ">=20"

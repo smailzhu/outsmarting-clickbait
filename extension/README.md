@@ -65,4 +65,17 @@ runs in the background service worker, which has `host_permissions`.
   require fetching each target URL (CORS + JS-rendering + cost) — out of scope
   for this prototype.
 - Needs your own API key; nothing is sent anywhere except your configured endpoint.
-- No bundled icons — Chrome shows a default icon (add `icons` to the manifest to customize).
+- Branded icons are bundled in `extension/icons/` and declared in the manifest.
+
+## Packaging for distribution
+
+Branded icons live in `extension/icons/` and are declared in the manifest
+(`icons` + `action.default_icon`). To build a publishable zip:
+
+```bash
+npm run pack   # -> dist/debait-extension-v<version>.zip
+```
+
+`pack` re-syncs the shared modules first, then writes a dependency-free zip
+(Node `zlib`). Load it unpacked for testing, or upload the zip to the Chrome Web
+Store / Edge Add-ons.
