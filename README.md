@@ -39,6 +39,31 @@ critique that motivated the design.
 
 ## Install
 
+### Chromium extension (Chrome / Edge / Brave)
+
+1. Download **`debait-extension-v*.zip`** from the
+   [latest release](https://github.com/smailzhu/outsmarting-clickbait/releases/latest)
+   and **unzip** it. (Or clone the repo and use the `extension/` folder.)
+2. Open `chrome://extensions` (or `edge://extensions`, `brave://extensions`).
+3. Turn on **Developer mode**, click **Load unpacked**, and select the unzipped
+   folder (the one containing `manifest.json`).
+4. Click the 🪝🚫 toolbar icon → **Settings** → pick a provider, paste your
+   API key, Save. Then **Analyze this page**, right-click → *debait this page*,
+   or **Alt+hover** a link to preview it before clicking.
+
+> Chromium can't install a raw `.zip` directly — load the unzipped folder as an
+> unpacked extension. (Sideloaded extensions show a one-time "Developer mode"
+> notice on startup; that's normal.) See [`extension/README.md`](extension/README.md).
+
+### Userscript (Tampermonkey / Violentmonkey — any browser, incl. Firefox)
+
+Install a userscript manager, then open
+[`userscript/debait.user.js`](userscript/debait.user.js) → **Raw** — your manager
+offers to install it. Set provider/key from the Tampermonkey menu.
+See [`userscript/README.md`](userscript/README.md).
+
+### CLI
+
 No dependencies. Needs Node ≥ 20.
 
 ```bash

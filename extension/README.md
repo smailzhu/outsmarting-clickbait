@@ -5,9 +5,14 @@ article and overlays an honest title, summary, key points, and a clickbait score
 
 ## Install (unpacked)
 
+**Get the files** \u2014 either download **`debait-extension-v*.zip`** from the
+[latest release](https://github.com/smailzhu/outsmarting-clickbait/releases/latest)
+and unzip it, or clone the repo and use this `extension/` folder.
+
 1. Open `chrome://extensions` (or `edge://extensions`, `brave://extensions`).
 2. Enable **Developer mode**.
-3. Click **Load unpacked** and select this `extension/` folder.
+3. Click **Load unpacked** and select the folder containing `manifest.json`
+   (the unzipped release folder, or this `extension/` folder).
 4. Open the extension's **Options**, pick a **provider** (OpenAI, Anthropic,
    Gemini, Groq, OpenRouter, DeepSeek, xAI, Mistral, Together, NVIDIA, or local Ollama),
    paste that provider's API key (optionally override base URL / model), and Save.
