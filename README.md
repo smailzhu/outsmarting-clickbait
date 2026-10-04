@@ -4,6 +4,8 @@
 [![Release](https://img.shields.io/github/v/release/smailzhu/outsmarting-clickbait?sort=semver)](https://github.com/smailzhu/outsmarting-clickbait/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
+**English** | [繁體中文](README.zh-TW.md)
+
 A tiny prototype of the idea from Wiwi Kuan's post
 [*"Outsmarting Clickbait"* (騙點閱)](https://www.wiwi.blog/blog/outsmarting-clickbait/):
 
