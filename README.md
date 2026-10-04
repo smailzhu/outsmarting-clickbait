@@ -11,6 +11,10 @@ A tiny prototype of the idea from Wiwi Kuan's post
 > and hand you an honest, non-sensational title plus the actual substance — so
 > the bait loses its power.
 
+![debait: a clickbait article with the debait panel showing an honest title, a 92/100 clickbait score, and a summary](store/screenshot-mockup-1280x800.png)
+
+<sub>_Illustration of the result panel. (Capture from a real browser session welcome — see [`store/STORE_LISTING.md`](store/STORE_LISTING.md).)_</sub>
+
 Ships in three forms from one shared prompt:
 
 | Form | Where | Entry |
