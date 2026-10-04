@@ -34,7 +34,7 @@ META DESCRIPTION: ${description || "(none)"}
 
 ARTICLE TEXT:
 """
-${body || "(no extractable text)"}
+${body || "(no extractable text — the page may be JS-rendered or paywalled)"}
 """`;
   }
   function parseResult(raw) {

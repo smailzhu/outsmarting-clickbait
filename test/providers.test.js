@@ -72,3 +72,15 @@ test("parseModels extracts ids per format", () => {
 test("xai default is no longer the retired grok-2", () => {
   assert.notEqual(PROVIDERS.xai.model, "grok-2-latest");
 });
+
+test("openai-format request omits Authorization when there is no key (Ollama)", () => {
+  const c = resolveProvider({ provider: "ollama" });
+  const r = buildRequest(c, "hi");
+  assert.equal(r.headers.authorization, undefined);
+  assert.ok(r.url.endsWith("/chat/completions"));
+});
+
+test("openai-format request includes Authorization when a key is set", () => {
+  const r = buildRequest(resolveProvider({ provider: "openai", key: "sk-x" }), "hi");
+  assert.equal(r.headers.authorization, "Bearer sk-x");
+});

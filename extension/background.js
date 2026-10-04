@@ -43,9 +43,14 @@ async function fetchAndExtract(url) {
 }
 
 async function preview(url) {
-  const hit = CACHE.get(url);
+  const s = await settings();
+  // Cache per URL *and* settings: changing provider/model/language/base must
+  // not return a stale result for the same link.
+  const cacheKey = [url, s.provider, s.model, s.base, s.language].join("\n");
+
+  const hit = CACHE.get(cacheKey);
   if (hit && Date.now() - hit.at < CACHE_TTL) return hit.result;
-  if (inflight.has(url)) return inflight.get(url);
+  if (inflight.has(cacheKey)) return inflight.get(cacheKey);
 
   const p = (async () => {
     const article = await fetchAndExtract(url);
@@ -53,18 +58,17 @@ async function preview(url) {
       // Too little to judge from the body — likely JS-rendered/paywalled.
       return { thin_fetch: true, originalTitle: article.originalTitle, description: article.description, url };
     }
-    const { language } = await settings();
-    const result = parseResult(await complete(buildPrompt(article, { language })));
+    const result = parseResult(await complete(buildPrompt(article, { language: s.language })));
     return { ...result, originalTitle: article.originalTitle, url };
   })();
 
-  inflight.set(url, p);
+  inflight.set(cacheKey, p);
   try {
     const result = await p;
-    CACHE.set(url, { at: Date.now(), result });
+    CACHE.set(cacheKey, { at: Date.now(), result });
     return result;
   } finally {
-    inflight.delete(url);
+    inflight.delete(cacheKey);
   }
 }
 
@@ -85,6 +89,7 @@ chrome.runtime.onInstalled.addListener(() => {
 
 chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId === "debait-run" && tab?.id) {
-    chrome.tabs.sendMessage(tab.id, { type: "debait:run" });
+    // Tab may lack a content script (chrome:// pages, etc.) - ignore failure.
+    chrome.tabs.sendMessage(tab.id, { type: "debait:run" }).catch(() => {});
   }
 });

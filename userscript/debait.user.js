@@ -110,7 +110,7 @@ META DESCRIPTION: ${description || "(none)"}
 
 ARTICLE TEXT:
 """
-${body || "(no extractable text)"}
+${body || "(no extractable text — the page may be JS-rendered or paywalled)"}
 """`;
   }
   function parseResult(raw) {
@@ -176,12 +176,14 @@ ${body || "(no extractable text)"}
         url: req.url,
         headers: req.headers,
         data: req.data,
+        timeout: 60000,
         onload: (r) => {
           if (r.status < 200 || r.status >= 300) return reject(new Error(`API ${r.status}: ${r.responseText.slice(0, 300)}`));
           try { resolve(req.pick(JSON.parse(r.responseText))); }
           catch (e) { reject(e); }
         },
         onerror: () => reject(new Error("Network error calling the API.")),
+        ontimeout: () => reject(new Error("Request timed out.")),
       });
     });
   }
@@ -189,6 +191,9 @@ ${body || "(no extractable text)"}
   // ---- UI -------------------------------------------------------------------
   const PANEL_ID = "debait-panel-host";
   function scoreColor(n) { return n >= 60 ? "#ff6b6e" : n >= 30 ? "#ffc14d" : "#4ac97e"; }
+  // Model output is untrusted: coerce the score to a finite int in [0,100] so it
+  // cannot inject markup via the style attribute or text.
+  function clampScore(v) { const n = Math.round(Number(v)); return Number.isFinite(n) ? Math.max(0, Math.min(100, n)) : 0; }
 
   // All panel styles live inside a Shadow DOM so the host page's CSS can't bleed
   // in (the usual cause of unreadable overlays). :host all:initial resets
@@ -243,7 +248,7 @@ pre { white-space:pre-wrap; color:#c9d1d9; }
 
   function renderResult(a, r) {
     if (r.parse_error) return render(`${hd()}Could not parse model output.<pre>${esc(r.raw)}</pre>`);
-    const n = r.clickbait_score ?? 0;
+    const n = clampScore(r.clickbait_score);
     const col = scoreColor(n);
     const kp = Array.isArray(r.key_points) && r.key_points.length
       ? `<div class="lbl">Key points</div><ul>${r.key_points.map((p) => `<li>${esc(p)}</li>`).join("")}</ul>` : "";
@@ -308,7 +313,7 @@ pre { white-space:pre-wrap; color:#c9d1d9; }
     document.body.appendChild(el);
     return el;
   }
-  function hideTip() { document.getElementById(TIP_ID)?.remove(); }
+  function hideTip() { tipAnchor = null; document.getElementById(TIP_ID)?.remove(); }
   function placeTip(x, y) {
     const el = tip();
     el.style.left = Math.min(x + 14, window.innerWidth - 340) + "px";
@@ -329,7 +334,7 @@ pre { white-space:pre-wrap; color:#c9d1d9; }
   function fetchTarget(url) {
     return new Promise((resolve, reject) => {
       GM_xmlhttpRequest({
-        method: "GET", url, timeout: 15000,
+        method: "GET", url, timeout: 15000, anonymous: true,
         onload: (r) => (r.status >= 200 && r.status < 300 ? resolve(r.responseText) : reject(new Error(`HTTP ${r.status}`))),
         onerror: () => reject(new Error("fetch failed")),
         ontimeout: () => reject(new Error("timeout")),
@@ -339,11 +344,13 @@ pre { white-space:pre-wrap; color:#c9d1d9; }
 
   async function previewLink(a, x, y) {
     const url = a.href;
+    // Cache per URL *and* settings so changing provider/model/language refreshes.
+    const cacheKey = [url, CFG.provider, CFG.model, CFG.base, CFG.language].join("\n");
     placeTip(x, y);
     tip().innerHTML = `<b style="color:#58a6ff">🪝🚫 debait</b> \u00b7 reading\u2026<br><span style="color:#888">${esc(url).slice(0, 80)}</span>`;
     try {
       let result;
-      const hit = previewCache.get(url);
+      const hit = previewCache.get(cacheKey);
       if (hit && Date.now() - hit.at < PREVIEW_TTL) {
         result = hit.result;
       } else {
@@ -354,12 +361,12 @@ pre { white-space:pre-wrap; color:#c9d1d9; }
           result = parseResult(await callProvider(buildPrompt(article, { language: CFG.language })));
           result.originalTitle = article.originalTitle;
         }
-        previewCache.set(url, { at: Date.now(), result });
+        previewCache.set(cacheKey, { at: Date.now(), result });
       }
       if (tipAnchor !== a) return;
       if (result.thin_fetch)
         return void (tip().innerHTML = `<b style="color:#ffb224">🪝🚫 debait</b> \u00b7 couldn't read body (JS-rendered/paywalled).<br>${esc(result.description || result.originalTitle || "")}`);
-      const n = result.clickbait_score ?? 0;
+      const n = clampScore(result.clickbait_score);
       tip().innerHTML = `
         <b style="color:#58a6ff">🪝🚫 ${esc(result.honest_title || "")}</b>
         <div style="height:6px;background:#222;border-radius:3px;overflow:hidden;margin:6px 0 4px">

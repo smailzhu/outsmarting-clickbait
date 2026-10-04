@@ -37,7 +37,7 @@ function tip() {
   document.body.appendChild(el);
   return el;
 }
-function hideTip() { document.getElementById(TIP_ID)?.remove(); }
+function hideTip() { tipAnchor = null; document.getElementById(TIP_ID)?.remove(); }
 function placeTip(x, y) {
   const el = tip();
   const pad = 14;
@@ -57,13 +57,15 @@ async function previewLink(a, x, y) {
   const url = a.href;
   placeTip(x, y);
   tip().innerHTML = `<b style="color:#58a6ff">🪝🚫 debait</b> · reading…<br><span style="color:#888">${esc(url).slice(0, 80)}</span>`;
-  const resp = await chrome.runtime.sendMessage({ type: "debait:preview", url });
+  let resp;
+  try { resp = await chrome.runtime.sendMessage({ type: "debait:preview", url }); }
+  catch (e) { if (tipAnchor === a) tip().innerHTML = `<b style="color:#e5484d">debait</b> error: ${esc(e?.message || String(e))}`; return; }
   if (tipAnchor !== a) return; // user moved on
   if (!resp?.ok) return void (tip().innerHTML = `<b style="color:#e5484d">debait</b> · ${esc(resp?.error || "error")}`);
   const r = resp.result;
   if (r.thin_fetch)
     return void (tip().innerHTML = `<b style="color:#ffb224">🪝🚫 debait</b> · couldn't read body (JS-rendered/paywalled).<br>${esc(r.description || r.originalTitle || "")}`);
-  const n = r.clickbait_score ?? 0;
+  const n = clampScore(r.clickbait_score);
   tip().innerHTML = `
     <b style="color:#58a6ff">🪝🚫 ${esc(r.honest_title || "")}</b>
     <div style="height:6px;background:#222;border-radius:3px;overflow:hidden;margin:6px 0 4px">
@@ -90,6 +92,9 @@ window.addEventListener("scroll", hideTip, { passive: true });
 const PANEL_ID = "debait-panel-host";
 const esc = (s) => String(s ?? "").replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
 const scoreColor = (n) => (n >= 60 ? "#ff6b6e" : n >= 30 ? "#ffc14d" : "#4ac97e");
+// Model output is untrusted: coerce the score to a finite int in [0,100] so it
+// can't inject markup via the style attribute or text.
+const clampScore = (v) => { const n = Math.round(Number(v)); return Number.isFinite(n) ? Math.max(0, Math.min(100, n)) : 0; };
 
 // Styles live in a Shadow DOM so the host page's CSS cannot bleed into the
 // panel (the usual cause of unreadable overlays).
@@ -141,7 +146,7 @@ const hd = () => `<div class="hd"><span class="brand">🪝🚫 debait</span><spa
 
 function renderResult(a, r) {
   if (!r || r.parse_error) return render(`${hd()}Could not parse model output.<pre>${esc(r && r.raw)}</pre>`);
-  const n = r.clickbait_score ?? 0;
+  const n = clampScore(r.clickbait_score);
   const col = scoreColor(n);
   const kp = Array.isArray(r.key_points) && r.key_points.length
     ? `<div class="lbl">Key points</div><ul>${r.key_points.map((p) => `<li>${esc(p)}</li>`).join("")}</ul>` : "";
@@ -163,12 +168,16 @@ function renderResult(a, r) {
 
 async function run() {
   render(`<b style="color:#58a6ff">🪝🚫 debait</b><br><br>Reading the page…`);
-  const article = extractPage();
-  const { language } = await chrome.storage.sync.get({ language: "" });
-  const prompt = globalThis.DebaitPrompt.buildPrompt(article, { language });
-  const resp = await chrome.runtime.sendMessage({ type: "debait:complete", prompt });
-  if (!resp?.ok) return render(`<b style="color:#e5484d">debait error</b><br><br>${esc(resp?.error || "unknown")}`);
-  renderResult(article, globalThis.DebaitPrompt.parseResult(resp.text));
+  try {
+    const article = extractPage();
+    const { language } = await chrome.storage.sync.get({ language: "" });
+    const prompt = globalThis.DebaitPrompt.buildPrompt(article, { language });
+    const resp = await chrome.runtime.sendMessage({ type: "debait:complete", prompt });
+    if (!resp?.ok) return render(`<b style="color:#e5484d">debait error</b><br><br>${esc(resp?.error || "unknown")}`);
+    renderResult(article, globalThis.DebaitPrompt.parseResult(resp.text));
+  } catch (e) {
+    render(`<b style="color:#e5484d">debait error</b><br><br>${esc(e?.message || String(e))}`);
+  }
 }
 
 chrome.runtime.onMessage.addListener((msg) => {

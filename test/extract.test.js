@@ -19,6 +19,29 @@ test("extractArticle pulls title, description and body text", () => {
   assert.doesNotMatch(a.text, /Home \| Trending/i);
 });
 
+test("extractArticle survives malformed numeric entities (no RangeError)", () => {
+  const a = extractArticle("<article>hello &#1114112; world is here</article>");
+  assert.match(a.text, /hello/);
+  assert.match(a.text, /world is here/);
+});
+
+test("extractArticle keeps double-quoted meta content with apostrophes", () => {
+  const a = extractArticle(`<meta name="description" content="It's useful"><article><p>body content that is long enough to be retained here</p></article>`);
+  assert.equal(a.description, "It's useful");
+});
+
+test("extractArticle preserves an article's own <header> lead", () => {
+  const a = extractArticle("<article><header><h1>Title</h1><p>Important lead</p></header><p>Remainder</p></article>");
+  assert.match(a.text, /Important lead/);
+  assert.match(a.text, /Remainder/);
+});
+
+test("extractArticle is near-linear on pathological unclosed <script>", () => {
+  const start = Date.now();
+  extractArticle("<script>".repeat(200000));
+  assert.ok(Date.now() - start < 1000, "extraction should stay fast on adversarial input");
+});
+
 test("buildPrompt embeds the article and asks for JSON", () => {
   const a = extractArticle(html);
   const p = buildPrompt(a);
