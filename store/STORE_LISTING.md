@@ -103,3 +103,49 @@ https://github.com/smailzhu/outsmarting-clickbait/blob/master/PRIVACY.md
 ```bash
 npm run pack   # -> dist/debait-extension-v<version>.zip  (upload this)
 ```
+
+---
+
+## 繁體中文 listing (zh-TW)
+
+Paste these into the Chinese (Traditional) language slot in the dashboard.
+
+### 名稱 (Title)
+debait — 識破騙點閱
+
+### 摘要 (Summary, ≤132 chars)
+在你點擊前，讀取連結背後的文章，顯示誠實標題、摘要與 0–100 騙點閱分數，幫你判斷值不值得點。
+
+### 詳細說明 (Detailed description)
+騙點閱只對人類有效。debait 會用 AI 幫你讀取文章內容，給你實質內容——一個誠實、不聳動的標題、簡短摘要、重點，以及 0–100 的騙點閱分數——讓你在浪費一次點擊之前，就能判斷這個連結值不值得點。
+
+功能
+開啟任何文章，點一下 debait 按鈕（或按右鍵 →「debait 這個頁面」），很快就能得到：
+• 誠實標題——文章實際在講什麼，沒有誇大、沒有懸念釣魚。
+• 簡短摘要與重點。
+• 騙點閱分數（0–100）與偵測到的操弄手法。
+• 判斷：有料、貧乏還是空洞——到底值不值得點。
+
+點擊前先預覽
+按住 Alt 並把滑鼠移到任何連結上，debait 會讀取該連結的目標頁面，在工具提示中顯示誠實標題與分數——不用打開就能略過垃圾內容。
+
+為什麼要裝
+• 不再獎勵煽動性內容、「第 3 點你絕對想不到」、以及一句話灌水成八段的文章。
+• 省時間：幾秒內就看穿一個標題背後的內容。
+• 對每個頁面都有一個冷靜、不帶情緒的第二意見。
+• 用你的語言閱讀：摘要可用任何語言輸出，而且介面支援繁體中文與英文。
+
+自備 AI
+debait 使用你自己選擇的 AI 供應商與 API 金鑰——OpenAI、Anthropic（Claude）、Google Gemini、Groq、OpenRouter、DeepSeek、xAI（Grok）、Mistral、Together、NVIDIA，或本機 Ollama。費用與模型品質由你完全掌控。
+
+隱私至上
+沒有 debait 伺服器。頁面文字只會傳送到你設定的供應商；API 金鑰與設定儲存在你的瀏覽器（透過 chrome.storage.sync，啟用 Chrome 同步時可能同步到你登入的其他瀏覽器），絕不會傳給開發者。擴充功能只要求必要的權限，而且只在你主動 debait 或懸停的頁面上運作。懸停預覽會自動限流並遵守你設定的每日上限，避免不小心把配額用光。（手動的「分析這個頁面」每次都會呼叫一次，不受每日上限限制。）
+
+開放原始碼
+程式碼、隱私政策與文件：https://github.com/smailzhu/outsmarting-clickbait
+
+### 單一用途 (Single purpose)
+debait 讀取一篇網頁文章並評估其騙點閱程度——誠實標題、摘要、重點與 0–100 分數——適用於目前頁面或懸停的連結。
+
+### 備註 (caveats, keep accurate)
+預覽會讀取目標頁面；若擷取到的內文少於約 200 個字（常見於 JS 動態產生或付費牆頁面），會改用該頁面的 meta 敘述（若無則顯示標題）；若連線失敗則顯示錯誤。模型會讀取頁面約前 12,000 個字元。
