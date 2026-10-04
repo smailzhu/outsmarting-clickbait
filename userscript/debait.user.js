@@ -59,6 +59,26 @@
       tipRateLimited: "rate limited by provider. Cooling down ~$1s (hover again later).",
       tipCapped: "daily preview limit reached ($1/$2). Raise it via the menu.",
       errNoKey: "No API key for \"$1\". Use the menu to set it.", launcherTitle: "debait this page",
+      menuChooseProvider: "debait: choose provider",
+      menuSetKey: "debait: set API key (current provider)",
+      menuSetLanguage: "debait: set output language",
+      menuSetLimits: "debait: set preview limits",
+      menuShowUsage: "debait: show today usage",
+      menuSetModel: "debait: set model override",
+      menuSetBase: "debait: set base URL override",
+      menuAnalyze: "debait: analyze this page",
+      promptProvider: "Provider \u2014 one of:\n$1",
+      alertUnknownProvider: "Unknown provider.",
+      promptSetKey: "API key for \"$1\" (stored locally):",
+      promptLanguage: "Output language for title/summary (blank = auto, match article):\ne.g. English, \u7e41\u9ad4\u4e2d\u6587, \u65e5\u672c\u8a9e, Espa\u00f1ol",
+      promptDwell: "Hover dwell in ms before a preview fires:",
+      promptInterval: "Minimum ms between preview calls:",
+      promptDailyCap: "Daily preview cap (0 = unlimited):",
+      alertNonNegative: "Please enter a non-negative number.",
+      usageAlertPrefix: "debait preview calls today: ",
+      usageNoCap: "(no cap)",
+      promptModel: "Model (blank = provider default):",
+      promptBase: "Base URL (blank = provider default):",
     },
     zh_TW: {
       brand: "debait", labelOriginal: "\u539f\u59cb\u6a19\u984c", labelHonest: "\u8aa0\u5be6\u6a19\u984c",
@@ -72,6 +92,26 @@
       tipRateLimited: "\u4f9b\u61c9\u5546\u9650\u6d41\u4e2d\uff0c\u7d04 $1 \u79d2\u5f8c\u6062\u5fa9\uff08\u7a0d\u5f8c\u518d\u61f8\u505c\uff09\u3002",
       tipCapped: "\u5df2\u9054\u6bcf\u65e5\u9810\u89bd\u4e0a\u9650\uff08$1/$2\uff09\u3002\u53ef\u5728\u9078\u55ae\u4e2d\u8abf\u9ad8\u3002",
       errNoKey: "\u5c1a\u672a\u8a2d\u5b9a\u300c$1\u300d\u7684 API \u91d1\u9470\uff0c\u8acb\u7528\u9078\u55ae\u8a2d\u5b9a\u3002", launcherTitle: "debait \u9019\u500b\u9801\u9762",
+      menuChooseProvider: "debait\uff1a\u9078\u64c7\u4f9b\u61c9\u5546",
+      menuSetKey: "debait\uff1a\u8a2d\u5b9a API \u91d1\u9470\uff08\u76ee\u524d\u4f9b\u61c9\u5546\uff09",
+      menuSetLanguage: "debait\uff1a\u8a2d\u5b9a\u8f38\u51fa\u8a9e\u8a00",
+      menuSetLimits: "debait\uff1a\u8a2d\u5b9a\u9810\u89bd\u9650\u5236",
+      menuShowUsage: "debait\uff1a\u986f\u793a\u4eca\u65e5\u4f7f\u7528\u91cf",
+      menuSetModel: "debait\uff1a\u8a2d\u5b9a\u6a21\u578b\u8986\u5beb",
+      menuSetBase: "debait\uff1a\u8a2d\u5b9a\u57fa\u5e95\u7db2\u5740\u8986\u5beb",
+      menuAnalyze: "debait\uff1a\u5206\u6790\u9019\u500b\u9801\u9762",
+      promptProvider: "\u4f9b\u61c9\u5546 \u2014 \u4ee5\u4e0b\u5176\u4e2d\u4e4b\u4e00\uff1a\n$1",
+      alertUnknownProvider: "\u672a\u77e5\u7684\u4f9b\u61c9\u5546\u3002",
+      promptSetKey: "\u300c$1\u300d\u7684 API \u91d1\u9470\uff08\u5132\u5b58\u5728\u672c\u6a5f\uff09\uff1a",
+      promptLanguage: "\u6a19\u984c\uff0f\u6458\u8981\u7684\u8f38\u51fa\u8a9e\u8a00\uff08\u7559\u7a7a\uff1d\u81ea\u52d5\uff0c\u8207\u6587\u7ae0\u4e00\u81f4\uff09\uff1a\n\u4f8b\u5982 English\u3001\u7e41\u9ad4\u4e2d\u6587\u3001\u65e5\u672c\u8a9e\u3001Espa\u00f1ol",
+      promptDwell: "\u89f8\u767c\u9810\u89bd\u524d\u7684\u61f8\u505c\u5ef6\u9072\uff08\u6beb\u79d2\uff09\uff1a",
+      promptInterval: "\u9810\u89bd\u547c\u53eb\u4e4b\u9593\u7684\u6700\u5c0f\u9593\u9694\uff08\u6beb\u79d2\uff09\uff1a",
+      promptDailyCap: "\u6bcf\u65e5\u9810\u89bd\u4e0a\u9650\uff080 \uff1d \u7121\u9650\u5236\uff09\uff1a",
+      alertNonNegative: "\u8acb\u8f38\u5165\u975e\u8ca0\u6574\u6578\u3002",
+      usageAlertPrefix: "debait \u4eca\u65e5\u9810\u89bd\u547c\u53eb\u6b21\u6578\uff1a",
+      usageNoCap: "\uff08\u7121\u4e0a\u9650\uff09",
+      promptModel: "\u6a21\u578b\uff08\u7559\u7a7a\uff1d\u4f9b\u61c9\u5546\u9810\u8a2d\uff09\uff1a",
+      promptBase: "\u57fa\u5e95\u7db2\u5740\uff08\u7559\u7a7a\uff1d\u4f9b\u61c9\u5546\u9810\u8a2d\uff09\uff1a",
     },
   };
   const UI_LANG = (() => {
@@ -97,44 +137,44 @@
     get dailyCap() { const n = Number(GM_getValue("dailyCap", 200)); return Number.isFinite(n) && n >= 0 ? n : 200; },
   };
 
-  GM_registerMenuCommand("debait: choose provider", () => {
-    const p = prompt(`Provider \u2014 one of:\n${Object.keys(PROVIDERS).join(", ")}`, CFG.provider);
+  GM_registerMenuCommand(t("menuChooseProvider"), () => {
+    const p = prompt(t("promptProvider", Object.keys(PROVIDERS).join(", ")), CFG.provider);
     if (p !== null && PROVIDERS[p.trim()]) GM_setValue("provider", p.trim());
-    else if (p !== null) alert("Unknown provider.");
+    else if (p !== null) alert(t("alertUnknownProvider"));
   });
-  GM_registerMenuCommand("debait: set API key (current provider)", () => {
-    const k = prompt(`API key for "${CFG.provider}" (stored locally):`, CFG.key);
+  GM_registerMenuCommand(t("menuSetKey"), () => {
+    const k = prompt(t("promptSetKey", CFG.provider), CFG.key);
     if (k !== null) GM_setValue(`key_${CFG.provider}`, k.trim());
   });
-  GM_registerMenuCommand("debait: set output language", () => {
-    const l = prompt("Output language for title/summary (blank = auto, match article):\ne.g. English, \u7e41\u9ad4\u4e2d\u6587, \u65e5\u672c\u8a9e, Espa\u00f1ol", CFG.language);
+  GM_registerMenuCommand(t("menuSetLanguage"), () => {
+    const l = prompt(t("promptLanguage"), CFG.language);
     if (l !== null) GM_setValue("language", l.trim());
   });
-  GM_registerMenuCommand("debait: set preview limits", () => {
+  GM_registerMenuCommand(t("menuSetLimits"), () => {
     const setInt = (key, label, cur) => {
       const v = prompt(label, cur);
       if (v === null || v.trim() === "") return; // cancel / blank -> keep current
       const n = Math.round(Number(v));
       if (Number.isFinite(n) && n >= 0) GM_setValue(key, n);
-      else alert("Please enter a non-negative number.");
+      else alert(t("alertNonNegative"));
     };
-    setInt("dwellMs", "Hover dwell in ms before a preview fires:", CFG.dwellMs);
-    setInt("minIntervalMs", "Minimum ms between preview calls:", CFG.minIntervalMs);
-    setInt("dailyCap", "Daily preview cap (0 = unlimited):", CFG.dailyCap);
+    setInt("dwellMs", t("promptDwell"), CFG.dwellMs);
+    setInt("minIntervalMs", t("promptInterval"), CFG.minIntervalMs);
+    setInt("dailyCap", t("promptDailyCap"), CFG.dailyCap);
   });
-  GM_registerMenuCommand("debait: show today usage", () => {
+  GM_registerMenuCommand(t("menuShowUsage"), () => {
     const u = getUsage();
-    alert("debait preview calls today: " + u.count + (CFG.dailyCap > 0 ? " / " + CFG.dailyCap : " (no cap)"));
+    alert(t("usageAlertPrefix") + u.count + (CFG.dailyCap > 0 ? " / " + CFG.dailyCap : " " + t("usageNoCap")));
   });
-  GM_registerMenuCommand("debait: set model override", () => {
-    const m = prompt("Model (blank = provider default):", GM_getValue("model", ""));
+  GM_registerMenuCommand(t("menuSetModel"), () => {
+    const m = prompt(t("promptModel"), GM_getValue("model", ""));
     if (m !== null) GM_setValue("model", m.trim());
   });
-  GM_registerMenuCommand("debait: set base URL override", () => {
-    const b = prompt("Base URL (blank = provider default):", GM_getValue("base", ""));
+  GM_registerMenuCommand(t("menuSetBase"), () => {
+    const b = prompt(t("promptBase"), GM_getValue("base", ""));
     if (b !== null) GM_setValue("base", b.trim());
   });
-  GM_registerMenuCommand("debait: analyze this page", run);
+  GM_registerMenuCommand(t("menuAnalyze"), run);
 
   // ---- shared prompt (inlined copy of shared/prompt.js) ---------------------
   const MAX_CHARS = 12000;
