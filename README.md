@@ -42,7 +42,7 @@ critique that motivated the design.
 No dependencies. Needs Node ≥ 20.
 
 ```bash
-git clone <this-repo>
+git clone https://github.com/smailzhu/outsmarting-clickbait.git
 cd outsmarting-clickbait
 npm link        # optional: puts `debait` on your PATH
 ```
@@ -74,7 +74,7 @@ Multi-provider, from one shared layer ([`shared/providers.js`](shared/providers.
 | DeepSeek | `deepseek` | openai | deepseek-chat | `DEEPSEEK_API_KEY` |
 | xAI (Grok) | `xai` | openai | grok-3 | `XAI_API_KEY` |
 | Mistral | `mistral` | openai | mistral-small-latest | `MISTRAL_API_KEY` |
-| Together | `together` | openai | Llama-3.3-70B-Turbo | `TOGETHER_API_KEY` |
+| Together | `together` | openai | meta-llama/Llama-3.3-70B-Instruct-Turbo | `TOGETHER_API_KEY` |
 | NVIDIA (NIM) | `nvidia` | openai | meta/llama-3.3-70b-instruct | `NVIDIA_API_KEY` |
 | Ollama (local) | `ollama` | openai | llama3.1 | — |
 | Codex CLI | `codex` | — (shells out) | — | — |
@@ -129,6 +129,22 @@ URL ──▶ extract.js ──▶ summarize.js ──▶ llm.js ──▶ hones
 Extraction is deliberately dependency-free and heuristic (strip
 `script/style/nav/aside/footer`, prefer `<article>`). For production you'd swap
 in Readability + a headless browser for JS-rendered pages.
+
+## Privacy & keys
+
+- **Your API key stays yours.** The CLI reads it from an env var; the extension
+  stores it in `chrome.storage.sync` (synced to your browser profile, not to us);
+  the userscript stores it via your userscript manager. It is sent only to the
+  provider endpoint you configure — there is no debait server.
+- **What's sent to the provider:** the extracted article text + title of the page
+  you debait (or Alt+hover-preview), so the model can summarize it. Nothing else.
+- **Extension host access:** the extension requests broad host permissions
+  (`https://*/*`, `http://*/*`) so the background worker can fetch the *target* of
+  a hovered link for preview. It only fetches a page when you Alt+hover or run
+  debait on it.
+- **Cost control:** hover previews are rate-limited (one at a time, min interval)
+  with a 429 backoff and a configurable **daily cap**, so bursty hovering can't
+  silently exhaust a provider quota. See each surface's settings.
 
 ## Test
 

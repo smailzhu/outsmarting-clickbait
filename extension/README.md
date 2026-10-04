@@ -9,7 +9,7 @@ article and overlays an honest title, summary, key points, and a clickbait score
 2. Enable **Developer mode**.
 3. Click **Load unpacked** and select this `extension/` folder.
 4. Open the extension's **Options**, pick a **provider** (OpenAI, Anthropic,
-   Gemini, Groq, OpenRouter, DeepSeek, xAI, Mistral, Together, or local Ollama),
+   Gemini, Groq, OpenRouter, DeepSeek, xAI, Mistral, Together, NVIDIA, or local Ollama),
    paste that provider's API key (optionally override base URL / model), and Save.
    Keys are remembered per provider, so you can switch freely.
 5. Visit any article → click the toolbar icon or right-click → *debait this page*.
@@ -61,10 +61,14 @@ runs in the background service worker, which has `host_permissions`.
 
 ## Limitations
 
-- Only analyzes the **current** page's DOM. Annotating every link in a feed would
-  require fetching each target URL (CORS + JS-rendering + cost) — out of scope
-  for this prototype.
-- Needs your own API key; nothing is sent anywhere except your configured endpoint.
+- Analyzes the **current** page's DOM, plus **Alt+hover previews** of individual
+  linked targets (see above). Auto-annotating *every* link in a feed is out of
+  scope — one LLM call per link (cost + rate limits); a caching backend proxy
+  would be the way to do that.
+- Preview works on **server-rendered** pages only; JS-rendered/paywalled targets
+  fall back to the link's meta description.
+- Needs your own API key; article text is sent only to the provider you configure.
+  Keys are stored in `chrome.storage.sync` (synced to your browser profile).
 - Branded icons are bundled in `extension/icons/` and declared in the manifest.
 
 ## Packaging for distribution

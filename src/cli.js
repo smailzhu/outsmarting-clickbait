@@ -42,7 +42,7 @@ Usage:
 
 Backend (auto): first provider whose API key env var is set, else codex CLI.
 Providers: openai, anthropic, gemini, groq, openrouter, deepseek, xai,
-           mistral, together, ollama.
+           mistral, together, nvidia, ollama.
 
   --backend <provider|codex>    force a backend (also DEBAIT_PROVIDER / DEBAIT_BACKEND=codex)
   <PROVIDER>_API_KEY            key per provider, e.g. OPENAI_API_KEY, ANTHROPIC_API_KEY,
