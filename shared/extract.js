@@ -69,6 +69,28 @@ function stripBlocks(src, tag) {
   return out;
 }
 
+// Raw-text elements (script/style): their content is CDATA-like, so a literal
+// "<script>" inside the text is NOT a nested element. Content ends at the first
+// closing tag; no depth counting.
+function stripRawText(src, tag) {
+  const openRe = new RegExp(`<${tag}(?=[\\s/>])`, "gi");
+  const closeRe = new RegExp(`</${tag}\\s*>`, "gi");
+  let out = "";
+  let i = 0;
+  let m;
+  while ((m = openRe.exec(src))) {
+    if (m.index < i) continue;
+    out += src.slice(i, m.index) + " ";
+    closeRe.lastIndex = openRe.lastIndex;
+    const c = closeRe.exec(src);
+    if (!c) { i = src.length; break; } // unclosed raw text -> drop to EOF
+    i = c.index + c[0].length;
+    openRe.lastIndex = i;
+  }
+  out += src.slice(i);
+  return out;
+}
+
 // Return the first balanced <tag>...</tag> block (nesting-aware), or null.
 function firstBlock(src, tag) {
   const re = tokenRe(tag);
@@ -90,20 +112,31 @@ function firstBlock(src, tag) {
 // Match a <meta ...> tag while skipping '>' that appears inside quoted
 // attribute values.
 const META_TAG = /<meta\b(?:[^>"']|"[^"]*"|'[^']*')*>/gi;
-const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-// Find a <meta> tag whose attribute `attr` equals `val` (any order, either
-// quote), return its decoded content. Attribute name must be preceded by a
-// non [-\w] boundary so `name` doesn't match `data-name`.
+// Parse a tag string's attributes into a lowercased-key map, quote-aware so a
+// '>' or an attr-like substring inside a quoted value is not mis-parsed.
+function parseAttrs(tag) {
+  const attrs = {};
+  const re = /([-\w:]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/g;
+  let m;
+  while ((m = re.exec(tag))) {
+    const name = m[1].toLowerCase();
+    if (!(name in attrs)) attrs[name] = m[2] ?? m[3] ?? m[4] ?? "";
+  }
+  return attrs;
+}
+
+// Find a <meta> tag whose attribute `attr` equals `val`, return its decoded
+// content. Uses real attribute parsing (quote-aware), so `data-name`/values
+// containing `content=...` can't produce false matches.
 function metaContent(html, attr, val) {
-  const attrRe = new RegExp(`(?<![-\\w])${attr}\\s*=\\s*(["'])\\s*${escapeRe(val)}\\s*\\1`, "i");
-  const contentRe = /(?<![-\w])content\s*=\s*(["'])([\s\S]*?)\1/i;
+  const want = val.toLowerCase();
   let m;
   META_TAG.lastIndex = 0;
   while ((m = META_TAG.exec(html))) {
-    if (attrRe.test(m[0])) {
-      const c = m[0].match(contentRe);
-      if (c) return decodeEntities(c[2]).trim();
+    const attrs = parseAttrs(m[0]);
+    if ((attrs[attr] || "").toLowerCase() === want && attrs.content !== undefined) {
+      return decodeEntities(attrs.content).trim();
     }
   }
   return "";
@@ -122,8 +155,8 @@ export function extractArticle(html, url = "") {
   const description =
     metaContent(html, "name", "description") || metaContent(html, "property", "og:description");
 
-  // 1. Remove scripts/styles everywhere.
-  let body = stripBlocks(stripBlocks(stripBlocks(html, "script"), "style"), "noscript");
+  // 1. Remove scripts/styles everywhere (raw-text: first close wins, no nesting).
+  let body = stripRawText(stripRawText(stripRawText(html, "script"), "style"), "noscript");
 
   // 2. Remove clearly non-content chrome BEFORE selecting the main region, so a
   //    teaser <article> nested inside an <aside>/<nav> doesn't win over the real

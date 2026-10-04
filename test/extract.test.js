@@ -36,6 +36,22 @@ test("extractArticle preserves an article's own <header> lead", () => {
   assert.match(a.text, /Remainder/);
 });
 
+test("extractArticle treats <script> as raw text (literal <script> in JS not nested)", () => {
+  const a = extractArticle('<script>const x = "<script>";</script><article>Real story</article>');
+  assert.equal(a.text, "Real story");
+});
+
+test("extractArticle meta parsing is quote-aware (no false attr matches)", () => {
+  assert.equal(
+    extractArticle(`<meta name="description" data-note="content='wrong'" content="right"><article>Body</article>`).description,
+    "right"
+  );
+  assert.equal(
+    extractArticle(`<meta data-note="name='description'" content="wrong"><meta name="description" content="right"><article>Body</article>`).description,
+    "right"
+  );
+});
+
 test("extractArticle is near-linear on pathological unclosed <script>", () => {
   const start = Date.now();
   extractArticle("<script>".repeat(200000));
