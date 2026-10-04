@@ -8,7 +8,12 @@ import { resolveProvider, callProvider, PROVIDERS } from "./providers.js";
 import { buildPrompt, parseResult } from "./prompt.esm.js";
 import { extractArticle } from "./extract.js";
 
-const DEFAULTS = { provider: "openai", base: "", model: "", key: "", language: "" };
+const DEFAULTS = {
+  provider: "openai", base: "", model: "", key: "", language: "",
+  // Preview rate controls (see Options). 0 = unlimited.
+  previewMinIntervalMs: 1500,
+  dailyCap: 200,
+};
 
 async function settings() {
   const s = await chrome.storage.sync.get(DEFAULTS);
@@ -29,9 +34,8 @@ const CACHE_TTL = 30 * 60 * 1000; // 30 min
 const inflight = new Map(); // url -> Promise
 
 // Rate limiting so bursty hovering can't exceed provider quota (esp. free
-// tiers). One LLM preview at a time, min spacing between them, and a cooldown
-// after a 429 (respecting the provider's retry delay when present).
-const PREVIEW_MIN_INTERVAL = 1500; // ms between preview LLM calls
+// tiers): one LLM preview at a time, a min spacing between them, a per-day cap,
+// and a cooldown after a 429 (respecting the provider's retry delay).
 let previewBusy = false;
 let lastPreviewAt = 0;
 let cooldownUntil = 0;
@@ -40,6 +44,21 @@ function backoffMsFrom(message) {
   const m = /ret[-_ ]?(?:delay|after)"?\s*[:=]\s*"?(\d+)\s*s?/i.exec(String(message || ""));
   const secs = m ? Number(m[1]) : 0;
   return Math.min(Math.max(secs * 1000 || 30000, 5000), 5 * 60 * 1000); // 5s..5min
+}
+
+const todayKey = () => new Date().toISOString().slice(0, 10); // UTC YYYY-MM-DD
+
+// Per-day LLM call counter, persisted in storage.local (survives SW restarts).
+async function getUsage() {
+  const { debaitUsage } = await chrome.storage.local.get({ debaitUsage: { day: "", count: 0 } });
+  if (debaitUsage.day !== todayKey()) return { day: todayKey(), count: 0 };
+  return debaitUsage;
+}
+async function bumpUsage() {
+  const u = await getUsage();
+  const next = { day: u.day, count: u.count + 1 };
+  await chrome.storage.local.set({ debaitUsage: next });
+  return next;
 }
 
 async function fetchAndExtract(url) {
@@ -78,15 +97,25 @@ async function preview(url) {
       // Too little to judge from the body — likely JS-rendered/paywalled.
       return { thin_fetch: true, originalTitle: article.originalTitle, description: article.description, url };
     }
+    // Per-day cap: a hard stop so the tool can never silently burn through a
+    // paid quota / daily free-tier allowance.
+    if (s.dailyCap > 0) {
+      const u = await getUsage();
+      if (u.count >= s.dailyCap) {
+        return { capped: true, used: u.count, cap: s.dailyCap, originalTitle: article.originalTitle, url };
+      }
+    }
     // Throttle the actual LLM call: skip (don't queue) rapid bursts so sweeping
     // across a feed can't fire dozens of calls. The user can re-hover to retry.
     const now = Date.now();
-    if (previewBusy || now - lastPreviewAt < PREVIEW_MIN_INTERVAL) {
+    if (previewBusy || now - lastPreviewAt < (s.previewMinIntervalMs || 0)) {
       return { throttled: true, originalTitle: article.originalTitle, url };
     }
     previewBusy = true;
     lastPreviewAt = now;
     try {
+      // Count only if we will actually call the provider (missing key fails before any network call).
+      if (s.key || s.provider === "ollama") await bumpUsage();
       const result = parseResult(await complete(buildPrompt(article, { language: s.language })));
       return { ...result, originalTitle: article.originalTitle, url };
     } catch (e) {
@@ -102,8 +131,8 @@ async function preview(url) {
   inflight.set(cacheKey, p);
   try {
     const result = await p;
-    // Only cache real answers — not transient throttle/cooldown markers.
-    if (!result.throttled && !result.rate_limited) CACHE.set(cacheKey, { at: Date.now(), result });
+    // Only cache real answers — not transient throttle/cooldown/cap markers.
+    if (!result.throttled && !result.rate_limited && !result.capped) CACHE.set(cacheKey, { at: Date.now(), result });
     return result;
   } finally {
     inflight.delete(cacheKey);

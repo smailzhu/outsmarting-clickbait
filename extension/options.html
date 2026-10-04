@@ -36,7 +36,18 @@
   <input id="model" type="text" placeholder="leave blank for default" />
   <label for="language">Output language <span class="hint">(title &amp; summary; blank = auto, match the article)</span></label>
   <input id="language" type="text" placeholder="auto — or English, 繁體中文, 日本語, Español" />
-  <div>
+
+  <h2 style="font-size:15px;margin:22px 0 4px">Hover preview limits</h2>
+  <p class="hint">Preview fetches + summarizes a link before you click. These caps stop bursty hovering from blowing your provider quota.</p>
+  <label for="previewDwellMs">Hover dwell (ms) <span class="hint">before a preview fires</span></label>
+  <input id="previewDwellMs" type="number" min="0" step="50" placeholder="500" />
+  <label for="previewMinIntervalMs">Min interval between previews (ms)</label>
+  <input id="previewMinIntervalMs" type="number" min="0" step="100" placeholder="1500" />
+  <label for="dailyCap">Daily preview cap <span class="hint">(0 = unlimited)</span></label>
+  <input id="dailyCap" type="number" min="0" step="10" placeholder="200" />
+  <p class="hint" id="usage"></p>
+
+  <div style="margin-top:16px">
     <button id="save">Save</button>
     <span id="status"></span>
   </div>

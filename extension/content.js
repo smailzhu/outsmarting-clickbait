@@ -21,6 +21,12 @@ function extractPage() {
 // clickbait score. Opt-in via Alt so we never fire LLM calls accidentally.
 const TIP_ID = "debait-tooltip";
 let tipTimer = null;
+let dwellMs = 500; // overridable via Options (previewDwellMs)
+const toDwell = (v) => { const n = Number(v); return Number.isFinite(n) && n >= 0 ? n : 500; };
+chrome.storage.sync.get({ previewDwellMs: 500 }).then((v) => { dwellMs = toDwell(v.previewDwellMs); });
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === "sync" && changes.previewDwellMs) dwellMs = toDwell(changes.previewDwellMs.newValue);
+});
 let tipAnchor = null;
 
 function tip() {
@@ -63,6 +69,8 @@ async function previewLink(a, x, y) {
   if (tipAnchor !== a) return; // user moved on
   if (!resp?.ok) return void (tip().innerHTML = `<b style="color:#e5484d">debait</b> · ${esc(resp?.error || "error")}`);
   const r = resp.result;
+  if (r.capped)
+    return void (tip().innerHTML = `<b style="color:#ffb224">🪝🚫 debait</b> · daily preview limit reached (${r.used}/${r.cap}). Raise it in Options.`);
   if (r.rate_limited)
     return void (tip().innerHTML = `<b style="color:#ffb224">🪝🚫 debait</b> · rate limited by provider. Cooling down ~${r.retryIn}s (hover again later).`);
   if (r.throttled)
@@ -85,7 +93,7 @@ document.addEventListener("mouseover", (e) => {
   tipAnchor = a;
   clearTimeout(tipTimer);
   const { clientX: x, clientY: y } = e;
-  tipTimer = setTimeout(() => previewLink(a, x, y), 500);
+  tipTimer = setTimeout(() => previewLink(a, x, y), dwellMs);
 });
 document.addEventListener("mouseout", (e) => {
   if (e.target.closest?.("a[href]") === tipAnchor) { clearTimeout(tipTimer); tipAnchor = null; hideTip(); }

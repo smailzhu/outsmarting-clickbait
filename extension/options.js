@@ -1,7 +1,18 @@
 // Stores provider + base + model + a per-provider key map so switching
 // providers keeps each key. The active `key` mirrors the current provider's key
 // for the background worker.
-const DEFAULTS = { provider: "openai", base: "", model: "", key: "", keys: {}, language: "" };
+const DEFAULTS = {
+  provider: "openai", base: "", model: "", key: "", keys: {}, language: "",
+  previewDwellMs: 500, previewMinIntervalMs: 1500, dailyCap: 200,
+};
+const intOr = (v, d) => { if (v === "" || v == null) return d; const n = Math.round(Number(v)); return Number.isFinite(n) && n >= 0 ? n : d; };
+
+async function renderUsage(cap) {
+  const today = new Date().toISOString().slice(0, 10);
+  const { debaitUsage } = await chrome.storage.local.get({ debaitUsage: { day: "", count: 0 } });
+  const used = debaitUsage.day === today ? debaitUsage.count : 0;
+  $("usage").textContent = `Preview calls today: ${used}` + (cap > 0 ? ` / ${cap}` : " (no cap)");
+}
 const $ = (id) => document.getElementById(id);
 
 let state = { ...DEFAULTS };
@@ -12,7 +23,11 @@ async function load() {
   $("base").value = state.base || "";
   $("model").value = state.model || "";
   $("language").value = state.language || "";
+  $("previewDwellMs").value = state.previewDwellMs;
+  $("previewMinIntervalMs").value = state.previewMinIntervalMs;
+  $("dailyCap").value = state.dailyCap;
   $("key").value = state.keys?.[state.provider] || state.key || "";
+  await renderUsage(state.dailyCap);
 }
 
 $("provider").addEventListener("change", () => {
@@ -33,7 +48,11 @@ $("save").addEventListener("click", async () => {
     base: $("base").value.trim(),
     model: $("model").value.trim(),
     language: $("language").value.trim(),
+    previewDwellMs: intOr($("previewDwellMs").value, 500),
+    previewMinIntervalMs: intOr($("previewMinIntervalMs").value, 1500),
+    dailyCap: intOr($("dailyCap").value, 200),
   });
+  await renderUsage(intOr($("dailyCap").value, 200));
   $("status").textContent = "Saved ✓";
   setTimeout(() => ($("status").textContent = ""), 1500);
 });

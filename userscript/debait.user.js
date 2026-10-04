@@ -52,6 +52,9 @@
     get base() { return (GM_getValue("base", "") || PROVIDERS[this.provider].base).replace(/\/+$/, ""); },
     get model() { return GM_getValue("model", "") || PROVIDERS[this.provider].model; },
     get language() { return GM_getValue("language", ""); },
+    get dwellMs() { const n = Number(GM_getValue("dwellMs", 500)); return Number.isFinite(n) && n >= 0 ? n : 500; },
+    get minIntervalMs() { const n = Number(GM_getValue("minIntervalMs", 1500)); return Number.isFinite(n) && n >= 0 ? n : 1500; },
+    get dailyCap() { const n = Number(GM_getValue("dailyCap", 200)); return Number.isFinite(n) && n >= 0 ? n : 200; },
   };
 
   GM_registerMenuCommand("debait: choose provider", () => {
@@ -66,6 +69,22 @@
   GM_registerMenuCommand("debait: set output language", () => {
     const l = prompt("Output language for title/summary (blank = auto, match article):\ne.g. English, \u7e41\u9ad4\u4e2d\u6587, \u65e5\u672c\u8a9e, Espa\u00f1ol", CFG.language);
     if (l !== null) GM_setValue("language", l.trim());
+  });
+  GM_registerMenuCommand("debait: set preview limits", () => {
+    const setInt = (key, label, cur) => {
+      const v = prompt(label, cur);
+      if (v === null || v.trim() === "") return; // cancel / blank -> keep current
+      const n = Math.round(Number(v));
+      if (Number.isFinite(n) && n >= 0) GM_setValue(key, n);
+      else alert("Please enter a non-negative number.");
+    };
+    setInt("dwellMs", "Hover dwell in ms before a preview fires:", CFG.dwellMs);
+    setInt("minIntervalMs", "Minimum ms between preview calls:", CFG.minIntervalMs);
+    setInt("dailyCap", "Daily preview cap (0 = unlimited):", CFG.dailyCap);
+  });
+  GM_registerMenuCommand("debait: show today usage", () => {
+    const u = getUsage();
+    alert("debait preview calls today: " + u.count + (CFG.dailyCap > 0 ? " / " + CFG.dailyCap : " (no cap)"));
   });
   GM_registerMenuCommand("debait: set model override", () => {
     const m = prompt("Model (blank = provider default):", GM_getValue("model", ""));
@@ -301,8 +320,16 @@ pre { white-space:pre-wrap; color:#c9d1d9; }
   const previewCache = new Map();
   const PREVIEW_TTL = 30 * 60 * 1000;
   // Rate limiting so bursty hovering can't exceed provider quota (free tiers).
-  const PREVIEW_MIN_INTERVAL = 1500;
   let previewBusy = false, lastPreviewAt = 0, cooldownUntil = 0;
+  const todayKey = () => new Date().toISOString().slice(0, 10);
+  function getUsage() {
+    const day = GM_getValue("usageDay", ""), count = Number(GM_getValue("usageCount", 0)) || 0;
+    return day === todayKey() ? { day, count } : { day: todayKey(), count: 0 };
+  }
+  function bumpUsage() {
+    const u = getUsage();
+    GM_setValue("usageDay", u.day); GM_setValue("usageCount", u.count + 1);
+  }
   function backoffMsFrom(message) {
     const m = /ret[-_ ]?(?:delay|after)"?\s*[:=]\s*"?(\d+)\s*s?/i.exec(String(message || ""));
     const secs = m ? Number(m[1]) : 0;
@@ -369,13 +396,17 @@ pre { white-space:pre-wrap; color:#c9d1d9; }
           result = { rate_limited: true, retryIn: Math.ceil((cooldownUntil - nowC) / 1000) };
         } else {
           const article = extractHtmlString(await fetchTarget(url), url);
+          const usage = getUsage();
           if (!article.text || article.text.length < 200) {
             result = { thin_fetch: true, originalTitle: article.originalTitle, description: article.description };
-          } else if (previewBusy || Date.now() - lastPreviewAt < PREVIEW_MIN_INTERVAL) {
+          } else if (CFG.dailyCap > 0 && usage.count >= CFG.dailyCap) {
+            result = { capped: true, used: usage.count, cap: CFG.dailyCap, originalTitle: article.originalTitle };
+          } else if (previewBusy || Date.now() - lastPreviewAt < CFG.minIntervalMs) {
             result = { throttled: true, originalTitle: article.originalTitle };
           } else {
             previewBusy = true; lastPreviewAt = Date.now();
             try {
+              if (CFG.key || CFG.provider === "ollama") bumpUsage();
               result = parseResult(await callProvider(buildPrompt(article, { language: CFG.language })));
               result.originalTitle = article.originalTitle;
             } catch (e) {
@@ -385,9 +416,11 @@ pre { white-space:pre-wrap; color:#c9d1d9; }
           }
         }
         // Only cache real answers - not transient throttle/cooldown markers.
-        if (!result.throttled && !result.rate_limited) previewCache.set(cacheKey, { at: Date.now(), result });
+        if (!result.throttled && !result.rate_limited && !result.capped) previewCache.set(cacheKey, { at: Date.now(), result });
       }
       if (tipAnchor !== a) return;
+      if (result.capped)
+        return void (tip().innerHTML = `<b style="color:#ffb224">🪝🚫 debait</b> \u00b7 daily preview limit reached (${result.used}/${result.cap}). Raise it via the menu.`);
       if (result.rate_limited)
         return void (tip().innerHTML = `<b style="color:#ffb224">🪝🚫 debait</b> \u00b7 rate limited by provider. Cooling down ~${result.retryIn}s (hover again later).`);
       if (result.throttled)
@@ -418,7 +451,7 @@ pre { white-space:pre-wrap; color:#c9d1d9; }
     tipAnchor = a;
     clearTimeout(tipTimer);
     const { clientX: x, clientY: y } = e;
-    tipTimer = setTimeout(() => previewLink(a, x, y), 500);
+    tipTimer = setTimeout(() => previewLink(a, x, y), CFG.dwellMs);
   });
   document.addEventListener("mouseout", (e) => {
     if (e.target.closest?.("a[href]") === tipAnchor) { clearTimeout(tipTimer); tipAnchor = null; hideTip(); }
