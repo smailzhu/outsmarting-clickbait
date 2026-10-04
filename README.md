@@ -161,12 +161,15 @@ in Readability + a headless browser for JS-rendered pages.
 
 ## Privacy & keys
 
+Full policy: [PRIVACY.md](PRIVACY.md). Chrome Web Store listing material: [store/STORE_LISTING.md](store/STORE_LISTING.md).
+
 - **Your API key stays yours.** The CLI reads it from an env var; the extension
   stores it in `chrome.storage.sync` (synced to your browser profile, not to us);
   the userscript stores it via your userscript manager. It is sent only to the
   provider endpoint you configure — there is no debait server.
-- **What's sent to the provider:** the extracted article text + title of the page
-  you debait (or Alt+hover-preview), so the model can summarize it. Nothing else.
+- **What's sent to the provider:** the page's URL, title, meta description, and
+  extracted text (capped at ~12,000 characters) of the page you debait (or
+  Alt+hover-preview), so the model can summarize it. Nothing else.
 - **Extension host access:** the extension requests broad host permissions
   (`https://*/*`, `http://*/*`) so the background worker can fetch the *target* of
   a hovered link for preview. It only fetches a page when you Alt+hover or run

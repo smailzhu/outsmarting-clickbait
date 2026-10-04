@@ -3,7 +3,7 @@
   "name": "debait — outsmart clickbait",
   "version": "0.1.0",
   "description": "Reads the current article and shows an honest title, summary, and clickbait score. Inspired by wiwi.blog/blog/outsmarting-clickbait.",
-  "permissions": ["storage", "activeTab", "scripting", "contextMenus"],
+  "permissions": ["storage", "activeTab", "contextMenus"],
   "host_permissions": [
     "https://api.openai.com/*",
     "https://api.anthropic.com/*",
