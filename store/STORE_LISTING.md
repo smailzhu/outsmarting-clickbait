@@ -91,10 +91,10 @@ https://github.com/smailzhu/outsmarting-clickbait/blob/master/PRIVACY.md
 - Support: https://github.com/smailzhu/outsmarting-clickbait/issues
 
 ## Assets checklist
-- [x] Store icon 128×128 — `extension/icons/icon128.png`
+- [x] Store icon 128×128 — `store/store-icon-128.png` (padded, transparent margin)
 - [x] Small promo tile 440×280 — `store/promo-tile-440x280.png`
 - [x] Marquee promo 1400×560 — `store/promo-marquee-1400x560.png`
-- [ ] At least one screenshot 1280×800 (or 640×400) — **capture from a real
+- [ ] At least one screenshot 1280×800 (or 640×400; PNG/JPEG, no alpha) — **capture from a real
       browser**: toolbar popup, a result panel on an article, and an Alt+hover
       tooltip. (`store/screenshot-mockup-1280x800.png` is a design mockup — replace
       it with a real capture before publishing.)
