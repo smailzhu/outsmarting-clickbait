@@ -1,6 +1,6 @@
 # Privacy Policy — debait
 
-_Last updated: 2025_
+_Last updated: 2026_
 
 **debait** ("the extension") is an open-source tool that summarizes web articles
 and rates how clickbait-y they are. This policy explains what it does and does
