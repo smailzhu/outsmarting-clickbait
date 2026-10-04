@@ -337,24 +337,37 @@ pre { white-space:pre-wrap; color:#c9d1d9; }
   }
   let tipTimer = null, tipAnchor = null;
 
+  // Tooltip in its own Shadow DOM (like the panel) so host-page CSS can't bleed
+  // in and make it unreadable.
+  const TIP_CSS = `
+:host { all: initial; }
+.tipwrap { box-sizing:border-box; max-width:320px; background:#0f1115; color:#f3f4f6;
+  font:12px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,system-ui,sans-serif;
+  text-align:left; letter-spacing:normal; word-break:break-word;
+  border:1px solid #30363d; border-radius:10px; box-shadow:0 6px 24px rgba(0,0,0,.5); padding:10px; }
+.tipwrap * { box-sizing:border-box; margin:0; }
+`;
   function tip() {
-    let el = document.getElementById(TIP_ID);
-    if (el) return el;
-    el = document.createElement("div");
-    el.id = TIP_ID;
-    el.style.cssText = [
-      "position:fixed", "z-index:2147483647", "max-width:320px", "background:#0f1115",
-      "color:#e6e6e6", "font:12px/1.45 system-ui,sans-serif", "border:1px solid #2a2f3a",
-      "border-radius:10px", "box-shadow:0 6px 24px rgba(0,0,0,.5)", "padding:10px", "pointer-events:none",
-    ].join(";");
-    document.body.appendChild(el);
-    return el;
+    let host = document.getElementById(TIP_ID);
+    if (host && host.__content) return host.__content;
+    host = document.createElement("div");
+    host.id = TIP_ID;
+    host.style.cssText = "all:initial; position:fixed; z-index:2147483647; pointer-events:none;";
+    const root = host.attachShadow({ mode: "open" });
+    const style = document.createElement("style");
+    style.textContent = TIP_CSS;
+    const content = document.createElement("div");
+    content.className = "tipwrap";
+    root.append(style, content);
+    document.body.appendChild(host);
+    host.__content = content;
+    return content;
   }
   function hideTip() { tipAnchor = null; clearTimeout(tipTimer); document.getElementById(TIP_ID)?.remove(); }
   function placeTip(x, y) {
-    const el = tip();
-    el.style.left = Math.min(x + 14, window.innerWidth - 340) + "px";
-    el.style.top = Math.min(y + 14, window.innerHeight - 160) + "px";
+    const host = tip().getRootNode().host; // the element we control
+    host.style.left = Math.min(x + 14, window.innerWidth - 342) + "px";
+    host.style.top = Math.min(y + 14, window.innerHeight - 160) + "px";
   }
 
   function extractHtmlString(html, url) {
