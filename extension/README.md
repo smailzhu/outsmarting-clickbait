@@ -32,6 +32,13 @@ re-hovering is instant and each link costs at most one LLM call.
   call per link (slow + costly + rate-limited). Hover = bounded, on-demand cost.
   For true whole-feed annotation you'd want a caching backend proxy (see repo NOTES).
 
+**Cost & rate limiting.** Each *new* link you dwell on = 1 target fetch + 1 LLM
+call (cached 30 min; thin/paywalled pages make 0 LLM calls). To avoid blowing
+provider quotas (esp. free tiers that allow only ~10-15 req/min), previews are
+throttled: one at a time, min 1.5s apart, and after a `429` the extension backs
+off (respecting the provider's retry delay) and shows a cooldown message instead
+of hammering the API.
+
 ## How it works
 
 ```

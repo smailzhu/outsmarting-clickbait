@@ -63,6 +63,10 @@ async function previewLink(a, x, y) {
   if (tipAnchor !== a) return; // user moved on
   if (!resp?.ok) return void (tip().innerHTML = `<b style="color:#e5484d">debait</b> · ${esc(resp?.error || "error")}`);
   const r = resp.result;
+  if (r.rate_limited)
+    return void (tip().innerHTML = `<b style="color:#ffb224">🪝🚫 debait</b> · rate limited by provider. Cooling down ~${r.retryIn}s (hover again later).`);
+  if (r.throttled)
+    return void (tip().innerHTML = `<b style="color:#ffb224">🪝🚫 debait</b> · slow down — hover one link at a time. Try again in a moment.`);
   if (r.thin_fetch)
     return void (tip().innerHTML = `<b style="color:#ffb224">🪝🚫 debait</b> · couldn't read body (JS-rendered/paywalled).<br>${esc(r.description || r.originalTitle || "")}`);
   const n = clampScore(r.clickbait_score);
@@ -81,7 +85,7 @@ document.addEventListener("mouseover", (e) => {
   tipAnchor = a;
   clearTimeout(tipTimer);
   const { clientX: x, clientY: y } = e;
-  tipTimer = setTimeout(() => previewLink(a, x, y), 350);
+  tipTimer = setTimeout(() => previewLink(a, x, y), 500);
 });
 document.addEventListener("mouseout", (e) => {
   if (e.target.closest?.("a[href]") === tipAnchor) { clearTimeout(tipTimer); tipAnchor = null; hideTip(); }

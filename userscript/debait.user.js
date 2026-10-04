@@ -300,6 +300,14 @@ pre { white-space:pre-wrap; color:#c9d1d9; }
   const TIP_ID = "debait-tooltip";
   const previewCache = new Map();
   const PREVIEW_TTL = 30 * 60 * 1000;
+  // Rate limiting so bursty hovering can't exceed provider quota (free tiers).
+  const PREVIEW_MIN_INTERVAL = 1500;
+  let previewBusy = false, lastPreviewAt = 0, cooldownUntil = 0;
+  function backoffMsFrom(message) {
+    const m = /ret[-_ ]?(?:delay|after)"?\s*[:=]\s*"?(\d+)\s*s?/i.exec(String(message || ""));
+    const secs = m ? Number(m[1]) : 0;
+    return Math.min(Math.max(secs * 1000 || 30000, 5000), 5 * 60 * 1000);
+  }
   let tipTimer = null, tipAnchor = null;
 
   function tip() {
@@ -356,16 +364,34 @@ pre { white-space:pre-wrap; color:#c9d1d9; }
       if (hit && Date.now() - hit.at < PREVIEW_TTL) {
         result = hit.result;
       } else {
-        const article = extractHtmlString(await fetchTarget(url), url);
-        if (!article.text || article.text.length < 200) {
-          result = { thin_fetch: true, originalTitle: article.originalTitle, description: article.description };
+        const nowC = Date.now();
+        if (nowC < cooldownUntil) {
+          result = { rate_limited: true, retryIn: Math.ceil((cooldownUntil - nowC) / 1000) };
         } else {
-          result = parseResult(await callProvider(buildPrompt(article, { language: CFG.language })));
-          result.originalTitle = article.originalTitle;
+          const article = extractHtmlString(await fetchTarget(url), url);
+          if (!article.text || article.text.length < 200) {
+            result = { thin_fetch: true, originalTitle: article.originalTitle, description: article.description };
+          } else if (previewBusy || Date.now() - lastPreviewAt < PREVIEW_MIN_INTERVAL) {
+            result = { throttled: true, originalTitle: article.originalTitle };
+          } else {
+            previewBusy = true; lastPreviewAt = Date.now();
+            try {
+              result = parseResult(await callProvider(buildPrompt(article, { language: CFG.language })));
+              result.originalTitle = article.originalTitle;
+            } catch (e) {
+              if (/\b429\b|quota|rate|RESOURCE_EXHAUSTED/i.test(String(e && e.message))) cooldownUntil = Date.now() + backoffMsFrom(e.message);
+              throw e;
+            } finally { previewBusy = false; }
+          }
         }
-        previewCache.set(cacheKey, { at: Date.now(), result });
+        // Only cache real answers - not transient throttle/cooldown markers.
+        if (!result.throttled && !result.rate_limited) previewCache.set(cacheKey, { at: Date.now(), result });
       }
       if (tipAnchor !== a) return;
+      if (result.rate_limited)
+        return void (tip().innerHTML = `<b style="color:#ffb224">🪝🚫 debait</b> \u00b7 rate limited by provider. Cooling down ~${result.retryIn}s (hover again later).`);
+      if (result.throttled)
+        return void (tip().innerHTML = `<b style="color:#ffb224">🪝🚫 debait</b> \u00b7 slow down \u2014 hover one link at a time. Try again in a moment.`);
       if (result.thin_fetch)
         return void (tip().innerHTML = `<b style="color:#ffb224">🪝🚫 debait</b> \u00b7 couldn't read body (JS-rendered/paywalled).<br>${esc(result.description || result.originalTitle || "")}`);
       const n = clampScore(result.clickbait_score);
@@ -392,7 +418,7 @@ pre { white-space:pre-wrap; color:#c9d1d9; }
     tipAnchor = a;
     clearTimeout(tipTimer);
     const { clientX: x, clientY: y } = e;
-    tipTimer = setTimeout(() => previewLink(a, x, y), 350);
+    tipTimer = setTimeout(() => previewLink(a, x, y), 500);
   });
   document.addEventListener("mouseout", (e) => {
     if (e.target.closest?.("a[href]") === tipAnchor) { clearTimeout(tipTimer); tipAnchor = null; hideTip(); }
