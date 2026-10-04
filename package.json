@@ -10,7 +10,8 @@
     "start": "node src/cli.js",
     "sync": "node scripts/sync.mjs",
     "test": "node --test",
-    "pack": "node scripts/pack.mjs"
+    "pack": "node scripts/pack.mjs",
+    "release": "node scripts/release.mjs"
   },
   "engines": {
     "node": ">=20"

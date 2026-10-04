@@ -25,7 +25,18 @@ const spec = args.find((a) => a !== "--dry") || "patch";
 
 // Chrome manifest versions are 1–4 dot-separated integers (0–65535). No semver
 // pre-release suffixes allowed.
-const VERSION_RE = /^\d{1,5}(\.\d{1,5}){0,3}$/;
+function validVersion(v) {
+  if (typeof v !== "string" || !/^\d+(\.\d+){0,3}$/.test(v)) return false;
+  const parts = v.split(".");
+  let anyNonZero = false;
+  for (const p of parts) {
+    if (p.length > 1 && p[0] === "0") return false; // leading zero
+    const n = Number(p);
+    if (!Number.isInteger(n) || n < 0 || n > 65535) return false;
+    if (n > 0) anyNonZero = true;
+  }
+  return anyNonZero;
+}
 
 function readJson(p) { return JSON.parse(readFileSync(p, "utf8")); }
 function writeJson(p, obj) { writeFileSync(p, JSON.stringify(obj, null, 2) + "\n"); }
@@ -46,12 +57,12 @@ function bump(v, kind) {
 
 let next;
 if (["patch", "minor", "major"].includes(spec)) next = bump(current, spec);
-else if (VERSION_RE.test(spec)) next = spec;
+else if (validVersion(spec)) next = spec;
 else {
   console.error(`Invalid version "${spec}". Use patch|minor|major or X.Y.Z (dot-separated integers).`);
   process.exit(1);
 }
-if (!VERSION_RE.test(next)) { console.error(`Computed invalid version "${next}".`); process.exit(1); }
+if (!validVersion(next)) { console.error(`Computed invalid version "${next}".`); process.exit(1); }
 if (pkg.version !== manifest.version) {
   console.warn(`! package.json (${pkg.version}) and manifest (${manifest.version}) differ; both will be set to ${next}.`);
 }
@@ -86,6 +97,7 @@ Next steps (review, then run):
   git add package.json extension/manifest.json extension/
   git commit -m "release: v${next}"
   git tag v${next}
-  git push origin HEAD --tags
+  git push origin HEAD
+  git push origin v${next}
   gh release create v${next} ${zip} -t "debait v${next}" -n "debait v${next}"
 `);
