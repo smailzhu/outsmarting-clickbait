@@ -84,7 +84,7 @@
       brand: "debait", labelOriginal: "\u539f\u59cb\u6a19\u984c", labelHonest: "\u8aa0\u5be6\u6a19\u984c",
       labelSummary: "\u6458\u8981", labelKeyPoints: "\u91cd\u9ede", labelBaitSignals: "\u9a19\u9ede\u95b1\u624b\u6cd5",
       metaClickbait: "\u9a19\u9ede\u95b1", metaWorth: "\u503c\u5f97\u9ede\u64ca\uff1a", yes: "\u662f", no: "\u5426",
-      verdict_substantial: "\u6709\u6599", verdict_thin: "\u8ca7\u4e4f", verdict_empty: "\u7a7a\u6d1e",
+      verdict_substantial: "\u6709\u6599", verdict_thin: "\u55ae\u8584", verdict_empty: "\u7a7a\u6d1e",
       panelReading: "\u6b63\u5728\u8b80\u53d6\u9801\u9762\u2026", errGeneric: "debait \u932f\u8aa4",
       errParse: "\u7121\u6cd5\u89e3\u6790\u6a21\u578b\u8f38\u51fa\u3002", closeTitle: "\u95dc\u9589",
       tipReading: "\u8b80\u53d6\u4e2d\u2026", tipThin: "\u7121\u6cd5\u8b80\u53d6\u5167\u6587\uff08JS \u52d5\u614b\u7522\u751f\u6216\u4ed8\u8cbb\u7246\uff09\u3002",
