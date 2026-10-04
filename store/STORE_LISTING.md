@@ -49,23 +49,23 @@ clickbait-y it is, either for the current page or for a link the user hovers.
 
 ## Permission justifications
 
-- **activeTab** — to read the text of the page you explicitly ask to debait and
-  render the result overlay on it.
-- **content script (host access)** — a content script runs on pages so it can
-  detect Alt+hover and draw the overlay/tooltip; it acts only when you invoke it.
-- **storage** — to save your provider, API key, language, and rate-limit/daily-cap
-  settings, and to track the daily preview count.
+The extension requests only what the single purpose needs:
+
+- **storage** — to save your provider, API key, output language, and
+  rate-limit/daily-cap settings, and to track the daily preview count.
 - **contextMenus** — to add the “debait this page” right-click item.
-- **host permissions `https://*/*`, `http://*/*`** — the hover-preview feature
-  fetches the target page of the link you hover so it can be summarized before
-  you click. The extension processes only pages you explicitly debait or hover;
-  the selected page's URL and content are sent to your configured provider. It
-  does not otherwise read or transmit your browsing.
-- **host permissions for provider API domains** (api.openai.com, api.anthropic.com,
-  generativelanguage.googleapis.com, api.groq.com, openrouter.ai,
-  api.deepseek.com, api.x.ai, api.mistral.ai, api.together.xyz,
-  integrate.api.nvidia.com, localhost) — to send the article text to the AI
-  provider you configured and receive the summary.
+- **host permissions `https://*/*` and `http://*/*`** — two things need
+  all-sites access: (1) a content script runs on the page to detect Alt+hover and
+  draw the result overlay/tooltip, and (2) when you hover a link, the background
+  worker fetches *that link's target page* (which can be on any site) so it can be
+  summarized before you click. The same all-sites access also lets the extension
+  send the article text to whichever AI provider you configure (e.g.
+  api.openai.com) and reach a local Ollama at http://localhost. The extension only
+  acts on pages you explicitly debait or hover; it does not otherwise read or
+  transmit your browsing.
+
+(No `activeTab`, `tabs`, or `scripting` permission is requested — the content
+script is statically declared and messaging uses the tab id only.)
 
 ## Data usage disclosures (Chrome “Privacy practices” tab)
 

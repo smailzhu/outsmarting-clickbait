@@ -58,8 +58,10 @@ popup/options  — trigger + provider/key settings (chrome.storage.sync)
 
 Synced files come from `../shared/*` via `npm run sync` — edit the shared copy, not these.
 
-`host_permissions` covers all built-in provider API hosts. If you point a provider
-at a custom base URL, Chrome may prompt for that host (covered by `optional_host_permissions`).
+`host_permissions` is `https://*/*` + `http://*/*` — required so the content
+script can run on any page (Alt+hover detection + overlay) and the background
+worker can fetch the target of a hovered link and reach any provider API /
+local Ollama. Only `storage` and `contextMenus` API permissions are requested.
 
 Content scripts can't call arbitrary APIs (page CORS), so the actual LLM request
 runs in the background service worker, which has `host_permissions`.
