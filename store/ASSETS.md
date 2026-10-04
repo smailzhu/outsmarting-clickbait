@@ -7,6 +7,7 @@ All files live in `store/` unless noted. Specs chosen to pass Chrome Web Store
 |-------|---------------|--------|------|--------|
 | **Store icon** | 128×128 | PNG, 32-bit, transparent padding; artwork ~96×96 centered (~16px safe margin); no self-added shadow | `store/store-icon-128.png` | ✅ ready |
 | **Screenshot** (≥1, ≤5) | 1280×800 (preferred) or 640×400 | PNG/JPEG, 24-bit, **no alpha** | `store/screenshot-mockup-1280x800.png` | ⚠️ **mockup** — replace with a real browser capture |
+| Screenshot — 繁體中文 | 1280×800 | PNG, no alpha | `store/screenshot-zh-TW-1280x800.png` | ⚠️ **mockup** (zh_TW UI, ETtoday-style example) — replace with a real capture |
 | Small promo tile (required) | 440×280 | PNG/JPEG, no alpha | `store/promo-tile-440x280.png` | ✅ ready |
 | Marquee promo tile (optional, for featuring) | 1400×560 | PNG/JPEG, no alpha | `store/promo-marquee-1400x560.png` | ✅ ready |
 | Toolbar/extension icons | 16/32/48/128 | PNG | `extension/icons/icon*.png` | ✅ in manifest |
