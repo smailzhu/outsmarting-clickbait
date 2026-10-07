@@ -7,6 +7,8 @@
 import { resolveProvider, callProvider, PROVIDERS } from "./providers.js";
 import { buildPrompt, parseResult } from "./prompt.esm.js";
 import { extractArticle } from "./extract.js";
+import "./messages.gen.js";
+import "./i18n-runtime.js";
 
 const DEFAULTS = {
   provider: "openai", base: "", model: "", key: "", language: "",
@@ -22,10 +24,11 @@ async function settings() {
 }
 
 async function complete(prompt) {
+  await globalThis.DebaitI18n.init();
   const s = await settings();
-  if (!PROVIDERS[s.provider]) throw new Error(chrome.i18n.getMessage("errUnknownProvider", [s.provider]));
+  if (!PROVIDERS[s.provider]) throw new Error(globalThis.DebaitI18n.t("errUnknownProvider", [s.provider]));
   const cfg = resolveProvider({ provider: s.provider, base: s.base, model: s.model, key: s.key });
-  if (!cfg.key && s.provider !== "ollama") throw new Error(chrome.i18n.getMessage("errNoKey", [s.provider]));
+  if (!cfg.key && s.provider !== "ollama") throw new Error(globalThis.DebaitI18n.t("errNoKey", [s.provider]));
   return callProvider(cfg, prompt, { browser: true });
 }
 
@@ -151,8 +154,9 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   }
 });
 
-chrome.runtime.onInstalled.addListener((details) => {
-  chrome.contextMenus.create({ id: "debait-run", title: chrome.i18n.getMessage("ctxDebaitPage"), contexts: ["page", "selection"] });
+chrome.runtime.onInstalled.addListener(async (details) => {
+  await globalThis.DebaitI18n.init();
+  chrome.contextMenus.create({ id: "debait-run", title: globalThis.DebaitI18n.t("ctxDebaitPage"), contexts: ["page", "selection"] });
   // First install only: open Options so the user can set a provider + API key
   // (the extension can't do anything until a key is configured). Not on updates.
   if (details.reason === "install") {
@@ -164,5 +168,13 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId === "debait-run" && tab?.id) {
     // Tab may lack a content script (chrome:// pages, etc.) - ignore failure.
     chrome.tabs.sendMessage(tab.id, { type: "debait:run" }).catch(() => {});
+  }
+});
+
+// Keep the context-menu label in sync with the chosen interface language.
+chrome.storage.onChanged.addListener(async (changes, area) => {
+  if (area === "sync" && changes.uiLang) {
+    await globalThis.DebaitI18n.init();
+    try { await chrome.contextMenus.update("debait-run", { title: globalThis.DebaitI18n.t("ctxDebaitPage") }); } catch {}
   }
 });

@@ -26,6 +26,7 @@ const toDwell = (v) => { const n = Number(v); return Number.isFinite(n) && n >= 
 chrome.storage.sync.get({ previewDwellMs: 500 }).then((v) => { dwellMs = toDwell(v.previewDwellMs); });
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area === "sync" && changes.previewDwellMs) dwellMs = toDwell(changes.previewDwellMs.newValue);
+  if (area === "sync" && changes.uiLang) globalThis.DebaitI18n.init();
 });
 let tipAnchor = null;
 
@@ -120,8 +121,9 @@ const scoreColor = (n) => (n >= 60 ? "#ff6b6e" : n >= 30 ? "#ffc14d" : "#4ac97e"
 // can't inject markup via the style attribute or text.
 const clampScore = (v) => { let n; try { n = Math.round(Number(v)); } catch { return 0; } return Number.isFinite(n) ? Math.max(0, Math.min(100, n)) : 0; };
 // i18n: resolve a localized string (falls back to the key), and the verdict enum.
-const t = (k, subs) => chrome.i18n.getMessage(k, subs) || k;
-const verdict = (v) => chrome.i18n.getMessage(`verdict_${v}`) || v || "";
+const t = (k, subs) => globalThis.DebaitI18n.t(k, subs);
+const verdict = (v) => globalThis.DebaitI18n.verdict(v);
+globalThis.DebaitI18n.init(); // resolve interface language (async; browser locale until then)
 
 // Styles live in a Shadow DOM so the host page's CSS cannot bleed into the
 // panel (the usual cause of unreadable overlays).

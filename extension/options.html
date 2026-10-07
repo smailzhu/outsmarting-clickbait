@@ -14,6 +14,12 @@
 <body>
   <h1>🪝🚫 <span data-i18n="optTitle">debait settings</span></h1>
   <p class="hint" data-i18n="optStoredHint">Your API key is stored in chrome.storage.sync and only sent to the selected provider.</p>
+  <label for="uiLang"><span data-i18n="optUiLanguage">Interface language</span> <span class="hint" data-i18n="optUiLanguageHint">(the extension's buttons &amp; labels; Auto = follow your browser)</span></label>
+  <select id="uiLang" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:6px">
+    <option value="" data-i18n="interfaceAuto">Auto (browser)</option>
+    <option value="en">English</option>
+    <option value="zh_TW">繁體中文</option>
+  </select>
   <label for="provider" data-i18n="optProvider">Provider</label>
   <select id="provider" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:6px">
     <option value="openai">OpenAI</option>
@@ -53,6 +59,8 @@
     <button id="save" data-i18n="optSave">Save</button>
     <span id="status"></span>
   </div>
+  <script src="messages.gen.js"></script>
+  <script src="i18n-runtime.js"></script>
   <script src="options.js"></script>
 </body>
 </html>

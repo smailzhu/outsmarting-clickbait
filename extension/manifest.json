@@ -38,6 +38,8 @@
         "<all_urls>"
       ],
       "js": [
+        "messages.gen.js",
+        "i18n-runtime.js",
         "prompt.js",
         "content.js"
       ],

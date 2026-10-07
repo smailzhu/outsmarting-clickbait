@@ -3,7 +3,7 @@
 // for the background worker.
 const DEFAULTS = {
   provider: "openai", base: "", model: "", key: "", keys: {}, language: "",
-  previewDwellMs: 500, previewMinIntervalMs: 1500, dailyCap: 200, customInstructions: "",
+  previewDwellMs: 500, previewMinIntervalMs: 1500, dailyCap: 200, customInstructions: "", uiLang: "",
 };
 const intOr = (v, d) => { if (v === "" || v == null) return d; const n = Math.round(Number(v)); return Number.isFinite(n) && n >= 0 ? n : d; };
 
@@ -14,23 +14,19 @@ async function renderUsage(cap) {
   $("usage").textContent = `${t("usagePrefix")} ${used}` + (cap > 0 ? ` / ${cap}` : ` ${t("usageNoCap")}`);
 }
 const $ = (id) => document.getElementById(id);
-
-// Apply localized UI strings (data-i18n = textContent).
-for (const el of document.querySelectorAll("[data-i18n]")) {
-  const m = chrome.i18n.getMessage(el.dataset.i18n);
-  if (m) el.textContent = m;
+const t = (k) => globalThis.DebaitI18n.t(k);
+function applyI18n() {
+  globalThis.DebaitI18n.apply();
+  document.documentElement.lang = globalThis.DebaitI18n.lang === "zh_TW" ? "zh-TW" : "en";
 }
-for (const el of document.querySelectorAll("[data-i18n-ph]")) {
-  const m = chrome.i18n.getMessage(el.dataset.i18nPh);
-  if (m) el.placeholder = m;
-}
-document.documentElement.lang = (chrome.i18n.getUILanguage && chrome.i18n.getUILanguage()) || "en";
-const t = (k) => chrome.i18n.getMessage(k) || k;
 
 let state = { ...DEFAULTS };
 
 async function load() {
   state = { ...DEFAULTS, ...(await chrome.storage.sync.get(DEFAULTS)) };
+  await globalThis.DebaitI18n.init();
+  applyI18n();
+  $("uiLang").value = state.uiLang || "";
   $("provider").value = state.provider;
   $("base").value = state.base || "";
   $("model").value = state.model || "";
@@ -62,10 +58,13 @@ $("save").addEventListener("click", async () => {
     model: $("model").value.trim(),
     language: $("language").value.trim(),
     customInstructions: $("customInstructions").value.trim(),
+    uiLang: $("uiLang").value,
     previewDwellMs: intOr($("previewDwellMs").value, 500),
     previewMinIntervalMs: intOr($("previewMinIntervalMs").value, 1500),
     dailyCap: intOr($("dailyCap").value, 200),
   });
+  await globalThis.DebaitI18n.init();
+  applyI18n();
   await renderUsage(intOr($("dailyCap").value, 200));
   $("status").textContent = t("optSaved");
   setTimeout(() => ($("status").textContent = ""), 1500);

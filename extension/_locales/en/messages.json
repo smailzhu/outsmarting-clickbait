@@ -183,5 +183,14 @@
   },
   "optInstructionsHint": {
     "message": "(optional — appended to the prompt; the JSON output shape is kept)"
+  },
+  "optUiLanguage": {
+    "message": "Interface language"
+  },
+  "optUiLanguageHint": {
+    "message": "(the extension's buttons & labels; Auto = follow your browser)"
+  },
+  "interfaceAuto": {
+    "message": "Auto (browser)"
   }
 }

@@ -183,5 +183,14 @@
   },
   "optInstructionsHint": {
     "message": "（選填 — 附加到提示詞；仍會維持 JSON 輸出格式）"
+  },
+  "optUiLanguage": {
+    "message": "介面語言"
+  },
+  "optUiLanguageHint": {
+    "message": "（擴充功能的按鈕與標籤；自動＝跟隨瀏覽器）"
+  },
+  "interfaceAuto": {
+    "message": "自動（瀏覽器）"
   }
 }
