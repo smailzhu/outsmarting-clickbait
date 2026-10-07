@@ -151,8 +151,13 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   }
 });
 
-chrome.runtime.onInstalled.addListener(() => {
+chrome.runtime.onInstalled.addListener((details) => {
   chrome.contextMenus.create({ id: "debait-run", title: chrome.i18n.getMessage("ctxDebaitPage"), contexts: ["page", "selection"] });
+  // First install only: open Options so the user can set a provider + API key
+  // (the extension can't do anything until a key is configured). Not on updates.
+  if (details.reason === "install") {
+    chrome.runtime.openOptionsPage?.();
+  }
 });
 
 chrome.contextMenus.onClicked.addListener((info, tab) => {
