@@ -192,5 +192,8 @@
   },
   "interfaceAuto": {
     "message": "Auto (browser)"
+  },
+  "optReport": {
+    "message": "Questions or problems? Email the author:"
   }
 }

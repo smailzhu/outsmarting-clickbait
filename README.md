@@ -215,6 +215,13 @@ Full policy: [PRIVACY.md](PRIVACY.md). Chrome Web Store listing material: [store
 npm test
 ```
 
+## Contact
+
+No GitHub account? Email the author at **cusp-preacher-blot [at] duck [dot] com**
+(swap “[at]” → “@”, “[dot]” → “.”), or open an
+[issue](https://github.com/smailzhu/outsmarting-clickbait/issues). In the extension,
+see **Options** for a one-click contact link.
+
 ## License
 
 MIT

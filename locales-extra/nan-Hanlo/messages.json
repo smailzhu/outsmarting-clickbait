@@ -192,5 +192,8 @@
   },
   "interfaceAuto": {
     "message": "自動（瀏覽器）"
+  },
+  "optReport": {
+    "message": "有問題無？寄批予作者："
   }
 }

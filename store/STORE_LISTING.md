@@ -88,7 +88,10 @@ https://github.com/smailzhu/outsmarting-clickbait/blob/master/PRIVACY.md
 
 ## Homepage / support
 - Homepage: https://github.com/smailzhu/outsmarting-clickbait
-- Support: https://github.com/smailzhu/outsmarting-clickbait/issues
+- Support email: cusp-preacher-blot [at] duck [dot] com
+  (put the PLAIN address in Partner Center's "Support email" field; keep it
+  obfuscated as above in any public-facing description text)
+- Support (GitHub, optional): https://github.com/smailzhu/outsmarting-clickbait/issues
 
 ## Assets checklist
 - [x] Store icon 128×128 — `store/store-icon-128.png` (padded, transparent margin)

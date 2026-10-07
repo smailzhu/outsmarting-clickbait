@@ -59,5 +59,6 @@ privacy policy and terms. Review the policy of whichever provider you enable.
 
 ## Contact
 
-Questions or concerns: open an issue at
+No GitHub account needed — email the author at **cusp-preacher-blot [at] duck [dot] com**
+(replace “[at]” with “@” and “[dot]” with “.”). You can also open an issue at
 <https://github.com/smailzhu/outsmarting-clickbait/issues>.

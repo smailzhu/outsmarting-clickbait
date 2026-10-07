@@ -70,4 +70,15 @@ $("save").addEventListener("click", async () => {
   setTimeout(() => ($("status").textContent = ""), 1500);
 });
 
+// Contact link assembled at runtime so the full plaintext address never appears
+// in the page source (deters email-harvesting bots that don't execute JS).
+(() => {
+  const el = document.getElementById("reportLink");
+  if (!el) return;
+  const at = String.fromCharCode(64), dot = String.fromCharCode(46);
+  const addr = ["cusp", "preacher", "blot"].join("-") + at + "duck" + dot + "com";
+  el.textContent = addr;
+  el.href = "mailto:" + addr + "?subject=" + encodeURIComponent("debait issue report");
+})();
+
 load();
