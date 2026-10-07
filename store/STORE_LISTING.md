@@ -30,9 +30,9 @@ Two ways to use it:
 • Hold Alt and hover any link to preview its target BEFORE you click — honest
   title, score, and “worth clicking?” in a tooltip.
 
-Bring your own API key. debait works with your choice of provider — OpenAI,
-Anthropic (Claude), Google Gemini, Groq, OpenRouter, DeepSeek, xAI (Grok),
-Mistral, Together, NVIDIA, or a local Ollama. Output can be in any language.
+Bring your own API key. debait works with the AI provider of your choice — a
+major hosted service or a local model — so you stay in control of cost and model
+quality. Output can be in any language.
 
 Built for cost control: the hover-preview feature is rate-limited, backs off
 automatically on provider rate limits (HTTP 429), and respects a configurable
@@ -136,7 +136,7 @@ debait — 識破騙點閱
 • 用你的語言閱讀：摘要可用任何語言輸出，而且介面支援繁體中文與英文。
 
 自備 AI
-debait 使用你自己選擇的 AI 供應商與 API 金鑰——OpenAI、Anthropic（Claude）、Google Gemini、Groq、OpenRouter、DeepSeek、xAI（Grok）、Mistral、Together、NVIDIA，或本機 Ollama。費用與模型品質由你完全掌控。
+debait 使用你自己選擇的 AI 供應商與 API 金鑰，可選擇主流雲端服務或本機模型，費用與模型品質由你完全掌控。
 
 隱私至上
 沒有 debait 伺服器。頁面文字只會傳送到你設定的供應商；API 金鑰與設定儲存在你的瀏覽器（透過 chrome.storage.sync，啟用 Chrome 同步時可能同步到你登入的其他瀏覽器），絕不會傳給開發者。擴充功能只要求必要的權限，而且只在你主動 debait 或懸停的頁面上運作。懸停預覽會自動限流並遵守你設定的每日上限，避免不小心把配額用光。（手動的「分析這個頁面」每次都會呼叫一次，不受每日上限限制。）
