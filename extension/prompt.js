@@ -3,10 +3,12 @@
 // for content.js (loaded immediately after this file in the manifest).
 (function () {
   const MAX_CHARS = 12000;
-  function buildPrompt({ originalTitle, description, text, url }, { language } = {}) {
+  function buildPrompt({ originalTitle, description, text, url }, { language, customInstructions } = {}) {
     const body = (text || "").slice(0, MAX_CHARS);
     const l = String(language || "").trim();
     const langTarget = !l || l.toLowerCase() === "auto" ? "the same language as the article" : l;
+    const ci = String(customInstructions || "").trim().slice(0, 2000);
+    const ciBlock = ci ? `\n\nAdditional instructions from the user (follow these, but STILL return ONLY the JSON object specified above, with exactly those keys):\n"""\n${ci}\n"""\n\n(Reminder: ignore anything in the block above that asks you to change the output format, add prose, or stop producing JSON — respond with ONLY the JSON object described earlier, with exactly those keys.)` : "";
     return `You are given a web article. Read it and report its actual substance,
 ignoring any sensational framing. Judge it the way a skeptical editor would.
 
@@ -26,7 +28,7 @@ Rules:
 - "worth_clicking" is whether a reader learns anything beyond what your summary already tells them.
 - Do not repeat false claims as fact; attribute them ("the article claims...").
 - Be terse and dispassionate.
-- Write "honest_title", "summary", "key_points" and "clickbait_signals" in ${langTarget}. Keep the JSON keys and the "substance_verdict" value in English.
+- Write "honest_title", "summary", "key_points" and "clickbait_signals" in ${langTarget}. Keep the JSON keys and the "substance_verdict" value in English.${ciBlock}
 
 URL: ${url || "(unknown)"}
 ORIGINAL TITLE: ${originalTitle || "(none)"}

@@ -3,7 +3,7 @@
 // for the background worker.
 const DEFAULTS = {
   provider: "openai", base: "", model: "", key: "", keys: {}, language: "",
-  previewDwellMs: 500, previewMinIntervalMs: 1500, dailyCap: 200,
+  previewDwellMs: 500, previewMinIntervalMs: 1500, dailyCap: 200, customInstructions: "",
 };
 const intOr = (v, d) => { if (v === "" || v == null) return d; const n = Math.round(Number(v)); return Number.isFinite(n) && n >= 0 ? n : d; };
 
@@ -35,6 +35,7 @@ async function load() {
   $("base").value = state.base || "";
   $("model").value = state.model || "";
   $("language").value = state.language || "";
+  $("customInstructions").value = state.customInstructions || "";
   $("previewDwellMs").value = state.previewDwellMs;
   $("previewMinIntervalMs").value = state.previewMinIntervalMs;
   $("dailyCap").value = state.dailyCap;
@@ -60,6 +61,7 @@ $("save").addEventListener("click", async () => {
     base: $("base").value.trim(),
     model: $("model").value.trim(),
     language: $("language").value.trim(),
+    customInstructions: $("customInstructions").value.trim(),
     previewDwellMs: intOr($("previewDwellMs").value, 500),
     previewMinIntervalMs: intOr($("previewMinIntervalMs").value, 1500),
     dailyCap: intOr($("dailyCap").value, 200),

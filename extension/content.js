@@ -197,8 +197,8 @@ async function run() {
   render(`<b style="color:#58a6ff">🪝🚫 ${t("brand")}</b><br><br>${esc(t("panelReading"))}`);
   try {
     const article = extractPage();
-    const { language } = await chrome.storage.sync.get({ language: "" });
-    const prompt = globalThis.DebaitPrompt.buildPrompt(article, { language });
+    const { language, customInstructions } = await chrome.storage.sync.get({ language: "", customInstructions: "" });
+    const prompt = globalThis.DebaitPrompt.buildPrompt(article, { language, customInstructions });
     const resp = await chrome.runtime.sendMessage({ type: "debait:complete", prompt });
     if (!resp?.ok) return render(`<b style="color:#e5484d">${esc(t("errGeneric"))}</b><br><br>${esc(resp?.error || t("errUnknown"))}`);
     renderResult(article, globalThis.DebaitPrompt.parseResult(resp.text));

@@ -177,5 +177,11 @@
   },
   "phBlankDefault": {
     "message": "leave blank for default"
+  },
+  "optInstructions": {
+    "message": "Custom instructions"
+  },
+  "optInstructionsHint": {
+    "message": "(optional — appended to the prompt; the JSON output shape is kept)"
   }
 }

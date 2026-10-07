@@ -13,6 +13,7 @@ const DEFAULTS = {
   // Preview rate controls (see Options). 0 = unlimited.
   previewMinIntervalMs: 1500,
   dailyCap: 200,
+  customInstructions: "",
 };
 
 async function settings() {
@@ -79,7 +80,7 @@ async function preview(url) {
   const s = await settings();
   // Cache per URL *and* settings: changing provider/model/language/base must
   // not return a stale result for the same link.
-  const cacheKey = [url, s.provider, s.model, s.base, s.language].join("\n");
+  const cacheKey = [url, s.provider, s.model, s.base, s.language, s.customInstructions].join("\n");
 
   const hit = CACHE.get(cacheKey);
   if (hit && Date.now() - hit.at < CACHE_TTL) return hit.result;
@@ -116,7 +117,7 @@ async function preview(url) {
     try {
       // Count only if we will actually call the provider (missing key fails before any network call).
       if (s.key || s.provider === "ollama") await bumpUsage();
-      const result = parseResult(await complete(buildPrompt(article, { language: s.language })));
+      const result = parseResult(await complete(buildPrompt(article, { language: s.language, customInstructions: s.customInstructions })));
       return { ...result, originalTitle: article.originalTitle, url };
     } catch (e) {
       if (/\b429\b|quota|rate|RESOURCE_EXHAUSTED/i.test(String(e && e.message))) {

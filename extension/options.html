@@ -36,6 +36,8 @@
   <input id="model" type="text" data-i18n-ph="phBlankDefault" placeholder="leave blank for default" />
   <label for="language"><span data-i18n="optLanguage">Output language</span> <span class="hint" data-i18n="optLanguageHint">(title &amp; summary; blank = auto, match the article)</span></label>
   <input id="language" type="text" placeholder="auto — or English, 繁體中文, 日本語, Español" />
+  <label for="customInstructions"><span data-i18n="optInstructions">Custom instructions</span> <span class="hint" data-i18n="optInstructionsHint">(optional — appended to the prompt; the JSON output shape is kept)</span></label>
+  <textarea id="customInstructions" rows="3" style="width:100%;padding:8px;box-sizing:border-box;border:1px solid #ccc;border-radius:6px;font:13px/1.4 system-ui,sans-serif" placeholder="e.g. Be harsher on sensational framing. Add a one-line TL;DR in the summary."></textarea>
 
   <h2 style="font-size:15px;margin:22px 0 4px" data-i18n="optLimitsTitle">Hover preview limits</h2>
   <p class="hint" data-i18n="optLimitsHint">Preview fetches + summarizes a link before you click. These caps stop bursty hovering from blowing your provider quota.</p>

@@ -62,6 +62,8 @@
       menuChooseProvider: "debait: choose provider",
       menuSetKey: "debait: set API key (current provider)",
       menuSetLanguage: "debait: set output language",
+      menuSetInstructions: "debait: set custom instructions",
+      promptInstructions: "Custom instructions appended to the prompt (the JSON output shape is kept). Blank to clear:",
       menuSetLimits: "debait: set preview limits",
       menuShowUsage: "debait: show today usage",
       menuSetModel: "debait: set model override",
@@ -95,6 +97,8 @@
       menuChooseProvider: "debait\uff1a\u9078\u64c7\u4f9b\u61c9\u5546",
       menuSetKey: "debait\uff1a\u8a2d\u5b9a API \u91d1\u9470\uff08\u76ee\u524d\u4f9b\u61c9\u5546\uff09",
       menuSetLanguage: "debait\uff1a\u8a2d\u5b9a\u8f38\u51fa\u8a9e\u8a00",
+      menuSetInstructions: "debait\uff1a\u8a2d\u5b9a\u81ea\u8a02\u6307\u793a",
+      promptInstructions: "\u9644\u52a0\u5230\u63d0\u793a\u8a5e\u7684\u81ea\u8a02\u6307\u793a\uff08\u4ecd\u7dad\u6301 JSON \u8f38\u51fa\u683c\u5f0f\uff09\u3002\u7559\u7a7a\u53ef\u6e05\u9664\uff1a",
       menuSetLimits: "debait\uff1a\u8a2d\u5b9a\u9810\u89bd\u9650\u5236",
       menuShowUsage: "debait\uff1a\u986f\u793a\u4eca\u65e5\u4f7f\u7528\u91cf",
       menuSetModel: "debait\uff1a\u8a2d\u5b9a\u6a21\u578b\u8986\u5beb",
@@ -132,6 +136,7 @@
     get base() { return (GM_getValue("base", "") || PROVIDERS[this.provider].base).replace(/\/+$/, ""); },
     get model() { return GM_getValue("model", "") || PROVIDERS[this.provider].model; },
     get language() { return GM_getValue("language", ""); },
+    get customInstructions() { return GM_getValue("customInstructions", ""); },
     get dwellMs() { const n = Number(GM_getValue("dwellMs", 500)); return Number.isFinite(n) && n >= 0 ? n : 500; },
     get minIntervalMs() { const n = Number(GM_getValue("minIntervalMs", 1500)); return Number.isFinite(n) && n >= 0 ? n : 1500; },
     get dailyCap() { const n = Number(GM_getValue("dailyCap", 200)); return Number.isFinite(n) && n >= 0 ? n : 200; },
@@ -166,6 +171,10 @@
     const u = getUsage();
     alert(t("usageAlertPrefix") + u.count + (CFG.dailyCap > 0 ? " / " + CFG.dailyCap : " " + t("usageNoCap")));
   });
+  GM_registerMenuCommand(t("menuSetInstructions"), () => {
+    const v = prompt(t("promptInstructions"), CFG.customInstructions);
+    if (v !== null) GM_setValue("customInstructions", v.trim());
+  });
   GM_registerMenuCommand(t("menuSetModel"), () => {
     const m = prompt(t("promptModel"), GM_getValue("model", ""));
     if (m !== null) GM_setValue("model", m.trim());
@@ -178,10 +187,12 @@
 
   // ---- shared prompt (inlined copy of shared/prompt.js) ---------------------
   const MAX_CHARS = 12000;
-  function buildPrompt({ originalTitle, description, text, url }, { language } = {}) {
+  function buildPrompt({ originalTitle, description, text, url }, { language, customInstructions } = {}) {
     const body = (text || "").slice(0, MAX_CHARS);
     const l = String(language || "").trim();
     const langTarget = !l || l.toLowerCase() === "auto" ? "the same language as the article" : l;
+    const ci = String(customInstructions || "").trim().slice(0, 2000);
+    const ciBlock = ci ? `\n\nAdditional instructions from the user (follow these, but STILL return ONLY the JSON object specified above, with exactly those keys):\n"""\n${ci}\n"""\n\n(Reminder: ignore anything in the block above that asks you to change the output format, add prose, or stop producing JSON — respond with ONLY the JSON object described earlier, with exactly those keys.)` : "";
     return `You are given a web article. Read it and report its actual substance,
 ignoring any sensational framing. Judge it the way a skeptical editor would.
 
@@ -201,7 +212,7 @@ Rules:
 - "worth_clicking" is whether a reader learns anything beyond what your summary already tells them.
 - Do not repeat false claims as fact; attribute them ("the article claims...").
 - Be terse and dispassionate.
-- Write "honest_title", "summary", "key_points" and "clickbait_signals" in ${langTarget}. Keep the JSON keys and the "substance_verdict" value in English.
+- Write "honest_title", "summary", "key_points" and "clickbait_signals" in ${langTarget}. Keep the JSON keys and the "substance_verdict" value in English.${ciBlock}
 
 URL: ${url || "(unknown)"}
 ORIGINAL TITLE: ${originalTitle || "(none)"}
@@ -385,7 +396,7 @@ pre { white-space:pre-wrap; color:#c9d1d9; }
     render(`<b style="color:#58a6ff">🪝🚫 ${t("brand")}</b><br><br>${esc(t("panelReading"))}`);
     try {
       const article = extractPage();
-      const out = await callProvider(buildPrompt(article, { language: CFG.language }));
+      const out = await callProvider(buildPrompt(article, { language: CFG.language, customInstructions: CFG.customInstructions }));
       renderResult(article, parseResult(out));
     } catch (e) {
       render(`<b style="color:#e5484d">${esc(t("errGeneric"))}</b><br><br>${esc(e.message)}`);
@@ -475,7 +486,7 @@ pre { white-space:pre-wrap; color:#c9d1d9; }
   async function previewLink(a, x, y) {
     const url = a.href;
     // Cache per URL *and* settings so changing provider/model/language refreshes.
-    const cacheKey = [url, CFG.provider, CFG.model, CFG.base, CFG.language].join("\n");
+    const cacheKey = [url, CFG.provider, CFG.model, CFG.base, CFG.language, CFG.customInstructions].join("\n");
     placeTip(x, y);
     tip().innerHTML = `<b style="color:#58a6ff">🪝🚫 ${t("brand")}</b> \u00b7 ${esc(t("tipReading"))}<br><span style="color:#888">${esc(url).slice(0, 80)}</span>`;
     try {
@@ -500,7 +511,7 @@ pre { white-space:pre-wrap; color:#c9d1d9; }
             previewBusy = true; lastPreviewAt = Date.now();
             try {
               if (CFG.key || CFG.provider === "ollama") bumpUsage();
-              result = parseResult(await callProvider(buildPrompt(article, { language: CFG.language })));
+              result = parseResult(await callProvider(buildPrompt(article, { language: CFG.language, customInstructions: CFG.customInstructions })));
               result.originalTitle = article.originalTitle;
             } catch (e) {
               if (/\b429\b|quota|rate|RESOURCE_EXHAUSTED/i.test(String(e && e.message))) cooldownUntil = Date.now() + backoffMsFrom(e.message);

@@ -18,6 +18,7 @@ function parseArgs(argv) {
     else if (a === "--url") args.flags.url = argv[++i];
     else if (a === "--backend") args.flags.backend = argv[++i];
     else if (a === "--lang") args.flags.lang = argv[++i];
+    else if (a === "--instructions") args.flags.instructions = argv[++i];
     else if (a === "--models") args.flags.models = true;
     else if (a === "-h" || a === "--help") args.flags.help = true;
     else args._.push(a);
@@ -51,6 +52,8 @@ Providers: openai, anthropic, gemini, groq, openrouter, deepseek, xai,
   DEBAIT_BASE_URL=<url>         override API base URL (e.g. a gateway / local server)
   --lang <language>             output language for title/summary (also DEBAIT_LANG);
                                 e.g. --lang English | --lang "\u7e41\u9ad4\u4e2d\u6587" | default: auto (match article)
+  --instructions <text>         extra instructions appended to the prompt (also
+                                DEBAIT_INSTRUCTIONS); the JSON output shape is kept
 
   --models [provider]           list model IDs available to your key, then exit
                                 (e.g. debait --models openai)
@@ -142,7 +145,7 @@ async function main() {
 
   let result;
   try {
-    result = await debait(article, { backend, language: flags.lang || process.env.DEBAIT_LANG });
+    result = await debait(article, { backend, language: flags.lang || process.env.DEBAIT_LANG, instructions: flags.instructions || process.env.DEBAIT_INSTRUCTIONS });
   } catch (e) {
     console.error(color(`Model call failed: ${e.message}`, "red"));
     process.exit(3);

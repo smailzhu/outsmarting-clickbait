@@ -133,6 +133,17 @@ debait <url> --lang English
 debait <url> --lang "繁體中文"      # or 日本語, Español, es, ...
 DEBAIT_LANG="繁體中文" debait <url>
 ```
+**Custom instructions.** Steer the model with your own text, appended to the
+prompt — e.g. “be harsher on sensational framing”, “focus on political spin”,
+“add a one-line TL;DR”. The required JSON output shape is always preserved
+(instructions are sandwiched + capped at 2,000 chars), so parsing never breaks.
+
+```bash
+debait <url> --instructions "Be harsher. Add a one-line TL;DR."
+DEBAIT_INSTRUCTIONS="Focus on political spin" debait <url>
+```
+Extension: Options → *Custom instructions*. Userscript: menu → *set custom instructions*.
+
 JSON keys and the `substance_verdict` enum always stay English. The extension
 (Options → Output language) and userscript (menu → *set output language*) expose
 the same setting.

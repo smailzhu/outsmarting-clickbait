@@ -177,5 +177,11 @@
   },
   "phBlankDefault": {
     "message": "留空以使用預設值"
+  },
+  "optInstructions": {
+    "message": "自訂指示"
+  },
+  "optInstructionsHint": {
+    "message": "（選填 — 附加到提示詞；仍會維持 JSON 輸出格式）"
   }
 }
