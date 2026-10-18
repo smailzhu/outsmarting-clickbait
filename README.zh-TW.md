@@ -2,6 +2,8 @@
 
 [English](README.md) | **繁體中文** | [台語（漢羅）](README.tai-gi.md)
 
+**[到 Chrome 線上應用程式商店安裝 debait](https://chromewebstore.google.com/detail/pcjbpicieggjfjldoekdeglnjhcdhjla?hl=zh-TW)**
+
 在你點擊前，先看穿騙點閱。debait 會用 AI 讀完整篇文章，給你一個**誠實的標題**、簡短摘要、重點，以及 **0–100 的騙點閱分數**，讓你判斷這個連結值不值得點。
 
 > 這是 Wiwi Kuan（官大為）部落格文章〈[騙點閱](https://www.wiwi.blog/blog/outsmarting-clickbait/)〉的實作原型。
@@ -23,6 +25,14 @@
 - 按住 **Alt** 並把滑鼠移到任何連結上，在**點擊之前**就先預覽該連結的誠實標題與分數。
 
 ## 安裝（Chrome / Edge / Brave）
+
+**Chrome 使用者建議直接從商店安裝：**開啟
+[Chrome 線上應用程式商店](https://chromewebstore.google.com/detail/pcjbpicieggjfjldoekdeglnjhcdhjla?hl=zh-TW)，
+按**加到 Chrome**。不需要開發人員模式，也不用下載 ZIP。
+安裝後可從拼圖（擴充功能）選單釘選 debait，再開啟**設定（API 金鑰）**，
+選擇供應商並填入自己的金鑰，或設定本機模型。
+
+### 手動安裝（替代方式／開發版本）
 
 1. 到 [最新版本（Releases）](https://github.com/smailzhu/outsmarting-clickbait/releases/latest) 下載 **`debait-extension-v*.zip`**，並**解壓縮**。
 2. 開啟 `chrome://extensions`（Edge 用 `edge://extensions`、Brave 用 `brave://extensions`）。

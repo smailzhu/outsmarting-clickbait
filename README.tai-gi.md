@@ -2,6 +2,8 @@
 
 [English](README.md) | [繁體中文](README.zh-TW.md) | **台語（漢羅）**
 
+**[去 Chrome 線上應用程式商店安裝 debait](https://chromewebstore.google.com/detail/pcjbpicieggjfjldoekdeglnjhcdhjla?hl=zh-TW)**
+
 > ⚠️ 這份台語（漢羅）說明是**草稿**，猶閣愛母語者校對。歡迎鬥相共改予較好。
 
 Tī 你點落去進前，先看破騙點閱。debait 會用 AI kā 規篇文章讀予你，予你一个誠實 ê 標題、簡短 ê 摘要、重點，koh 有 0–100 ê 騙點閱分數，予你判斷這條連結值得點無。
@@ -25,6 +27,16 @@ Tī 你點落去進前，先看破騙點閱。debait 會用 AI kā 規篇文章�
 - 揿牢 **Alt** koh kā 滑鼠徙去任何連結頂懸，**tī 點進前**就先看連結 ê 誠實標題 kah 分數。
 
 ## 安裝（Chrome / Edge / Brave）
+
+**Chrome 使用者會當直接對商店安裝：**拍開
+[Chrome 線上應用程式商店](https://chromewebstore.google.com/detail/pcjbpicieggjfjldoekdeglnjhcdhjla?hl=zh-TW)，
+撳**加到 Chrome**。免開發人員模式，嘛免下載 ZIP。
+裝好會當 tī 擴充功能選單 kā debait 釘選，了後拍開設定，揀供應商 kah
+填家己 ê API 金鑰，抑是設定本機模型。
+
+> 商店連結用繁體中文；台語介面愛 tī debait ê **介面語言**設定內底揀。
+
+### 手動安裝（替代方式／開發版本）
 
 1. 去 [上新版（Releases）](https://github.com/smailzhu/outsmarting-clickbait/releases/latest) 下載 **`debait-extension-v*.zip`**，kā 解壓縮。
 2. 拍開 `chrome://extensions`（Edge 用 `edge://extensions`、Brave 用 `brave://extensions`）。

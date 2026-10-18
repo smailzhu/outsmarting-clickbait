@@ -6,6 +6,8 @@
 
 **English** | [繁體中文](README.zh-TW.md) | [台語（漢羅）](README.tai-gi.md)
 
+**[Install debait from the Chrome Web Store](https://chromewebstore.google.com/detail/pcjbpicieggjfjldoekdeglnjhcdhjla?hl=en)**
+
 A tiny prototype of the idea from Wiwi Kuan's post
 [*"Outsmarting Clickbait"* (騙點閱)](https://www.wiwi.blog/blog/outsmarting-clickbait/):
 
@@ -50,6 +52,14 @@ critique that motivated the design.
 ## Install
 
 ### Chromium extension (Chrome / Edge / Brave)
+
+**Recommended for Chrome:** open the
+[Chrome Web Store listing](https://chromewebstore.google.com/detail/pcjbpicieggjfjldoekdeglnjhcdhjla?hl=en)
+and click **Add to Chrome**. No Developer mode or ZIP download is needed.
+Pin debait from the browser's extensions menu, then open **Settings** and choose
+a provider with your own API key, or a configured local model.
+
+#### Manual installation (alternative / development builds)
 
 1. Download **`debait-extension-v*.zip`** from the
    [latest release](https://github.com/smailzhu/outsmarting-clickbait/releases/latest)

@@ -3,9 +3,16 @@
 Adds a toolbar button + right-click "debait this page" that reads the current
 article and overlays an honest title, summary, key points, and a clickbait score.
 
-## Install (unpacked)
+## Install from the Chrome Web Store (recommended for Chrome)
 
-**Get the files** \u2014 either download **`debait-extension-v*.zip`** from the
+Open [debait on the Chrome Web Store](https://chromewebstore.google.com/detail/pcjbpicieggjfjldoekdeglnjhcdhjla?hl=en)
+and click **Add to Chrome**. Pin debait from the extensions menu, then open
+**Options** to choose a provider and enter your own API key, or use a configured
+local model. Store installation does not require Developer mode.
+
+## Install manually (unpacked / development builds)
+
+**Get the files** — either download **`debait-extension-v*.zip`** from the
 [latest release](https://github.com/smailzhu/outsmarting-clickbait/releases/latest)
 and unzip it, or clone the repo and use this `extension/` folder.
 
