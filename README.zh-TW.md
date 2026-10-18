@@ -2,7 +2,7 @@
 
 [English](README.md) | **繁體中文** | [台語（漢羅）](README.tai-gi.md)
 
-**[到 Chrome 線上應用程式商店安裝 debait](https://chromewebstore.google.com/detail/pcjbpicieggjfjldoekdeglnjhcdhjla?hl=zh-TW)**
+[![到 Chrome 線上應用程式商店安裝 debait](docs/assets/chrome-web-store-badge.png)](https://chromewebstore.google.com/detail/pcjbpicieggjfjldoekdeglnjhcdhjla?hl=zh-TW)
 
 在你點擊前，先看穿騙點閱。debait 會用 AI 讀完整篇文章，給你一個**誠實的標題**、簡短摘要、重點，以及 **0–100 的騙點閱分數**，讓你判斷這個連結值不值得點。
 

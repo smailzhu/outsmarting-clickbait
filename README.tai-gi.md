@@ -2,7 +2,7 @@
 
 [English](README.md) | [繁體中文](README.zh-TW.md) | **台語（漢羅）**
 
-**[去 Chrome 線上應用程式商店安裝 debait](https://chromewebstore.google.com/detail/pcjbpicieggjfjldoekdeglnjhcdhjla?hl=zh-TW)**
+[![去 Chrome 線上應用程式商店安裝 debait](docs/assets/chrome-web-store-badge.png)](https://chromewebstore.google.com/detail/pcjbpicieggjfjldoekdeglnjhcdhjla?hl=zh-TW)
 
 > ⚠️ 這份台語（漢羅）說明是**草稿**，猶閣愛母語者校對。歡迎鬥相共改予較好。
 
