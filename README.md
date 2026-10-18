@@ -75,6 +75,13 @@ a provider with your own API key, or a configured local model.
 > unpacked extension. (Sideloaded extensions show a one-time "Developer mode"
 > notice on startup; that's normal.) See [`extension/README.md`](extension/README.md).
 
+**Check your connection:** in extension **Settings**, click **Test connection**
+under the model field. It uses the current, unsaved provider/key/model/base URL
+and makes one small generation request (quota or charges may apply). No article
+content is sent. A successful test means the model returned text; a 429 indicates
+quota/rate limits, not necessarily an invalid key. Tests are outside the preview
+cap. See [the connection-test guide](extension/README.md#test-your-provider-connection).
+
 ### Userscript (Tampermonkey / Violentmonkey — any browser, incl. Firefox)
 
 Install a userscript manager, then open

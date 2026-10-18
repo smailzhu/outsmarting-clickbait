@@ -195,5 +195,64 @@
   },
   "optReport": {
     "message": "Questions or problems? Email the author:"
+  },
+  "connectionTestButton": {
+    "message": "Test connection"
+  },
+  "connectionTestHint": {
+    "message": "Tests the current provider, model and key without saving. Makes one small generation request; quota or usage charges may apply. No article content is sent."
+  },
+  "connectionTesting": {
+    "message": "Testing connection…"
+  },
+  "connectionSuccess": {
+    "message": "Connection successful. The selected provider and model returned text."
+  },
+  "connectionMissingKey": {
+    "message": "Enter an API key first. Local Ollama does not require one."
+  },
+  "connectionSettings": {
+    "message": "Check the provider, model and API base URL. Use an HTTP or HTTPS base URL without embedded credentials, query parameters or fragments."
+  },
+  "connectionAuth": {
+    "message": "Authentication failed (401). Check that this key belongs to the selected provider and has not been revoked."
+  },
+  "connectionAccess": {
+    "message": "Access denied (403). Check key permissions, account restrictions and access to this model."
+  },
+  "connectionQuota": {
+    "message": "Quota or rate limit reached (429). Check billing credits and provider limits; this does not necessarily mean the key is invalid."
+  },
+  "connectionModel": {
+    "message": "Model or endpoint not found (404). Check the model name and API base URL."
+  },
+  "connectionHttp": {
+    "message": "The provider returned HTTP $STATUS$. Check its service status and your settings.",
+    "placeholders": {
+      "status": {
+        "content": "$1"
+      }
+    }
+  },
+  "connectionResponse": {
+    "message": "The endpoint returned an unexpected response. Check that the API base URL matches this provider’s API format."
+  },
+  "connectionEmpty": {
+    "message": "The model returned no readable text. Check model compatibility or try another model."
+  },
+  "connectionTimeout": {
+    "message": "The connection test timed out. Try again later or check that your local model is running."
+  },
+  "connectionNetwork": {
+    "message": "Could not reach the endpoint. Check the API base URL, network connection and browser site permissions."
+  },
+  "connectionBusy": {
+    "message": "A connection test is already running. Please wait and try again."
+  },
+  "connectionDenied": {
+    "message": "Connection tests can only be started from this extension’s Settings page."
+  },
+  "connectionBudget": {
+    "message": "The endpoint responded, but the test output budget was exhausted before readable text appeared. This does not establish an invalid key; try a non-thinking model or check its thinking settings."
   }
 }

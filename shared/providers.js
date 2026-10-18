@@ -41,7 +41,7 @@ export function resolveProvider({ provider, base, model, key } = {}) {
 }
 
 // Returns { url, method, headers, body } for a single completion request.
-export function buildRequest(cfg, prompt, { browser = false } = {}) {
+export function buildRequest(cfg, prompt, { browser = false, maxOutputTokens } = {}) {
   const { format, base, model, key } = cfg;
 
   if (format === "anthropic") {
@@ -58,7 +58,7 @@ export function buildRequest(cfg, prompt, { browser = false } = {}) {
       headers,
       body: JSON.stringify({
         model,
-        max_tokens: 1024,
+        max_tokens: maxOutputTokens ?? 1024,
         temperature: 0.2,
         system: SYSTEM,
         messages: [{ role: "user", content: prompt }],
@@ -74,7 +74,7 @@ export function buildRequest(cfg, prompt, { browser = false } = {}) {
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: SYSTEM }] },
         contents: [{ role: "user", parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.2 },
+        generationConfig: { temperature: 0.2, ...(maxOutputTokens !== undefined ? { maxOutputTokens } : {}) },
       }),
     };
   }
@@ -89,6 +89,7 @@ export function buildRequest(cfg, prompt, { browser = false } = {}) {
     body: JSON.stringify({
       model,
       temperature: 0.2,
+      ...(maxOutputTokens !== undefined ? { max_tokens: maxOutputTokens } : {}),
       messages: [
         { role: "system", content: SYSTEM },
         { role: "user", content: prompt },

@@ -9,6 +9,10 @@
     button { margin-top: 16px; padding: 8px 16px; border: none; border-radius: 6px; background: #58a6ff; color: #001; font-weight: 600; cursor: pointer; }
     .hint { color: #777; font-size: 12px; }
     #status { color: #30a46c; margin-left: 10px; }
+    button:disabled { opacity: .6; cursor: wait; }
+    #connectionStatus { overflow-wrap: anywhere; }
+    #connectionStatus[data-state="success"] { color: #167343; }
+    #connectionStatus[data-state="error"] { color: #b42318; }
   </style>
 </head>
 <body>
@@ -41,6 +45,9 @@
   <input id="base" type="text" data-i18n-ph="phBlankDefault" placeholder="leave blank for default" />
   <label for="model"><span data-i18n="optModel">Model</span> <span class="hint" data-i18n="optOverrideHint">(optional — overrides provider default)</span></label>
   <input id="model" type="text" data-i18n-ph="phBlankDefault" placeholder="leave blank for default" />
+  <button id="testConnection" type="button" data-i18n="connectionTestButton" disabled>Test connection</button>
+  <p class="hint" data-i18n="connectionTestHint">Tests the current provider, model and key without saving. Makes one small generation request; quota or usage charges may apply. No article content is sent.</p>
+  <p id="connectionStatus" role="status" aria-live="polite" aria-atomic="true"></p>
   <label for="language"><span data-i18n="optLanguage">Output language</span> <span class="hint" data-i18n="optLanguageHint">(title &amp; summary; blank = auto, match the article)</span></label>
   <input id="language" type="text" placeholder="auto — or English, 繁體中文, 日本語, Español" />
   <label for="customInstructions"><span data-i18n="optInstructions">Custom instructions</span> <span class="hint" data-i18n="optInstructionsHint">(optional — appended to the prompt; the JSON output shape is kept)</span></label>

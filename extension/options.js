@@ -14,11 +14,55 @@ async function renderUsage(cap) {
   $("usage").textContent = `${t("usagePrefix")} ${used}` + (cap > 0 ? ` / ${cap}` : ` ${t("usageNoCap")}`);
 }
 const $ = (id) => document.getElementById(id);
-const t = (k) => globalThis.DebaitI18n.t(k);
+const t = (k, subs) => globalThis.DebaitI18n.t(k, subs);
 function applyI18n() {
   globalThis.DebaitI18n.apply();
   document.documentElement.lang = globalThis.DebaitI18n.lang === "zh_TW" ? "zh-TW" : "en";
+  renderConnectionStatus();
 }
+
+const CONNECTION_MESSAGES = {
+  success: "connectionSuccess", missing_key: "connectionMissingKey", settings: "connectionSettings",
+  auth: "connectionAuth", access: "connectionAccess", quota: "connectionQuota",
+  model: "connectionModel", http: "connectionHttp", response: "connectionResponse",
+  empty: "connectionEmpty", budget: "connectionBudget", timeout: "connectionTimeout", network: "connectionNetwork",
+  busy: "connectionBusy", denied: "connectionDenied", testing: "connectionTesting",
+};
+let connectionResult = null;
+let testingConnection = false;
+const connectionValues = () => Object.fromEntries(
+  ["provider", "key", "base", "model"].map((id) => [id, $(id).value.trim()])
+);
+function renderConnectionStatus() {
+  const el = $("connectionStatus");
+  el.textContent = connectionResult ? t(CONNECTION_MESSAGES[connectionResult.code] || "connectionNetwork",
+    [String(connectionResult.status || "")]) : "";
+  el.dataset.state = connectionResult?.ok ? "success" : connectionResult?.code === "testing" ? "pending" : "error";
+}
+for (const id of ["provider", "key", "base", "model"]) {
+  $(id).addEventListener("input", () => { connectionResult = null; renderConnectionStatus(); });
+}
+$("testConnection").addEventListener("click", async () => {
+  if (testingConnection) return;
+  const values = connectionValues();
+  testingConnection = true;
+  $("testConnection").disabled = true;
+  connectionResult = { ok: false, code: "testing" };
+  renderConnectionStatus();
+  try {
+    const result = await chrome.runtime.sendMessage({ type: "debait:testConnection", settings: values });
+    // A success for old credentials must not be shown for newly edited fields.
+    if (JSON.stringify(values) === JSON.stringify(connectionValues())) {
+      connectionResult = result?.code && CONNECTION_MESSAGES[result.code] ? result : { ok: false, code: "network" };
+    }
+  } catch {
+    if (JSON.stringify(values) === JSON.stringify(connectionValues())) connectionResult = { ok: false, code: "network" };
+  } finally {
+    testingConnection = false;
+    $("testConnection").disabled = false;
+    renderConnectionStatus();
+  }
+});
 
 let state = { ...DEFAULTS };
 
@@ -37,6 +81,7 @@ async function load() {
   $("dailyCap").value = state.dailyCap;
   $("key").value = state.keys?.[state.provider] || state.key || "";
   await renderUsage(state.dailyCap);
+  $("testConnection").disabled = false;
 }
 
 $("provider").addEventListener("change", () => {
@@ -44,6 +89,8 @@ $("provider").addEventListener("change", () => {
   state.keys[state.provider] = $("key").value.trim();
   state.provider = $("provider").value;
   $("key").value = state.keys[state.provider] || "";
+  connectionResult = null;
+  renderConnectionStatus();
 });
 
 $("save").addEventListener("click", async () => {

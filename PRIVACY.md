@@ -32,7 +32,13 @@ third party other than the AI provider you explicitly configure.
 ## When network requests happen
 
 - A request to an **AI provider** happens only when you click **Analyze this
-  page**, use the **debait this page** context menu, or **Alt+hover** a link.
+  page**, use the **debait this page** context menu, **Alt+hover** a link, or click
+  **Test connection** in Settings.
+- **Test connection** uses the currently entered provider, model, API base URL,
+  and key without saving them. It sends one small fixed test prompt—not article
+  content or custom instructions—to that endpoint and uses the key to authenticate.
+  It may consume provider quota or incur a usage charge. Tests are not included
+  in the daily hover-preview cap.
 - To preview a link, the extension fetches **that link's target page** (the same
   page you were about to click). This uses broad host access
   (`https://*/*`, `http://*/*`) solely to retrieve the page you asked about; no

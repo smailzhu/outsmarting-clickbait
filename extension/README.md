@@ -26,6 +26,28 @@ and unzip it, or clone the repo and use this `extension/` folder.
    Keys are remembered per provider, so you can switch freely.
 5. Visit any article → click the toolbar icon or right-click → *debait this page*.
 
+## Test your provider connection
+
+In **Options**, select a provider and enter its key (unless using local Ollama).
+Click **Test connection** below the model field. It tests the **current form
+values**, including unsaved base-URL/model overrides, without saving them.
+
+The button sends **one small generation request** using the same provider API
+format as analysis, with a bounded output budget, model-specific Gemini thinking
+controls where supported, and a 20-second timeout. No
+article content or custom instructions are sent. It may consume quota or incur
+provider charges; connection tests are **not covered by the hover-preview daily
+cap**. The button is disabled while a test is running.
+
+A successful test means the selected model returned text; it does not guarantee
+future quota, accurate summaries, or support for every model-specific feature.
+Errors distinguish missing keys, authentication/access failures, quota/rate
+limits, unavailable models/endpoints, empty responses, and network/timeouts.
+If a thinking model exhausts the test's output budget before returning text,
+that result is shown separately and does not establish that the key is invalid.
+In particular, **429 does not necessarily mean the key is invalid**—check the
+provider's billing credits and limits.
+
 ## Preview before you click (Alt+hover)
 
 Hold **Alt** and hover any link. After a short dwell, the background worker

@@ -195,5 +195,64 @@
   },
   "optReport": {
     "message": "有問題無？寄批予作者："
+  },
+  "connectionTestButton": {
+    "message": "試連線"
+  },
+  "connectionTestHint": {
+    "message": "用這馬填 ê 供應商、模型 kah 金鑰試連線，無儲存設定。會發出一擺細 ê 生成請求，可能用額度抑是愛付費；無傳文章內容。"
+  },
+  "connectionTesting": {
+    "message": "咧試連線…"
+  },
+  "connectionSuccess": {
+    "message": "連線成功矣，揀 ê 供應商 kah 模型有傳文字轉來。"
+  },
+  "connectionMissingKey": {
+    "message": "請先填 API 金鑰。本機 Ollama 免金鑰。"
+  },
+  "connectionSettings": {
+    "message": "請檢查供應商、模型 kah API 基底網址。用 HTTP 抑是 HTTPS，網址內底莫囥帳密、查詢參數抑是片段。"
+  },
+  "connectionAuth": {
+    "message": "驗證無過（401）。請確認金鑰是揀 ê 供應商 ê，koh 猶未撤銷。"
+  },
+  "connectionAccess": {
+    "message": "無存取權（403）。請檢查金鑰權限、帳號限制 kah 模型存取權。"
+  },
+  "connectionQuota": {
+    "message": "額度抑是請求頻率到上限矣（429）。請檢查餘額 kah 供應商限制；毋一定是金鑰無效。"
+  },
+  "connectionModel": {
+    "message": "揣無模型抑是端點（404）。請檢查模型名 kah API 基底網址。"
+  },
+  "connectionHttp": {
+    "message": "供應商傳 HTTP $STATUS$ 轉來。請檢查服務狀態 kah 設定。",
+    "placeholders": {
+      "status": {
+        "content": "$1"
+      }
+    }
+  },
+  "connectionResponse": {
+    "message": "端點傳轉來 ê 格式無仝款。請確認 API 基底網址 kah 供應商 ê API 格式有合。"
+  },
+  "connectionEmpty": {
+    "message": "模型無傳會讀 ê 文字轉來。請檢查相容性，抑是換模型。"
+  },
+  "connectionTimeout": {
+    "message": "試連線等傷久矣。等一下仔閣試，抑是確認本機模型有咧走。"
+  },
+  "connectionNetwork": {
+    "message": "連無端點。請檢查 API 基底網址、網路 kah 瀏覽器 ê 網站權限。"
+  },
+  "connectionBusy": {
+    "message": "有別 ê 連線測試咧走，請等一下仔閣試。"
+  },
+  "connectionDenied": {
+    "message": "Kan-na 會當對這个擴充功能 ê 設定頁面開始試連線。"
+  },
+  "connectionBudget": {
+    "message": "端點有回應，毋過測試 ê 輸出預算先用煞矣，猶無會讀 ê 文字。毋是代表金鑰無效；會當換無推理 ê 模型，抑是檢查推理設定。"
   }
 }

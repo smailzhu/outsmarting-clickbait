@@ -7,6 +7,7 @@
 import { resolveProvider, callProvider, PROVIDERS } from "./providers.js";
 import { buildPrompt, parseResult } from "./prompt.esm.js";
 import { extractArticle } from "./extract.js";
+import { isOptionsSender, testConnection } from "./connection-test.js";
 import "./messages.gen.js";
 import "./i18n-runtime.js";
 
@@ -143,7 +144,26 @@ async function preview(url) {
   }
 }
 
-chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+let connectionTestBusy = false;
+
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg?.type === "debait:testConnection") {
+    // Never accept credentials/test requests from content scripts or web pages.
+    if (!isOptionsSender(sender, chrome.runtime)) {
+      sendResponse({ ok: false, code: "denied" });
+      return;
+    }
+    if (connectionTestBusy) {
+      sendResponse({ ok: false, code: "busy" });
+      return;
+    }
+    connectionTestBusy = true;
+    testConnection(msg.settings)
+      .then(sendResponse)
+      .catch(() => sendResponse({ ok: false, code: "network" }))
+      .finally(() => { connectionTestBusy = false; });
+    return true;
+  }
   if (msg?.type === "debait:complete") {
     complete(msg.prompt).then((text) => sendResponse({ ok: true, text })).catch((e) => sendResponse({ ok: false, error: e.message }));
     return true;
