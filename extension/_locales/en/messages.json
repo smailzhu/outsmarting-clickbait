@@ -254,5 +254,22 @@
   },
   "connectionBudget": {
     "message": "The endpoint responded, but the test output budget was exhausted before readable text appeared. This does not establish an invalid key; try a non-thinking model or check its thinking settings."
+  },
+  "ctxDebaitLink": {
+    "message": "debait this link"
+  },
+  "linkInvalid": {
+    "message": "Link previews support only HTTP and HTTPS links."
+  },
+  "linkRateLimited": {
+    "message": "The provider is rate limiting requests. Wait about $SECS$ seconds, then right-click the link and try again.",
+    "placeholders": {
+      "secs": {
+        "content": "$1"
+      }
+    }
+  },
+  "linkThrottled": {
+    "message": "Another preview is running or requests are too close together. Wait a moment, then right-click the link and try again."
   }
 }

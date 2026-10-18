@@ -48,6 +48,22 @@ that result is shown separately and does not establish that the key is invalid.
 In particular, **429 does not necessarily mean the key is invalid**—check the
 provider's billing credits and limits.
 
+## Right-click menu
+
+- Right-click the page → **debait this page** to analyze the page already open.
+- Right-click an HTTP/HTTPS link → **debait this link** to analyze its target
+  **without opening it**. The result appears in the normal closable panel.
+
+The link action reuses the hover-preview cache, minimum request interval, daily
+cap, and 429 cooldown; cached answers require no additional AI request. It has
+same limitations as hover previews: target JavaScript is not executed, and
+unreadable/blocked targets may show metadata or an error instead.
+
+Menu labels follow **Options → Interface language** (including 繁體中文 and the
+台語 draft). No additional extension permissions are required. Restricted browser
+pages such as `chrome://` cannot display the panel. The native menu integration
+is for the extension; it is not a Tampermonkey feature.
+
 ## Preview before you click (Alt+hover)
 
 Hold **Alt** and hover any link. After a short dwell, the background worker

@@ -254,5 +254,22 @@
   },
   "connectionBudget": {
     "message": "端點有回應，毋過測試 ê 輸出預算先用煞矣，猶無會讀 ê 文字。毋是代表金鑰無效；會當換無推理 ê 模型，抑是檢查推理設定。"
+  },
+  "ctxDebaitLink": {
+    "message": "用 debait 看這條連結"
+  },
+  "linkInvalid": {
+    "message": "連結預覽 kan-na 支援 HTTP kah HTTPS 網址。"
+  },
+  "linkRateLimited": {
+    "message": "供應商限流矣。請等差不多 $SECS$ 秒，閣 tī 連結撳右鍵試。",
+    "placeholders": {
+      "secs": {
+        "content": "$1"
+      }
+    }
+  },
+  "linkThrottled": {
+    "message": "有別 ê 預覽咧走，抑是呼叫間隔傷短。請等一下仔，閣 tī 連結撳右鍵試。"
   }
 }

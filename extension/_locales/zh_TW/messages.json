@@ -254,5 +254,22 @@
   },
   "connectionBudget": {
     "message": "端點有回應，但測試的輸出預算在產生可讀文字前就用完了。這不表示金鑰無效；請改用不需推理的模型，或檢查模型的推理設定。"
+  },
+  "ctxDebaitLink": {
+    "message": "debait 這個連結"
+  },
+  "linkInvalid": {
+    "message": "連結預覽只支援 HTTP 與 HTTPS 網址。"
+  },
+  "linkRateLimited": {
+    "message": "供應商限流中。請等約 $SECS$ 秒，再於連結上按右鍵重試。",
+    "placeholders": {
+      "secs": {
+        "content": "$1"
+      }
+    }
+  },
+  "linkThrottled": {
+    "message": "另一個預覽正在執行，或呼叫間隔太短。請稍候，再於連結上按右鍵重試。"
   }
 }

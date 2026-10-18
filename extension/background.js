@@ -177,6 +177,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 chrome.runtime.onInstalled.addListener(async (details) => {
   await globalThis.DebaitI18n.init();
   chrome.contextMenus.create({ id: "debait-run", title: globalThis.DebaitI18n.t("ctxDebaitPage"), contexts: ["page", "selection"] });
+  chrome.contextMenus.create({
+    id: "debait-link", title: globalThis.DebaitI18n.t("ctxDebaitLink"), contexts: ["link"],
+    targetUrlPatterns: ["https://*/*", "http://*/*"],
+  });
   // First install only: open Options so the user can set a provider + API key
   // (the extension can't do anything until a key is configured). Not on updates.
   if (details.reason === "install") {
@@ -185,16 +189,28 @@ chrome.runtime.onInstalled.addListener(async (details) => {
 });
 
 chrome.contextMenus.onClicked.addListener((info, tab) => {
-  if (info.menuItemId === "debait-run" && tab?.id) {
-    // Tab may lack a content script (chrome:// pages, etc.) - ignore failure.
-    chrome.tabs.sendMessage(tab.id, { type: "debait:run" }).catch(() => {});
-  }
+  if (tab?.id === undefined) return;
+  let message;
+  if (info.menuItemId === "debait-run") {
+    message = { type: "debait:run" };
+  } else if (info.menuItemId === "debait-link") {
+    try {
+      const url = new URL(info.linkUrl);
+      if (!["https:", "http:"].includes(url.protocol)) return;
+      message = { type: "debait:runLink", url: url.href };
+    } catch { return; }
+  } else { return; }
+  // Display one panel in the top frame, even when the link is inside an iframe.
+  // Restricted tabs may have no content script; never navigate as a fallback.
+  chrome.tabs.sendMessage(tab.id, message, { frameId: 0 }).catch(() => {});
 });
 
 // Keep the context-menu label in sync with the chosen interface language.
 chrome.storage.onChanged.addListener(async (changes, area) => {
   if (area === "sync" && changes.uiLang) {
     await globalThis.DebaitI18n.init();
-    try { await chrome.contextMenus.update("debait-run", { title: globalThis.DebaitI18n.t("ctxDebaitPage") }); } catch {}
+    for (const [id, key] of [["debait-run", "ctxDebaitPage"], ["debait-link", "ctxDebaitLink"]]) {
+      try { await chrome.contextMenus.update(id, { title: globalThis.DebaitI18n.t(key) }); } catch {}
+    }
   }
 });

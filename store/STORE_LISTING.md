@@ -47,7 +47,9 @@ The extension requests only what the single purpose needs:
 
 - **storage** — to save your provider, API key, output language, and
   rate-limit/daily-cap settings, and to track the daily preview count.
-- **contextMenus** — to add the “debait this page” right-click item.
+- **contextMenus** — to add “debait this page” for current-page analysis and
+  “debait this link” for user-requested HTTP/HTTPS target previews without opening
+  the link. Both actions serve the same article summarization purpose.
 - **host permissions `https://*/*` and `http://*/*`** — two things need
   all-sites access: (1) a content script runs on the page to detect Alt+hover and
   draw the result overlay/tooltip, and (2) when you hover a link, the background

@@ -75,6 +75,11 @@ a provider with your own API key, or a configured local model.
 > unpacked extension. (Sideloaded extensions show a one-time "Developer mode"
 > notice on startup; that's normal.) See [`extension/README.md`](extension/README.md).
 
+**Right-click a link:** choose **debait this link** to analyze its target without
+opening it. Results appear in a closable panel; the action shares hover previews’
+cache and usage limits. Right-clicking the page still offers **debait this page**
+for current-page analysis. See [right-click menu details](extension/README.md#right-click-menu).
+
 **Check your connection:** in extension **Settings**, click **Test connection**
 under the model field. It uses the current, unsaved provider/key/model/base URL
 and makes one small generation request (quota or charges may apply). No article

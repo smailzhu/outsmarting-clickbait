@@ -219,6 +219,31 @@ async function run() {
   }
 }
 
+// Explicit link action keeps its result in the normal dismissible panel rather
+// than a hover tooltip (which disappears when the mouse moves).
+async function runLink(url) {
+  const requestRun = ++panelRun;
+  render(esc(t("panelReading")));
+  try {
+    const target = new URL(url);
+    if (!["https:", "http:"].includes(target.protocol)) throw new Error(t("linkInvalid"));
+    const resp = await chrome.runtime.sendMessage({ type: "debait:preview", url: target.href });
+    if (requestRun !== panelRun) return;
+    if (!resp?.ok) throw new Error(resp?.error || t("errUnknown"));
+    const r = resp.result;
+    if (!r || typeof r !== "object") throw new Error(t("errParse"));
+    if (r.capped) return render(esc(t("tipCapped", [String(r.used), String(r.cap)])));
+    if (r.rate_limited) return render(esc(t("linkRateLimited", [String(r.retryIn)])));
+    if (r.throttled) return render(esc(t("linkThrottled")));
+    if (r.thin_fetch) return render(`${esc(t("tipThin"))}<p>${esc(r.description || r.originalTitle || "")}</p>`);
+    renderResult({ originalTitle: r.originalTitle || target.href }, r);
+  } catch (e) {
+    if (requestRun !== panelRun) return;
+    render(`<b style="color:#e5484d">${esc(t("errGeneric"))}</b><br><br>${esc(e?.message || String(e))}`);
+  }
+}
+
 chrome.runtime.onMessage.addListener((msg) => {
   if (msg?.type === "debait:run") run();
+  if (msg?.type === "debait:runLink") runLink(msg.url);
 });
