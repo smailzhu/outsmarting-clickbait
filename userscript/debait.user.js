@@ -320,8 +320,9 @@ ${body || "(no extractable text — the page may be JS-rendered or paywalled)"}
 .wrap * { box-sizing:border-box; margin:0; }
 .hd { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
 .brand { color:#6cb6ff; font-weight:700; font-size:15px; }
-.x { cursor:pointer; color:#9aa4b2; font-size:16px; line-height:1; padding:2px 7px; border-radius:6px; }
+.x { cursor:pointer; color:#9aa4b2; font-size:16px; line-height:1; padding:2px 7px; border-radius:6px; border:0; background:transparent; }
 .x:hover { background:#20262e; color:#fff; }
+.x:focus-visible { outline:2px solid #6cb6ff; outline-offset:2px; }
 .lbl { color:#9aa4b2; font-size:11px; letter-spacing:.07em; text-transform:uppercase; margin-top:6px; }
 .orig { color:#c9d1d9; margin:2px 0 6px; }
 .title { font-weight:600; font-size:15px; margin:2px 0 10px; }
@@ -350,16 +351,22 @@ pre { white-space:pre-wrap; color:#c9d1d9; }
     return content;
   }
 
-  function closePanel() { document.getElementById(PANEL_ID)?.remove(); }
+  let panelRun = 0;
+  function closePanel() { panelRun++; document.getElementById(PANEL_ID)?.remove(); }
   function render(html) {
-    panel().innerHTML = html;
-    document.getElementById(PANEL_ID)?.shadowRoot?.querySelector(".x")?.addEventListener("click", closePanel);
+    const content = panel();
+    // Include the dismissible header for every state, not only successful results.
+    content.innerHTML = hd() + html;
+    content.getRootNode().querySelector(".x")?.addEventListener("click", closePanel);
   }
-  function hd() { return `<div class="hd"><span class="brand">🪝🚫 ${t("brand")}</span><span class="x" title="${esc(t("closeTitle"))}">✕</span></div>`; }
+  function hd() {
+    const label = esc(t("closeTitle")).replace(/"/g, "&quot;");
+    return `<div class="hd"><span class="brand">🪝🚫 ${esc(t("brand"))}</span><button type="button" class="x" title="${label}" aria-label="${label}">✕</button></div>`;
+  }
   function esc(s) { return String(s ?? "").replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c])); }
 
   function renderResult(a, r) {
-    if (r.parse_error) return render(`${hd()}${esc(t("errParse"))}<pre>${esc(r.raw)}</pre>`);
+    if (r.parse_error) return render(`${esc(t("errParse"))}<pre>${esc(r.raw)}</pre>`);
     const n = clampScore(r.clickbait_score);
     const col = scoreColor(n);
     const kp = Array.isArray(r.key_points) && r.key_points.length
@@ -367,7 +374,6 @@ pre { white-space:pre-wrap; color:#c9d1d9; }
     const sig = Array.isArray(r.clickbait_signals) && r.clickbait_signals.length
       ? `<div class="lbl">${esc(t("labelBaitSignals"))}</div><ul>${r.clickbait_signals.map((s) => `<li>⚑ ${esc(s)}</li>`).join("")}</ul>` : "";
     render(`
-      ${hd()}
       <div class="lbl">${esc(t("labelOriginal"))}</div>
       <div class="orig">${esc(a.originalTitle)}</div>
       <div class="lbl">${esc(t("labelHonest"))}</div>
@@ -393,12 +399,15 @@ pre { white-space:pre-wrap; color:#c9d1d9; }
   }
 
   async function run() {
-    render(`<b style="color:#58a6ff">🪝🚫 ${t("brand")}</b><br><br>${esc(t("panelReading"))}`);
+    const requestRun = ++panelRun;
+    render(esc(t("panelReading")));
     try {
       const article = extractPage();
       const out = await callProvider(buildPrompt(article, { language: CFG.language, customInstructions: CFG.customInstructions }));
+      if (requestRun !== panelRun) return;
       renderResult(article, parseResult(out));
     } catch (e) {
+      if (requestRun !== panelRun) return;
       render(`<b style="color:#e5484d">${esc(t("errGeneric"))}</b><br><br>${esc(e.message)}`);
     }
   }
