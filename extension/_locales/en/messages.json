@@ -271,5 +271,14 @@
   },
   "linkThrottled": {
     "message": "Another preview is running or requests are too close together. Wait a moment, then right-click the link and try again."
+  },
+  "popupHintAnalyze": {
+    "message": "Analyze the article you're viewing."
+  },
+  "popupHintLinks": {
+    "message": "Preview a link: hold Alt and hover, or right-click → debait this link."
+  },
+  "popupHintSetup": {
+    "message": "First use? Set your provider and API key (if needed) in Settings below."
   }
 }

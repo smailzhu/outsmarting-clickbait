@@ -271,5 +271,14 @@
   },
   "linkThrottled": {
     "message": "另一個預覽正在執行，或呼叫間隔太短。請稍候，再於連結上按右鍵重試。"
+  },
+  "popupHintAnalyze": {
+    "message": "分析目前正在閱讀的文章。"
+  },
+  "popupHintLinks": {
+    "message": "預覽連結：按住 Alt 並懸停，或按右鍵 → debait 這個連結。"
+  },
+  "popupHintSetup": {
+    "message": "第一次使用？請到下方設定選擇供應商，並視需要填入 API 金鑰。"
   }
 }

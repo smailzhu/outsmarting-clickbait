@@ -271,5 +271,14 @@
   },
   "linkThrottled": {
     "message": "有別 ê 預覽咧走，抑是呼叫間隔傷短。請等一下仔，閣 tī 連結撳右鍵試。"
+  },
+  "popupHintAnalyze": {
+    "message": "分析你這馬咧讀 ê 文章。"
+  },
+  "popupHintLinks": {
+    "message": "預覽連結：揿牢 Alt kah 懸停，抑是撳右鍵 → 用 debait 看這條連結。"
+  },
+  "popupHintSetup": {
+    "message": "頭一擺用？請 tī 下跤 ê 設定揀供應商，有需要就填 API 金鑰。"
   }
 }
