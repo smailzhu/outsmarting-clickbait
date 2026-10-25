@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         debait — outsmart clickbait
 // @namespace    https://github.com/smailzhu/outsmarting-clickbait
-// @version      0.1.0
+// @version      0.3.0
 // @description  Reads the current article and shows an honest title, summary, and clickbait score. Inspired by wiwi.blog/blog/outsmarting-clickbait
 // @author       smailzhu
 // @match        *://*/*
