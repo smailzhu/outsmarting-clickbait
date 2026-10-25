@@ -35,3 +35,6 @@
 
 程式碼、使用指南、問題回報與隱私政策：
 https://github.com/smailzhu/outsmarting-clickbait
+
+自訂端點
+自訂／OpenAI 相容端點需 API 基底網址與模型，金鑰可留空。文章與提示詞送至您信任的端點業者。無金鑰遠端 HTTP 未加密，可遭監看或竄改。有金鑰須用 HTTPS，回環位址除外。僅支援 Chat Completions，無模型探索或自動重試。

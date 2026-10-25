@@ -19,10 +19,14 @@ The name, short summary, and other submission fields remain in
 [../STORE_LISTING.md](../STORE_LISTING.md). These description files deliberately
 avoid long provider-brand lists (the prior Yellow Argon keyword-spam finding).
 
-These descriptions match the **v0.2.0** feature set.
+These descriptions match the **v0.3.0 GitHub release** feature set. Use this copy
+when submitting the v0.3.0 package, not to advertise custom endpoints for an older
+store-installed build. GitHub publication does not itself update either store.
 
 All three descriptions include:
 - The API-key/local-model requirement and possible provider fees.
+- Custom / OpenAI-compatible setup with explicit base URL and model, optional
+  authentication, endpoint trust, and keyless HTTP content-transfer risks.
 - **Test connection** for unsaved settings: one small potentially billable request,
   without article content or custom instructions.
 - Current-page analysis, deliberate **Alt+hover** preview, and **right-click link previews**.

@@ -1,5 +1,13 @@
 # Privacy Policy — debait
 
+> **New in v0.3.0 (GitHub/source release; store rollout is separate):** Custom / OpenAI-compatible
+> requires an explicit base URL and model; key optional. Keyless remote HTTP
+> sends article content and prompts **UNENCRYPTED**. Trust the endpoint operator.
+> See the [custom setup, security and userscript compatibility guide](docs/custom-provider.md).
+> Userscript custom is limited to Tampermonkey ≥4.18 on Chromium with the
+> DOM-isolated sandbox and CORS-compatible direct Fetch; no GM/page fallback.
+
+
 _Last updated: 2026_
 
 **debait** ("the extension") is an open-source tool that summarizes web articles
@@ -11,8 +19,7 @@ not do with your data.
 - There is **no debait server**. The developer operates no backend and receives
   **no data** from you whatsoever.
 - The extension sends page text **only to the AI provider you choose and
-  configure with your own API key** (e.g. OpenAI, Anthropic, Google Gemini,
-  Groq, OpenRouter, DeepSeek, xAI, Mistral, Together, NVIDIA, or a local Ollama).
+  configure** (with a key where required; custom endpoints can be keyless).
 - Your API key and settings are stored by your browser via `chrome.storage.sync`,
   which may sync them across your own signed-in Chrome profile (Google
   infrastructure). They are never sent to the developer.

@@ -1,5 +1,13 @@
 # outsmarting-clickbait 🪝🚫
 
+> **New in v0.3.0 (GitHub/source release; store rollout is separate):** Custom / OpenAI-compatible
+> requires an explicit base URL and model; key optional. Keyless remote HTTP
+> sends article content and prompts **UNENCRYPTED**. Trust the endpoint operator.
+> See the [custom setup, security and userscript compatibility guide](docs/custom-provider.md).
+> Userscript custom is limited to Tampermonkey ≥4.18 on Chromium with the
+> DOM-isolated sandbox and CORS-compatible direct Fetch; no GM/page fallback.
+
+
 [![CI](https://github.com/smailzhu/outsmarting-clickbait/actions/workflows/ci.yml/badge.svg)](https://github.com/smailzhu/outsmarting-clickbait/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/smailzhu/outsmarting-clickbait?sort=semver)](https://github.com/smailzhu/outsmarting-clickbait/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -24,12 +32,12 @@ Ships in three forms from one shared prompt:
 | Form | Where | Entry |
 |------|-------|-------|
 | **CLI** | terminal (OpenAI API or `codex` CLI) | `src/cli.js` |
-| **Userscript** | Tampermonkey / Violentmonkey, any browser | [`userscript/`](userscript/) |
+| **Userscript** | native GM providers; custom restricted | [`userscript/`](userscript/) |
 | **Extension** | Chromium (MV3): Chrome / Edge / Brave | [`extension/`](extension/) |
 
 The prompt + result parsing live once in [`shared/prompt.js`](shared/prompt.js);
-the browser builds reuse it. **In-browser builds require an OpenAI-compatible API
-key** — the `codex` CLI backend is CLI-only.
+the browser builds reuse it. **Most named hosted providers require their own API
+key; local Ollama and unreleased custom can be keyless** — the `codex` CLI backend is CLI-only.
 
 `debait` fetches an article, reads the whole thing with an LLM, and prints:
 
@@ -87,7 +95,7 @@ content is sent. A successful test means the model returned text; a 429 indicate
 quota/rate limits, not necessarily an invalid key. Tests are outside the preview
 cap. See [the connection-test guide](extension/README.md#test-your-provider-connection).
 
-### Userscript (Tampermonkey / Violentmonkey — any browser, incl. Firefox)
+### Userscript (native providers via GM; custom has restricted environment)
 
 Install a userscript manager, then open
 [`userscript/debait.user.js`](userscript/debait.user.js) → **Raw** — your manager
@@ -134,6 +142,7 @@ Multi-provider, from one shared layer ([`shared/providers.js`](shared/providers.
 | Together | `together` | openai | meta-llama/Llama-3.3-70B-Instruct-Turbo | `TOGETHER_API_KEY` |
 | NVIDIA (NIM) | `nvidia` | openai | meta/llama-3.3-70b-instruct | `NVIDIA_API_KEY` |
 | Ollama (local) | `ollama` | openai | llama3.1 | — |
+| Custom / OpenAI-compatible (unreleased) | `custom` | openai | explicit, no default | `CUSTOM_API_KEY` (optional) |
 | Codex CLI | `codex` | — (shells out) | — | — |
 
 **CLI auto-selection:** the first provider whose key env var is set, else the
@@ -171,7 +180,7 @@ JSON keys and the `substance_verdict` enum always stay English. The extension
 the same setting.
 
 The userscript and extension expose the same provider list in their settings.
-After editing `shared/providers.js`, run `npm run sync` to copy it into the extension.
+After editing `shared/providers.js`, run `npm run sync` to copy it into the extension and generate the userscript custom helpers.
 
 ## Example
 

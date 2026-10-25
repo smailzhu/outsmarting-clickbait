@@ -1,6 +1,15 @@
 # debait — userscript (Tampermonkey / Violentmonkey)
 
-A single-file version that works in any userscript manager. Adds a floating 🪝🚫
+> **New in v0.3.0 (GitHub/source release; store rollout is separate):** Custom / OpenAI-compatible
+> requires an explicit base URL and model; key optional. Keyless remote HTTP
+> sends article content and prompts **UNENCRYPTED**. Trust the endpoint operator.
+> See the [custom setup, security and userscript compatibility guide](../docs/custom-provider.md).
+> Userscript custom is limited to Tampermonkey ≥4.18 on Chromium with the
+> DOM-isolated sandbox and CORS-compatible direct Fetch; no GM/page fallback.
+
+
+A single-file version with native GM providers and a restricted custom Fetch
+transport. No unconditional any-manager/browser support is claimed. Adds a floating 🪝🚫
 button; click it to analyze the current article.
 
 ## Install
@@ -11,7 +20,7 @@ button; click it to analyze the current article.
    manager will offer to install it. (Or create a new script and paste the contents.)
 3. Open the Tampermonkey menu and set up a provider:
    - **debait: choose provider** (openai, anthropic, gemini, groq, openrouter,
-     deepseek, xai, mistral, together, ollama)
+     deepseek, xai, mistral, together, nvidia, ollama, custom)
    - **debait: set API key (current provider)**
    - optionally **set model / base URL override**
 4. Visit any article and click the floating 🪝🚫 button (or use the menu command).
@@ -38,9 +47,10 @@ and summary — before you open the page. Cached per URL (30 min).
 
 ## Notes
 
-- Supports the same providers as the CLI/extension.
-- Uses `GM_xmlhttpRequest` (bypasses page CORS); the `@connect` grants list each
+- Native providers use GM transport; custom has the isolated Fetch restrictions above.
+- Native calls use `GM_xmlhttpRequest` (bypasses page CORS); custom uses direct Fetch,
+  which requires endpoint CORS and does not use `@connect` as a bypass. the `@connect` grants list each
   provider host — add your own if you use a custom base URL.
-- Keys are stored locally per provider via `GM_setValue`.
+- Key/base/model profiles are stored locally per provider via `GM_setValue`.
 - Anthropic is called with `anthropic-dangerous-direct-browser-access: true`.
 - Click the floating button to debait the **current** page; Alt+hover to preview **other** pages.

@@ -35,3 +35,6 @@ Keys and preferences use chrome.storage.sync and may synchronize through Chrome 
 
 Code, user guides, support, and privacy policy:
 https://github.com/smailzhu/outsmarting-clickbait
+
+CUSTOM ENDPOINTS
+Custom / OpenAI-compatible endpoint support requires an explicit API base URL and model, with an optional key. Article data and prompts go to the endpoint operator you trust. Keyless remote HTTP is UNENCRYPTED and may be observed or modified in transit. A key requires HTTPS except on loopback. Chat Completions only, no model discovery or automatic retries.

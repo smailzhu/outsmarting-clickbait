@@ -35,3 +35,6 @@ AI 讀 ê 是掠著文字 ê 頭前 12,000 個字元，毋一定是規篇文章�
 
 程式碼、使用說明、回報問題 kah 隱私政策：
 https://github.com/smailzhu/outsmarting-clickbait
+
+自訂端點
+自訂／OpenAI 相容端點愛 API 基底網址佮模型，金鑰會使留空。文章佮提示詞送去您信任的端點。無金鑰遠端 HTTP 無加密，會予人監看抑是改掉。有金鑰愛用 HTTPS，loopback 除外。干焦支援 Chat Completions，無模型探索抑是自動重試。台語猶是草稿。

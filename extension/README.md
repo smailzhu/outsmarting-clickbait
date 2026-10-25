@@ -1,5 +1,13 @@
 # debait — Chromium extension (MV3)
 
+> **New in v0.3.0 (GitHub/source release; store rollout is separate):** Custom / OpenAI-compatible
+> requires an explicit base URL and model; key optional. Keyless remote HTTP
+> sends article content and prompts **UNENCRYPTED**. Trust the endpoint operator.
+> See the [custom setup, security and userscript compatibility guide](../docs/custom-provider.md).
+> Userscript custom is limited to Tampermonkey ≥4.18 on Chromium with the
+> DOM-isolated sandbox and CORS-compatible direct Fetch; no GM/page fallback.
+
+
 Adds a toolbar button + right-click "debait this page" that reads the current
 article and overlays an honest title, summary, key points, and a clickbait score.
 
@@ -22,13 +30,16 @@ and unzip it, or clone the repo and use this `extension/` folder.
    (the unzipped release folder, or this `extension/` folder).
 4. Open the extension's **Options**, pick a **provider** (OpenAI, Anthropic,
    Gemini, Groq, OpenRouter, DeepSeek, xAI, Mistral, Together, NVIDIA, or local Ollama),
-   paste that provider's API key (optionally override base URL / model), and Save.
-   Keys are remembered per provider, so you can switch freely.
+   enter its API key if required (optionally override base URL / model), and Save.
+   For **Custom / OpenAI-compatible**, explicitly enter the API base URL and model;
+   its key is optional. See [custom endpoint setup](../docs/custom-provider.md).
+   Key/base/model profiles are remembered per provider, so you can switch freely.
 5. Visit any article → click the toolbar icon or right-click → *debait this page*.
 
 ## Test your provider connection
 
-In **Options**, select a provider and enter its key (unless using local Ollama).
+In **Options**, select a provider and enter its key if required (local Ollama and
+Custom / OpenAI-compatible endpoints may be keyless).
 Click **Test connection** below the model field. It tests the **current form
 values**, including unsaved base-URL/model overrides, without saving them.
 
@@ -70,7 +81,7 @@ Hold **Alt** and hover any link. After a short dwell, the background worker
 **fetches that target URL, extracts it, and debaits it** — showing a tooltip with
 the honest title, clickbait score, substance verdict, *worth clicking*, and a
 summary, **before you open the page**. Results are cached per URL (30 min) so
-re-hovering is instant and each link costs at most one LLM call.
+re-hovering is instant and each unchanged configuration can reuse its cached answer.
 
 **Limitations (by design):**
 - Only works on **server-rendered** pages. JS-rendered or paywalled targets can't
@@ -119,7 +130,7 @@ runs in the background service worker, which has `host_permissions`.
   would be the way to do that.
 - Preview works on **server-rendered** pages only; JS-rendered/paywalled targets
   fall back to the link's meta description.
-- Needs your own API key; article text is sent only to the provider you configure.
+- Most hosted named providers need your own API key; article text is sent only to the provider you configure.
   Keys are stored in `chrome.storage.sync` (synced to your browser profile).
 - Branded icons are bundled in `extension/icons/` and declared in the manifest.
 

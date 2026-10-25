@@ -1,5 +1,8 @@
 # outsmarting-clickbait 🪝🚫
 
+> **v0.3.0 GitHub／原始碼版本新增功能（商店更新需另行送審發布）：** 自訂／OpenAI 相容端點需明確填入 API 基底網址與模型，金鑰可留空。無金鑰遠端 HTTP 的文章與提示詞未加密，可遭監看或竄改；請信任端點業者。有金鑰須用 HTTPS，loopback 除外。無模型探索（`--models custom` 本機拒絕）。使用者腳本需 Chromium 上 Tampermonkey ≥4.18、DOM 隔離沙箱與 CORS 相容端點，無 GM／網頁回退。設定、限制與驗證詳見 [自訂端點指南（英文）](docs/custom-provider.md)。台語翻譯仍為草稿。
+
+
 [English](README.md) | **繁體中文** | [台語（漢羅）](README.tai-gi.md)
 
 [![到 Chrome 線上應用程式商店安裝 debait](docs/assets/chrome-web-store-badge.png)](https://chromewebstore.google.com/detail/pcjbpicieggjfjldoekdeglnjhcdhjla?hl=zh-TW)
