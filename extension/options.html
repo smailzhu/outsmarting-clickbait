@@ -19,14 +19,14 @@
   <h1>🪝🚫 <span data-i18n="optTitle">debait settings</span></h1>
   <p class="hint" data-i18n="optStoredHint">Your API key is stored in chrome.storage.sync and only sent to the selected provider.</p>
   <label for="uiLang"><span data-i18n="optUiLanguage">Interface language</span> <span class="hint" data-i18n="optUiLanguageHint">(the extension's buttons &amp; labels; Auto = follow your browser)</span></label>
-  <select id="uiLang" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:6px">
+  <select id="uiLang" disabled style="width:100%;padding:8px;border:1px solid #ccc;border-radius:6px">
     <option value="" data-i18n="interfaceAuto">Auto (browser)</option>
     <option value="en">English</option>
     <option value="zh_TW">繁體中文</option>
     <option value="nan-Hanlo">台語（漢羅）</option>
   </select>
   <label for="provider" data-i18n="optProvider">Provider</label>
-  <select id="provider" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:6px">
+  <select id="provider" disabled style="width:100%;padding:8px;border:1px solid #ccc;border-radius:6px">
     <option value="openai">OpenAI</option>
     <option value="anthropic">Anthropic (Claude)</option>
     <option value="gemini">Google Gemini</option>
@@ -37,35 +37,37 @@
     <option value="mistral">Mistral</option>
     <option value="together">Together</option>
     <option value="nvidia">NVIDIA (NIM / build.nvidia.com)</option>
+    <option value="custom" data-i18n="customProvider">Custom / OpenAI-compatible</option>
     <option value="ollama">Ollama (local)</option>
   </select>
+  <p class="hint" data-i18n="customGuidance"></p>
   <label for="key" data-i18n="optKey">API key</label>
-  <input id="key" type="password" data-i18n-ph="phKeyOllama" placeholder="sk-... (not needed for local Ollama)" />
-  <label for="base"><span data-i18n="optBase">API base URL</span> <span class="hint" data-i18n="optOverrideHint">(optional — overrides provider default)</span></label>
-  <input id="base" type="text" data-i18n-ph="phBlankDefault" placeholder="leave blank for default" />
-  <label for="model"><span data-i18n="optModel">Model</span> <span class="hint" data-i18n="optOverrideHint">(optional — overrides provider default)</span></label>
-  <input id="model" type="text" data-i18n-ph="phBlankDefault" placeholder="leave blank for default" />
+  <input id="key" disabled type="password" data-i18n-ph="phKeyOllama" placeholder="sk-... (not needed for local Ollama)" />
+  <label for="base"><span data-i18n="optBase">API base URL</span> <span id="baseHint" class="hint" data-i18n="optOverrideHint">(optional — overrides provider default)</span></label>
+  <input id="base" disabled type="text" data-i18n-ph="phBlankDefault" placeholder="leave blank for default" />
+  <label for="model"><span data-i18n="optModel">Model</span> <span id="modelHint" class="hint" data-i18n="optOverrideHint">(optional — overrides provider default)</span></label>
+  <input id="model" disabled type="text" data-i18n-ph="phBlankDefault" placeholder="leave blank for default" />
   <button id="testConnection" type="button" data-i18n="connectionTestButton" disabled>Test connection</button>
   <p class="hint" data-i18n="connectionTestHint">Tests the current provider, model and key without saving. Makes one small generation request; quota or usage charges may apply. No article content is sent.</p>
   <p id="connectionStatus" role="status" aria-live="polite" aria-atomic="true"></p>
   <label for="language"><span data-i18n="optLanguage">Output language</span> <span class="hint" data-i18n="optLanguageHint">(title &amp; summary; blank = auto, match the article)</span></label>
-  <input id="language" type="text" placeholder="auto — or English, 繁體中文, 日本語, Español" />
+  <input id="language" disabled type="text" placeholder="auto — or English, 繁體中文, 日本語, Español" />
   <label for="customInstructions"><span data-i18n="optInstructions">Custom instructions</span> <span class="hint" data-i18n="optInstructionsHint">(optional — appended to the prompt; the JSON output shape is kept)</span></label>
-  <textarea id="customInstructions" rows="3" style="width:100%;padding:8px;box-sizing:border-box;border:1px solid #ccc;border-radius:6px;font:13px/1.4 system-ui,sans-serif" placeholder="e.g. Be harsher on sensational framing. Add a one-line TL;DR in the summary."></textarea>
+  <textarea id="customInstructions" disabled rows="3" style="width:100%;padding:8px;box-sizing:border-box;border:1px solid #ccc;border-radius:6px;font:13px/1.4 system-ui,sans-serif" placeholder="e.g. Be harsher on sensational framing. Add a one-line TL;DR in the summary."></textarea>
 
   <h2 style="font-size:15px;margin:22px 0 4px" data-i18n="optLimitsTitle">Hover preview limits</h2>
   <p class="hint" data-i18n="optLimitsHint">Preview fetches + summarizes a link before you click. These caps stop bursty hovering from blowing your provider quota.</p>
   <label for="previewDwellMs"><span data-i18n="optDwell">Hover dwell (ms)</span> <span class="hint" data-i18n="optDwellHint">before a preview fires</span></label>
-  <input id="previewDwellMs" type="number" min="0" step="50" placeholder="500" />
+  <input id="previewDwellMs" disabled type="number" min="0" step="50" placeholder="500" />
   <label for="previewMinIntervalMs" data-i18n="optInterval">Min interval between previews (ms)</label>
-  <input id="previewMinIntervalMs" type="number" min="0" step="100" placeholder="1500" />
+  <input id="previewMinIntervalMs" disabled type="number" min="0" step="100" placeholder="1500" />
   <label for="dailyCap"><span data-i18n="optDailyCap">Daily preview cap</span> <span class="hint" data-i18n="optDailyCapHint">(0 = unlimited)</span></label>
-  <input id="dailyCap" type="number" min="0" step="10" placeholder="200" />
+  <input id="dailyCap" disabled type="number" min="0" step="10" placeholder="200" />
   <p class="hint" id="usage"></p>
 
   <div style="margin-top:16px">
-    <button id="save" data-i18n="optSave">Save</button>
-    <span id="status"></span>
+    <button id="save" disabled data-i18n="optSave">Save</button>
+    <span id="status" role="status" aria-live="polite"></span>
   </div>
   <p class="hint" style="margin-top:18px">
     <span data-i18n="optReport">Questions or problems? Email the author:</span>
@@ -74,6 +76,7 @@
   </p>
   <script src="messages.gen.js"></script>
   <script src="i18n-runtime.js"></script>
+  <script src="profiles.js"></script>
   <script src="options.js"></script>
 </body>
 </html>

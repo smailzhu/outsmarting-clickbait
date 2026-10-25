@@ -12,7 +12,7 @@
 //   <PROVIDER>_API_KEY       e.g. OPENAI_API_KEY, ANTHROPIC_API_KEY, GEMINI_API_KEY
 
 import { spawn } from "node:child_process";
-import { PROVIDERS, resolveProvider, callProvider, listModels as providerListModels } from "../shared/providers.js";
+import { PROVIDERS, providerCapabilities, CUSTOM_DISCOVERY_ERROR, resolveProvider, callProvider, listModels as providerListModels } from "../shared/providers.js";
 
 function providerConfig(providerId) {
   const def = PROVIDERS[providerId];
@@ -23,7 +23,7 @@ function providerConfig(providerId) {
     model: process.env.DEBAIT_MODEL,
     key: process.env[def.keyEnv] || process.env.DEBAIT_API_KEY,
   });
-  if (!cfg.key && providerId !== "ollama") {
+  if (!cfg.key && providerCapabilities(providerId).keyRequired) {
     throw new Error(`No API key for "${providerId}". Set ${def.keyEnv} (or DEBAIT_API_KEY).`);
   }
   return cfg;
@@ -34,6 +34,7 @@ export async function listModels(providerId = chooseBackend()) {
   if (providerId === "codex") {
     throw new Error("The codex backend has no model list. Pick a provider: --models <provider> or DEBAIT_PROVIDER.");
   }
+  if (!providerCapabilities(providerId).discovery) throw new Error(CUSTOM_DISCOVERY_ERROR);
   return providerListModels(providerConfig(providerId));
 }
 
@@ -43,7 +44,7 @@ export function chooseBackend() {
   if (process.env.DEBAIT_PROVIDER) return process.env.DEBAIT_PROVIDER.toLowerCase();
   // Pick the first provider whose key env var is present.
   for (const [id, def] of Object.entries(PROVIDERS)) {
-    if (process.env[def.keyEnv]) return id;
+    if (providerCapabilities(id).autoSelect && process.env[def.keyEnv]) return id;
   }
   return "codex";
 }

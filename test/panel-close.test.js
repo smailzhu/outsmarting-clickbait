@@ -38,7 +38,7 @@ function setup(kind) {
     verdict: (value) => value,
     extractPage: () => ({ text: "body", originalTitle: "Original" }),
     buildPrompt: () => "prompt", callProvider: request,
-    parseResult: JSON.parse, CFG: {},
+    parseResult: JSON.parse, CFG: {}, snapshot: () => ({}), configuration: (s) => s, stale: () => false,
     DebaitI18n: { init: async () => {}, t: (key) => key === "closeTitle" ? label : key, verdict: (v) => v },
     DebaitPrompt: { buildPrompt: () => "prompt", parseResult: JSON.parse },
     chrome: { storage: { sync: { get: async () => ({}) } }, runtime: { sendMessage: request } },
@@ -79,7 +79,7 @@ test("extension: right-click link uses the preview path and displays a dismissib
 test("extension: link quota/fallback/error states all stay dismissible", async () => {
   for (const result of [
     { capped: true, used: 200, cap: 200 }, { rate_limited: true, retryIn: 30 },
-    { throttled: true }, { thin_fetch: true, description: "<metadata>" },
+    { throttled: true }, { stale: true }, { thin_fetch: true, description: "<metadata>" },
     { parse_error: true, raw: "<invalid>" },
   ]) {
     const page = setup("extension");
@@ -115,6 +115,40 @@ test("extension: link dismissal suppresses late success and invalid URLs make no
   assert.equal(page.pending.length, 1);
   assert.ok(page.content().innerHTML.includes("linkInvalid"));
 });
+
+for (const outcome of ["success", "error"]) {
+  test(`userscript: settings change and late ${outcome} cannot reopen a dismissed panel`, async () => {
+    const page = setup("userscript");
+    let generation = 0;
+    page.context.snapshot = () => ({ generation });
+    page.context.stale = (s) => s.generation !== generation;
+    const run = vm.runInContext("run()", page.context);
+    await page.flush();
+    page.close();
+    generation++;
+    page.finish(0, outcome === "error" ? new Error("late error") : { honest_title: "Late title" });
+    await run;
+    assert.equal(page.hosts.size, 0);
+  });
+
+  test(`userscript: settings change and late ${outcome} cannot overwrite a newer panel`, async () => {
+    const page = setup("userscript");
+    let generation = 0;
+    page.context.snapshot = () => ({ generation });
+    page.context.stale = (s) => s.generation !== generation;
+    const older = vm.runInContext("run()", page.context);
+    await page.flush();
+    generation++;
+    const newer = vm.runInContext("run()", page.context);
+    await page.flush();
+    page.finish(1, { honest_title: "Newer title" });
+    await newer;
+    page.finish(0, outcome === "error" ? new Error("late error") : { honest_title: "Older title" });
+    await older;
+    assert.ok(page.content().innerHTML.includes("Newer title"));
+    assert.ok(!page.content().innerHTML.includes("errStale"));
+  });
+}
 
 for (const kind of ["extension", "userscript"]) {
   test(`${kind}: loading, error, malformed output and successful panels all have one accessible close button`, async () => {

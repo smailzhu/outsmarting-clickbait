@@ -1,6 +1,6 @@
 // Explicit settings-page connection test. Uses the same provider wire formats
 // as analysis, but sends no article, custom instructions, or saved settings.
-import { buildRequest, parseResponse, resolveProvider } from "./providers.js";
+import { buildRequest, parseResponse, resolveProvider, providerCapabilities, fetchCustomText } from "./providers.js";
 
 export function isOptionsSender(sender, runtime) {
   return sender?.id === runtime.id &&
@@ -26,7 +26,7 @@ export async function testConnection(values, { fetchImpl = globalThis.fetch, tim
   } catch {
     return { ok: false, code: "settings" };
   }
-  if (!cfg.key && cfg.id !== "ollama") return { ok: false, code: "missing_key" };
+  if (!cfg.key && providerCapabilities(cfg.id).keyRequired) return { ok: false, code: "missing_key" };
 
   // Thinking tokens can consume the entire generation budget before any text
   // appears. Use controls only for recognized model families; keep aliases and
@@ -54,6 +54,17 @@ export async function testConnection(values, { fetchImpl = globalThis.fetch, tim
     const body = JSON.parse(req.body);
     body.generationConfig.thinkingConfig = thinkingConfig;
     req.body = JSON.stringify(body);
+  }
+  if (cfg.id === "custom") {
+    try {
+      const raw = await fetchCustomText(req, { fetchImpl, timeoutMs });
+      let text;
+      try { text = parseResponse(cfg.format, JSON.parse(raw)); } catch { return { ok: false, code: "response" }; }
+      return text ? { ok: true, code: "success" } : { ok: false, code: "empty" };
+    } catch (e) {
+      const code = e.status === 401 ? "auth" : e.status === 403 ? "access" : e.status === 404 ? "model" : e.code;
+      return { ok: false, code: code || "network", ...(e.status ? { status: e.status } : {}) };
+    }
   }
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);

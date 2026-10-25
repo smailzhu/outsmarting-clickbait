@@ -5,6 +5,8 @@
 // @description  Reads the current article and shows an honest title, summary, and clickbait score. Inspired by wiwi.blog/blog/outsmarting-clickbait
 // @author       smailzhu
 // @match        *://*/*
+// @sandbox      DOM
+// @grant        GM_info
 // @grant        GM_xmlhttpRequest
 // @grant        GM_setValue
 // @grant        GM_getValue
@@ -25,9 +27,336 @@
 // @noframes
 // ==/UserScript==
 
-/* global GM_xmlhttpRequest, GM_setValue, GM_getValue, GM_registerMenuCommand */
+/* global GM_info, GM_xmlhttpRequest, GM_setValue, GM_getValue, GM_registerMenuCommand */
 (function () {
   "use strict";
+
+  // BEGIN GENERATED CUSTOM HELPERS (npm run sync)
+  const CustomProtocol = (() => {
+// Multi-provider abstraction. Browser-safe (pure + fetch), reused by the CLI,
+// the Chromium extension, and (inlined) the userscript.
+//
+// Three wire formats cover the major providers:
+//   - "openai"    : POST {base}/chat/completions   (OpenAI + all compatible gateways)
+//   - "anthropic" : POST {base}/messages           (Claude)
+//   - "gemini"    : POST {base}/models/{model}:generateContent?key=...
+//
+// OpenAI-compatible gateways (Groq, OpenRouter, DeepSeek, xAI, Mistral, Together,
+// Ollama, LM Studio, ...) just reuse the "openai" format with a different base.
+
+const SYSTEM =
+  "You are a precise editor. Respond with exactly the requested format, nothing else.";
+
+// Capability overrides are centralized here; native providers require keys,
+// support discovery and participate in auto-selection unless overridden.
+const PROVIDERS = {
+  openai:     { format: "openai",    base: "https://api.openai.com/v1",              model: "gpt-4o-mini",             keyEnv: "OPENAI_API_KEY" },
+  anthropic:  { format: "anthropic", base: "https://api.anthropic.com/v1",           model: "claude-3-5-haiku-latest", keyEnv: "ANTHROPIC_API_KEY" },
+  gemini:     { format: "gemini",    base: "https://generativelanguage.googleapis.com/v1beta", model: "gemini-flash-latest", keyEnv: "GEMINI_API_KEY" },
+  groq:       { format: "openai",    base: "https://api.groq.com/openai/v1",         model: "llama-3.3-70b-versatile", keyEnv: "GROQ_API_KEY" },
+  openrouter: { format: "openai",    base: "https://openrouter.ai/api/v1",           model: "openai/gpt-4o-mini",      keyEnv: "OPENROUTER_API_KEY" },
+  deepseek:   { format: "openai",    base: "https://api.deepseek.com/v1",            model: "deepseek-chat",           keyEnv: "DEEPSEEK_API_KEY" },
+  xai:        { format: "openai",    base: "https://api.x.ai/v1",                    model: "grok-3",                  keyEnv: "XAI_API_KEY" },
+  mistral:    { format: "openai",    base: "https://api.mistral.ai/v1",              model: "mistral-small-latest",    keyEnv: "MISTRAL_API_KEY" },
+  together:   { format: "openai",    base: "https://api.together.xyz/v1",            model: "meta-llama/Llama-3.3-70B-Instruct-Turbo", keyEnv: "TOGETHER_API_KEY" },
+  nvidia:     { format: "openai",    base: "https://integrate.api.nvidia.com/v1",    model: "meta/llama-3.3-70b-instruct", keyEnv: "NVIDIA_API_KEY" },
+  custom:     { format: "openai", base: "", model: "", keyEnv: "CUSTOM_API_KEY", keyRequired: false, discovery: false, autoSelect: false },
+  ollama:     { keyRequired: false, format: "openai",    base: "http://localhost:11434/v1",              model: "llama3.1",                keyEnv: "OLLAMA_API_KEY" },
+};
+
+function providerCapabilities(id) {
+  const def = PROVIDERS[id];
+  return { keyRequired: def?.keyRequired !== false, discovery: def?.discovery !== false,
+    autoSelect: def?.autoSelect !== false };
+}
+
+const CUSTOM_DISCOVERY_ERROR = "Custom / OpenAI-compatible supports Chat Completions only; model discovery is unsupported. Set an explicit base URL and model.";
+
+class CustomProviderError extends Error {}
+
+function customError(code, status, retryAfterMs) {
+  const messages = {
+    settings: "Custom settings require an explicit HTTP(S) API base URL and model; key is optional.",
+    suffix: "Use the API base URL, not the /chat/completions endpoint.",
+    https: "A key requires HTTPS except on loopback (localhost, 127/8, or ::1).",
+    http: "Custom endpoint rejected the request.", quota: "Custom endpoint rate limit (429).",
+    response: "Custom endpoint returned an invalid JSON completion response.",
+    empty: "Custom endpoint returned an empty completion.",
+    timeout: "Custom request timed out.", network: "Custom request failed (network, redirect, or body read).",
+  };
+  const error = new CustomProviderError(messages[code] || messages.network);
+  error.code = code;
+  if (status !== undefined) error.status = status;
+  if (retryAfterMs !== undefined) error.retryAfterMs = retryAfterMs;
+  return error;
+}
+
+function validateCustom({ base, model, key = "" } = {}) {
+  if ([base, model, key].some((v) => typeof v !== "string")) throw customError("settings");
+  base = base.trim(); model = model.trim(); key = key.trim();
+  let url;
+  try { url = new URL(base); } catch { throw customError("settings"); }
+  if (!model || !["http:", "https:"].includes(url.protocol) || url.username || url.password ||
+      url.search || url.hash || base.includes("?") || base.includes("#")) throw customError("settings");
+  base = url.href.replace(/\/+$/, "");
+  if (/\/chat\/completions$/i.test(url.pathname.replace(/\/+$/, ""))) throw customError("suffix");
+  const host = url.hostname.toLowerCase().replace(/^\[|\]$/g, "");
+  const loopback = host === "localhost" || host === "::1" ||
+    /^127\.\d+\.\d+\.\d+$/.test(host);
+  if (key && url.protocol !== "https:" && !loopback) throw customError("https");
+  return { id: "custom", format: "openai", base, model, key };
+}
+
+function validateConfiguration(cfg) {
+  const validated = cfg.id === "custom" ? validateCustom(cfg) : cfg;
+  if (providerCapabilities(validated.id).keyRequired && !validated.key) {
+    throw new Error(`No API key for provider "${validated.id}".`);
+  }
+  return validated;
+}
+
+function resolveProvider({ provider, base, model, key } = {}) {
+  if (typeof provider !== "undefined" && typeof provider !== "string") throw customError("settings");
+  const id = (provider || "openai").trim().toLowerCase();
+  if (id === "custom") return validateCustom({ base, model, key });
+  const def = PROVIDERS[id];
+  if (!def) throw new Error(`Unknown provider "${id}". Known: ${Object.keys(PROVIDERS).join(", ")}`);
+  return {
+    id,
+    format: def.format,
+    base: (base || def.base).replace(/\/+$/, ""),
+    model: model || def.model,
+    key: key || "",
+  };
+}
+
+// Returns { url, method, headers, body } for a single completion request.
+function buildRequest(cfg, prompt, { browser = false, maxOutputTokens } = {}) {
+  const { format, base, model, key } = cfg;
+
+  if (format === "anthropic") {
+    const headers = {
+      "content-type": "application/json",
+      "x-api-key": key,
+      "anthropic-version": "2023-06-01",
+    };
+    // Required for direct calls from a browser/extension/userscript origin.
+    if (browser) headers["anthropic-dangerous-direct-browser-access"] = "true";
+    return {
+      url: `${base}/messages`,
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        model,
+        max_tokens: maxOutputTokens ?? 1024,
+        temperature: 0.2,
+        system: SYSTEM,
+        messages: [{ role: "user", content: prompt }],
+      }),
+    };
+  }
+
+  if (format === "gemini") {
+    return {
+      url: `${base}/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`,
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: SYSTEM }] },
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.2, ...(maxOutputTokens !== undefined ? { maxOutputTokens } : {}) },
+      }),
+    };
+  }
+
+  // openai + all compatible gateways
+  const headers = { "content-type": "application/json" };
+  if (key) headers.authorization = `Bearer ${key}`; // omit for keyless (e.g. local Ollama)
+  return {
+    url: `${base}/chat/completions`,
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      model,
+      temperature: 0.2,
+      ...(maxOutputTokens !== undefined ? { max_tokens: maxOutputTokens } : {}),
+      messages: [
+        { role: "system", content: SYSTEM },
+        { role: "user", content: prompt },
+      ],
+    }),
+  };
+}
+
+function parseResponse(format, data) {
+  if (format === "anthropic") {
+    return (data?.content || []).map((p) => p.text || "").join("").trim();
+  }
+  if (format === "gemini") {
+    const parts = data?.candidates?.[0]?.content?.parts || [];
+    return parts.map((p) => p.text || "").join("").trim();
+  }
+  return (data?.choices?.[0]?.message?.content || "").trim();
+}
+
+// Convenience one-shot using global fetch (works in Node 20+, extension SW, and
+// userscript pages — though userscripts prefer GM_xmlhttpRequest for CORS).
+// ---- model discovery ------------------------------------------------------
+// Build a GET request that lists the models available to this key.
+function buildModelsRequest(cfg, { browser = false } = {}) {
+  if (!providerCapabilities(cfg.id).discovery) throw new Error(CUSTOM_DISCOVERY_ERROR);
+  const { format, base, key } = cfg;
+  if (format === "anthropic") {
+    const headers = { "x-api-key": key, "anthropic-version": "2023-06-01" };
+    if (browser) headers["anthropic-dangerous-direct-browser-access"] = "true";
+    return { url: `${base}/models?limit=1000`, headers };
+  }
+  if (format === "gemini") {
+    return { url: `${base}/models?pageSize=1000&key=${encodeURIComponent(key)}`, headers: {} };
+  }
+  return { url: `${base}/models`, headers: key ? { authorization: `Bearer ${key}` } : {} };
+}
+
+function parseModels(format, data) {
+  if (format === "gemini") {
+    return (data?.models || [])
+      .filter((m) => !m.supportedGenerationMethods || m.supportedGenerationMethods.includes("generateContent"))
+      .map((m) => (m.name || "").replace(/^models\//, ""))
+      .filter(Boolean);
+  }
+  return (data?.data || []).map((m) => m.id).filter(Boolean);
+}
+
+// fetch + read the FULL body under a single abort deadline, so a provider that
+// sends headers then stalls mid-body can't hang forever. Returns {ok,status,text}.
+async function fetchTextWithTimeout(url, opts = {}, ms = 60000) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), ms);
+  try {
+    const res = await fetch(url, { ...opts, signal: ctrl.signal });
+    const text = await res.text(); // read within the timeout window
+    return { ok: res.ok, status: res.status, text };
+  } catch (e) {
+    if (e && e.name === "AbortError") throw new Error(`Request timed out after ${ms}ms.`);
+    throw e;
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+function parseJson(text) {
+  try { return JSON.parse(text); } catch { throw new Error("Provider returned non-JSON response."); }
+}
+
+// Set/replace a query param on a URL (replaces, so cursors don't accumulate).
+function withParam(url, key, value) {
+  const u = new URL(url);
+  u.searchParams.set(key, value);
+  return u.toString();
+}
+
+// Build the URL for the next page of a models listing, or null when done.
+function nextModelsPageUrl(cfg, currentUrl, data) {
+  if (cfg.format === "gemini" && data?.nextPageToken) {
+    return withParam(currentUrl, "pageToken", data.nextPageToken);
+  }
+  if (cfg.format === "anthropic" && data?.has_more && data?.last_id) {
+    return withParam(currentUrl, "after_id", data.last_id);
+  }
+  return null; // openai-compatible list in a single page
+}
+
+async function listModels(cfg, { browser = false, maxPages = 20 } = {}) {
+  const { headers, url: firstUrl } = buildModelsRequest(cfg, { browser });
+  let url = firstUrl;
+  let prevUrl = null;
+  const all = [];
+  for (let page = 0; page < maxPages; page++) {
+    const res = await fetchTextWithTimeout(url, { headers }, 30000);
+    if (!res.ok) throw new Error(`API ${res.status}: ${res.text.slice(0, 200)}`);
+    const data = parseJson(res.text);
+    all.push(...parseModels(cfg.format, data));
+    const next = nextModelsPageUrl(cfg, url, data);
+    if (!next || next === url || next === prevUrl) break; // guard against loops
+    prevUrl = url;
+    url = next;
+  }
+  return [...new Set(all)].sort();
+}
+
+// Custom transport never follows redirects or carries ambient cookies. One
+// deadline covers headers AND body; all exceptions are replaced with safe errors.
+async function fetchCustomText(req, { fetchImpl = globalThis.fetch, timeoutMs = 60000, AbortControllerImpl = globalThis.AbortController } = {}) {
+  const ctrl = new AbortControllerImpl();
+  let timer;
+  const deadline = new Promise((_, reject) => {
+    timer = setTimeout(() => { ctrl.abort(); reject(customError("timeout")); }, timeoutMs);
+  });
+  try {
+    return await Promise.race([deadline, (async () => {
+      const res = await fetchImpl(req.url, { method: req.method, headers: req.headers, body: req.body,
+        credentials: "omit", redirect: "error", signal: ctrl.signal });
+      if (!res.ok) {
+        const value = res.headers?.get("retry-after");
+        const seconds = typeof value === "string" && /^\d+(?:\.\d+)?$/.test(value) ? Number(value) : 0;
+        const delay = Math.min(Math.max(seconds * 1000 || 30000, 5000), 300000);
+        const error = customError(res.status === 429 ? "quota" : "http", res.status, delay);
+        ctrl.abort(); // Release unread error bodies before clearing the deadline.
+        throw error;
+      }
+      return await res.text();
+    })()]);
+  } catch (e) {
+    if (e instanceof CustomProviderError) throw e;
+    throw customError(ctrl.signal.aborted ? "timeout" : "network");
+  } finally { clearTimeout(timer); }
+}
+
+async function callProvider(cfg, prompt, { browser = false, timeoutMs = 60000 } = {}) {
+  cfg = validateConfiguration(cfg);
+  const req = buildRequest(cfg, prompt, { browser });
+  if (cfg.id === "custom") {
+    const raw = await fetchCustomText(req, { timeoutMs });
+    let text;
+    try { text = parseResponse(cfg.format, JSON.parse(raw)); } catch { throw customError("response"); }
+    if (!text) throw customError("empty");
+    return text;
+  }
+  const res = await fetchTextWithTimeout(req.url, { method: req.method, headers: req.headers, body: req.body }, timeoutMs);
+  if (!res.ok) throw new Error(`API ${res.status}: ${res.text.slice(0, 300)}`);
+  const data = parseJson(res.text);
+  const text = parseResponse(cfg.format, data);
+  if (!text) throw new Error("Empty response from provider.");
+  return text;
+}
+
+return { validateCustom, buildRequest, parseResponse, fetchCustomText, providerCapabilities };
+  })();
+  const ProfileProtocol = (() => { const profileScope = {};
+// Presence, not truthiness, determines ownership. An existing profile is
+// authoritative even when empty; obsolete mirrors must never refill it.
+(function (root) {
+  const owns = (obj, key) => Object.prototype.hasOwnProperty.call(obj || {}, key);
+  const text = (value) => typeof value === "string" ? value.trim() : "";
+  const normalize = (profile) => Object.fromEntries(["key", "base", "model"].map((field) => [field, text(profile?.[field])]));
+  function migrate(settings, providerIds) {
+    const active = settings.provider || "openai";
+    const profiles = { ...settings.profiles };
+    for (const id of providerIds) {
+      if (owns(profiles, id)) { profiles[id] = normalize(profiles[id]); continue; }
+      profiles[id] = {
+        key: owns(settings.keys, id) ? text(settings.keys[id]) : id === active ? text(settings.key) : "",
+        base: id === active ? text(settings.base) : "",
+        model: id === active ? text(settings.model) : "",
+      };
+    }
+    return { ...settings, profiles, ...normalize(profiles[active]) };
+  }
+  root.DebaitProfiles = { migrate, normalize, owns };
+})(profileScope);
+
+return profileScope.DebaitProfiles; })();
+  // END GENERATED CUSTOM HELPERS
 
   // ---- providers ------------------------------------------------------------
   const SYSTEM = "You are a precise editor. Respond with exactly the requested format, nothing else.";
@@ -42,12 +371,26 @@
     mistral:    { format: "openai",    base: "https://api.mistral.ai/v1",              model: "mistral-small-latest" },
     together:   { format: "openai",    base: "https://api.together.xyz/v1",            model: "meta-llama/Llama-3.3-70B-Instruct-Turbo" },
     nvidia:     { format: "openai",    base: "https://integrate.api.nvidia.com/v1",    model: "meta/llama-3.3-70b-instruct" },
+    custom:     { format: "openai", base: "", model: "" },
     ollama:     { format: "openai",    base: "http://localhost:11434/v1",              model: "llama3.1" },
   };
 
   // ---- i18n (UI chrome) -----------------------------------------------------
   const I18N = {
     en: {
+      customProvider: "Custom / OpenAI-compatible",
+      customGuidance: "Custom requires an explicit API base URL and model; the key is optional. Trust the endpoint with your article data and any key. Keyless remote HTTP sends content UNENCRYPTED (observable and modifiable in transit). A key requires HTTPS except on loopback. Chat Completions only; no model discovery or automatic retries. Userscript custom requires Tampermonkey ≥4.18 on Chromium, DOM-isolated sandbox, and a CORS-compatible endpoint; extension/CLI may work where direct Fetch cannot.",
+      errCustomSettings: "Custom: enter an explicit HTTP(S) API base URL and model. Key is optional. No credentials, query, fragment, or /chat/completions suffix in the base; a key requires HTTPS except on loopback.",
+      errStale: "Settings changed; this result was discarded. Try again explicitly.",
+      errCustomTransport: "Custom requires Tampermonkey ≥4.18 on Chromium with the DOM-isolated sandbox and native Fetch controls. Use the extension/CLI or a supported isolated environment and CORS-compatible endpoint. No GM/page fallback.",
+      promptCustomModel: "Custom model (required; no discovery):",
+      promptCustomBase: "Custom API BASE URL (required; not /chat/completions). Keyless HTTP is unencrypted:",
+      customError_http: "Custom endpoint rejected the request.",
+      customError_quota: "Custom endpoint rate limit (429).",
+      customError_response: "Custom endpoint returned an invalid JSON completion response.",
+      customError_empty: "Custom endpoint returned an empty completion.",
+      customError_timeout: "Custom request timed out.",
+      customError_network: "Custom request failed (network, redirect, body read, or CORS).",
       brand: "debait", labelOriginal: "Original", labelHonest: "Honest title",
       labelSummary: "Summary", labelKeyPoints: "Key points", labelBaitSignals: "Bait signals",
       metaClickbait: "clickbait", metaWorth: "worth clicking:", yes: "yes", no: "no",
@@ -71,7 +414,7 @@
       menuAnalyze: "debait: analyze this page",
       promptProvider: "Provider \u2014 one of:\n$1",
       alertUnknownProvider: "Unknown provider.",
-      promptSetKey: "API key for \"$1\" (stored locally):",
+      promptSetKey: "API key for \"$1\" (stored locally; optional for Custom):",
       promptLanguage: "Output language for title/summary (blank = auto, match article):\ne.g. English, \u7e41\u9ad4\u4e2d\u6587, \u65e5\u672c\u8a9e, Espa\u00f1ol",
       promptDwell: "Hover dwell in ms before a preview fires:",
       promptInterval: "Minimum ms between preview calls:",
@@ -83,6 +426,19 @@
       promptBase: "Base URL (blank = provider default):",
     },
     zh_TW: {
+      customProvider: "自訂 / OpenAI 相容",
+      customGuidance: "自訂需明確填入 API 基底網址與模型，金鑰可留空。端點會收到文章資料與任何設定的金鑰，請只使用可信任端點。無金鑰遠端 HTTP 的內容未加密，可遭監看或竄改。有金鑰時須用 HTTPS，回環位址除外。僅支援 Chat Completions，無模型探索或自動重試。使用者腳本需 Chromium 上的 Tampermonkey ≥4.18、DOM 隔離沙箱與 CORS 相容端點；擴充功能／CLI 可能可用而直接 Fetch 不可用。",
+      errCustomSettings: "自訂：請填入 HTTP(S) API 基底網址與模型；金鑰可留空。網址不可含帳密、查詢、片段或 /chat/completions 後綴。有金鑰須用 HTTPS，回環位址除外。",
+      errStale: "設定已變更，結果已捨棄。請自行再試一次。",
+      errCustomTransport: "自訂需 Chromium 上的 Tampermonkey ≥4.18、DOM 隔離沙箱與原生 Fetch 控制。請用擴充功能／CLI 或支援的隔離環境及 CORS 相容端點。不會回退至 GM 或網頁傳輸。",
+      promptCustomModel: "自訂模型（必填，無模型探索）：",
+      promptCustomBase: "自訂 API 基底網址（必填，不含 /chat/completions）。無金鑰 HTTP 未加密：",
+      customError_http: "自訂端點拒絕請求。",
+      customError_quota: "自訂端點限流（429）。",
+      customError_response: "自訂端點回傳無效的 JSON 完成回應。",
+      customError_empty: "自訂端點回傳空白結果。",
+      customError_timeout: "自訂請求逾時。",
+      customError_network: "自訂請求失敗（網路、重新導向、讀取內文或 CORS）。",
       brand: "debait", labelOriginal: "\u539f\u59cb\u6a19\u984c", labelHonest: "\u8aa0\u5be6\u6a19\u984c",
       labelSummary: "\u6458\u8981", labelKeyPoints: "\u91cd\u9ede", labelBaitSignals: "\u9a19\u9ede\u95b1\u624b\u6cd5",
       metaClickbait: "\u9a19\u9ede\u95b1", metaWorth: "\u503c\u5f97\u9ede\u64ca\uff1a", yes: "\u662f", no: "\u5426",
@@ -118,8 +474,10 @@
       promptBase: "\u57fa\u5e95\u7db2\u5740\uff08\u7559\u7a7a\uff1d\u4f9b\u61c9\u5546\u9810\u8a2d\uff09\uff1a",
     },
   };
+  I18N["nan-Hanlo"] = { ...I18N.zh_TW, "customProvider": "自訂 / OpenAI 相容", "customGuidance": "自訂愛填 API 基底網址佮模型，金鑰會使留空。端點會收著文章資料佮金鑰，請用信任的端點。無金鑰的遠端 HTTP 內容無加密，會予人監看抑是改掉。有金鑰愛用 HTTPS，loopback 除外。干焦支援 Chat Completions，無模型探索抑是自動重試。使用者腳本愛 Chromium 頂的 Tampermonkey ≥4.18、DOM 隔離沙箱佮 CORS 相容端點；擴充功能／CLI 可能會使，直接 Fetch 袂使。", "errCustomSettings": "自訂：請填 HTTP(S) API 基底網址佮模型；金鑰會使留空。網址袂使含帳密、查詢、片段抑是 /chat/completions 後綴。有金鑰愛用 HTTPS，loopback 除外。", "errStale": "設定改矣，結果已經放棄。請家己閣試一擺。", "errCustomTransport": "自訂愛 Chromium 頂的 Tampermonkey ≥4.18、DOM 隔離沙箱佮原生 Fetch 控制。請用擴充功能／CLI 抑是支援的隔離環境佮 CORS 相容端點。袂退轉用 GM 抑是網頁傳輸。", "promptCustomModel": "自訂模型（必填，無模型探索）：", "promptCustomBase": "自訂 API 基底網址（必填，毋免 /chat/completions）。無金鑰 HTTP 無加密：", "customError_http": "自訂端點拒絕請求。", "customError_quota": "自訂端點限流（429）。", "customError_response": "自訂端點傳轉無效的 JSON 回應。", "customError_empty": "自訂端點傳轉空白結果。", "customError_timeout": "自訂請求超過時間。", "customError_network": "自訂請求失敗（網路、重新導向、讀取內文抑是 CORS）。", "brand": "debait", "labelOriginal": "原本標題", "labelHonest": "老實標題", "labelSummary": "摘要", "labelKeyPoints": "重點", "labelBaitSignals": "騙點閱的手路", "metaClickbait": "騙點閱", "metaWorth": "值得點：", "yes": "是", "no": "毋是", "verdict_substantial": "有料", "verdict_thin": "單薄", "verdict_empty": "空空", "panelReading": "咧讀取頁面…", "errGeneric": "debait 錯誤", "errParse": "無法度解析模型輸出。", "closeTitle": "關掉", "tipReading": "咧讀取…", "tipThin": "讀無內文（JS 動態產生抑是付費牆）。", "tipThrottled": "慢咧，一擺懸停一个連結，等一下閣試。", "tipRateLimited": "供應商咧限流，約 $1 秒了後閣恢復（等一下閣懸停）。", "tipCapped": "已經到每日預覽上限（$1/$2）。會使佇選單調懸。", "errNoKey": "猶未設定「$1」的 API 金鑰，請用選單設定。", "launcherTitle": "debait 這个頁面", "menuChooseProvider": "debait：揀供應商", "menuSetKey": "debait：設定 API 金鑰（目前供應商）", "menuSetLanguage": "debait：設定輸出語言", "menuSetInstructions": "debait：設定自訂指示", "promptInstructions": "加佇提示詞的自訂指示（JSON 輸出格式照舊）。留空會清掉：", "menuSetLimits": "debait：設定預覽限制", "menuShowUsage": "debait：看今仔日用量", "menuSetModel": "debait：設定模型覆寫", "menuSetBase": "debait：設定基底網址覆寫", "menuAnalyze": "debait：分析這个頁面", "promptProvider": "供應商，揀其中一个：\n$1", "alertUnknownProvider": "毋知影的供應商。", "promptSetKey": "「$1」的 API 金鑰（存佇本機，自訂會使留空）：", "promptLanguage": "標題／摘要的輸出語言（留空＝自動，佮文章仝款）：\n譬如 English、繁體中文、日本語、台語", "promptDwell": "預覽進前的懸停延遲（毫秒）：", "promptInterval": "預覽呼叫的上短間隔（毫秒）：", "promptDailyCap": "每日預覽上限（0＝無限制）：", "alertNonNegative": "請填無負數的數字。", "usageAlertPrefix": "debait 今仔日預覽呼叫：", "usageNoCap": "（無上限）", "promptModel": "模型（留空＝供應商預設）：", "promptBase": "基底網址（留空＝供應商預設）：" };
   const UI_LANG = (() => {
     const l = (navigator.language || "en").toLowerCase();
+    if (l.startsWith("nan")) return "nan-Hanlo";
     return (l.startsWith("zh-tw") || l.startsWith("zh-hant") || l === "zh-hk") ? "zh_TW" : "en";
   })();
   function t(k, ...subs) {
@@ -129,38 +487,111 @@
   }
   const verdict = (v) => (I18N.en["verdict_" + v] ? t("verdict_" + v) : (v || ""));
 
-  // ---- config (stored via GM_setValue) --------------------------------------
+  // ---- per-provider ownership migration (before any menu registration) ------
+  const MISSING = Object.freeze({ missing: true });
+  const legacyProvider = GM_getValue("provider", "openai");
+  const legacyKeys = {};
+  for (const id of Object.keys(PROVIDERS)) {
+    const value = GM_getValue(`key_${id}`, MISSING);
+    if (value !== MISSING) legacyKeys[id] = value;
+  }
+  const migrated = ProfileProtocol.migrate({ provider: legacyProvider,
+    profiles: GM_getValue("profiles", {}), keys: legacyKeys,
+    base: GM_getValue("base", ""), model: GM_getValue("model", "") }, Object.keys(PROVIDERS));
+  GM_setValue("profiles", migrated.profiles);
+  for (const field of ["base", "model"]) GM_setValue(field, migrated[field]);
+  let configurationGeneration = 0;
+  let previousConfiguration = "";
   const CFG = {
     get provider() { return GM_getValue("provider", "openai"); },
-    get key() { return GM_getValue(`key_${this.provider}`, ""); },
-    get base() { return (GM_getValue("base", "") || PROVIDERS[this.provider].base).replace(/\/+$/, ""); },
-    get model() { return GM_getValue("model", "") || PROVIDERS[this.provider].model; },
+    get profile() { return ProfileProtocol.normalize(GM_getValue("profiles", {})[this.provider]); },
+    get key() { return this.profile.key; },
+    get base() { return (this.profile.base || PROVIDERS[this.provider]?.base || "").replace(/\/+$/, ""); },
+    get model() { return this.profile.model || PROVIDERS[this.provider]?.model || ""; },
     get language() { return GM_getValue("language", ""); },
     get customInstructions() { return GM_getValue("customInstructions", ""); },
     get dwellMs() { const n = Number(GM_getValue("dwellMs", 500)); return Number.isFinite(n) && n >= 0 ? n : 500; },
     get minIntervalMs() { const n = Number(GM_getValue("minIntervalMs", 1500)); return Number.isFinite(n) && n >= 0 ? n : 1500; },
     get dailyCap() { const n = Number(GM_getValue("dailyCap", 200)); return Number.isFinite(n) && n >= 0 ? n : 200; },
   };
+  // Fingerprint exists only in memory, never in cache IDs, storage, or logs.
+  function snapshot() {
+    const s = { provider: CFG.provider, key: CFG.key, base: CFG.base, model: CFG.model,
+      language: CFG.language, customInstructions: CFG.customInstructions,
+      minIntervalMs: CFG.minIntervalMs, dailyCap: CFG.dailyCap };
+    const identity = JSON.stringify([s, GM_getValue("profiles", {}), GM_getValue("base", ""), GM_getValue("model", ""), Object.keys(PROVIDERS).map((id) => GM_getValue(`key_${id}`, MISSING))]);
+    if (identity !== previousConfiguration) { configurationGeneration++; previousConfiguration = identity; }
+    return { ...s, generation: configurationGeneration };
+  }
+  function stale(s) { return snapshot().generation !== s.generation; }
+  function persistProfile(field, value) {
+    const profiles = GM_getValue("profiles", {});
+    profiles[CFG.provider] = { ...CFG.profile, [field]: value };
+    GM_setValue("profiles", profiles);
+    GM_setValue(field === "key" ? `key_${CFG.provider}` : field, value);
+    snapshot();
+  }
+
+  // Capture the isolated sandbox's APIs once. Never use page/unsafeWindow APIs.
+  const isolatedFetch = globalThis.fetch;
+  const IsolatedRequest = globalThis.Request;
+  const IsolatedAbortController = globalThis.AbortController;
+  function safeCustomTransport(cfg) {
+    const info = typeof GM_info === "object" ? GM_info : null;
+    const version = /^(\d+)\.(\d+)(?:\.|$)/.exec(info?.version || "");
+    const supported = info?.scriptHandler === "Tampermonkey" && info?.sandboxMode === "dom" &&
+      /(?:Chrome|Chromium)\/\d+/.test(navigator.userAgent || "") &&
+      version && (Number(version[1]) > 4 || Number(version[1]) === 4 && Number(version[2]) >= 18);
+    const native = (fn) => typeof fn === "function" && /\[native code\]/.test(Function.prototype.toString.call(fn));
+    if (!supported || !native(isolatedFetch) || !native(IsolatedRequest) || !native(IsolatedAbortController)) {
+      throw new Error(t("errCustomTransport"));
+    }
+    try {
+      const ctrl = new IsolatedAbortController();
+      const probe = new IsolatedRequest(`${cfg.base}/chat/completions`, {
+        method: "POST", credentials: "omit", redirect: "error", signal: ctrl.signal,
+      });
+      if (probe.credentials !== "omit" || probe.redirect !== "error" || !probe.signal || probe.signal.aborted) throw new Error();
+      ctrl.abort();
+      if (!probe.signal.aborted) throw new Error();
+    } catch { throw new Error(t("errCustomTransport")); }
+  }
+  function configuration(s) {
+    if (s.provider === "custom") {
+      let cfg;
+      try { cfg = CustomProtocol.validateCustom(s); } catch { throw new Error(t("errCustomSettings")); }
+      safeCustomTransport(cfg);
+      return cfg;
+    }
+    if (!PROVIDERS[s.provider]) throw new Error(t("alertUnknownProvider"));
+    if (!s.key && CustomProtocol.providerCapabilities(s.provider).keyRequired) throw new Error(t("errNoKey", s.provider));
+    return { ...s, id: s.provider, format: PROVIDERS[s.provider].format };
+  }
 
   GM_registerMenuCommand(t("menuChooseProvider"), () => {
-    const p = prompt(t("promptProvider", Object.keys(PROVIDERS).join(", ")), CFG.provider);
-    if (p !== null && PROVIDERS[p.trim()]) GM_setValue("provider", p.trim());
+    const p = prompt(t("promptProvider", Object.keys(PROVIDERS).map((id) => id === "custom" ? `custom (${t("customProvider")})` : id).join(", ")), CFG.provider);
+    if (p !== null && PROVIDERS[p.trim()]) {
+      GM_setValue("provider", p.trim());
+      for (const field of ["base", "model"]) GM_setValue(field, CFG.profile[field]);
+      snapshot();
+      if (p.trim() === "custom") alert(t("customGuidance"));
+    }
     else if (p !== null) alert(t("alertUnknownProvider"));
   });
   GM_registerMenuCommand(t("menuSetKey"), () => {
     const k = prompt(t("promptSetKey", CFG.provider), CFG.key);
-    if (k !== null) GM_setValue(`key_${CFG.provider}`, k.trim());
+    if (k !== null) persistProfile("key", k.trim());
   });
   GM_registerMenuCommand(t("menuSetLanguage"), () => {
     const l = prompt(t("promptLanguage"), CFG.language);
-    if (l !== null) GM_setValue("language", l.trim());
+    if (l !== null) { GM_setValue("language", l.trim()); snapshot(); }
   });
   GM_registerMenuCommand(t("menuSetLimits"), () => {
     const setInt = (key, label, cur) => {
       const v = prompt(label, cur);
       if (v === null || v.trim() === "") return; // cancel / blank -> keep current
       const n = Math.round(Number(v));
-      if (Number.isFinite(n) && n >= 0) GM_setValue(key, n);
+      if (Number.isFinite(n) && n >= 0) { GM_setValue(key, n); snapshot(); }
       else alert(t("alertNonNegative"));
     };
     setInt("dwellMs", t("promptDwell"), CFG.dwellMs);
@@ -173,15 +604,15 @@
   });
   GM_registerMenuCommand(t("menuSetInstructions"), () => {
     const v = prompt(t("promptInstructions"), CFG.customInstructions);
-    if (v !== null) GM_setValue("customInstructions", v.trim());
+    if (v !== null) { GM_setValue("customInstructions", v.trim()); snapshot(); }
   });
   GM_registerMenuCommand(t("menuSetModel"), () => {
-    const m = prompt(t("promptModel"), GM_getValue("model", ""));
-    if (m !== null) GM_setValue("model", m.trim());
+    const m = prompt(t(CFG.provider === "custom" ? "promptCustomModel" : "promptModel"), CFG.profile.model);
+    if (m !== null) persistProfile("model", m.trim());
   });
   GM_registerMenuCommand(t("menuSetBase"), () => {
-    const b = prompt(t("promptBase"), GM_getValue("base", ""));
-    if (b !== null) GM_setValue("base", b.trim());
+    const b = prompt(t(CFG.provider === "custom" ? "promptCustomBase" : "promptBase"), CFG.profile.base);
+    if (b !== null) persistProfile("base", b.trim());
   });
   GM_registerMenuCommand(t("menuAnalyze"), run);
 
@@ -248,9 +679,8 @@ ${body || "(no extractable text — the page may be JS-rendered or paywalled)"}
   }
 
   // ---- build request per wire format ----------------------------------------
-  function buildRequest(prompt) {
-    const format = PROVIDERS[CFG.provider].format;
-    const { base, model, key } = CFG;
+  function buildRequest(prompt, cfg) {
+    const { format, base, model, key } = cfg;
     if (format === "anthropic") {
       return {
         url: `${base}/messages`,
@@ -277,12 +707,24 @@ ${body || "(no extractable text — the page may be JS-rendered or paywalled)"}
     };
   }
 
-  // ---- LLM call via GM_xmlhttpRequest (bypasses page CORS) -------------------
-  function callProvider(prompt) {
+  // ---- LLM calls: isolated Fetch for custom, existing GM for native ----------
+  async function callProvider(prompt, cfg = configuration(snapshot())) {
+    if (cfg.id === "custom") {
+      try {
+        const req = CustomProtocol.buildRequest(cfg, prompt);
+        const raw = await CustomProtocol.fetchCustomText(req, { fetchImpl: isolatedFetch, AbortControllerImpl: IsolatedAbortController });
+        let text;
+        try { text = CustomProtocol.parseResponse("openai", JSON.parse(raw)); }
+        catch { throw Object.assign(new Error(), { code: "response" }); }
+        if (!text) throw Object.assign(new Error(), { code: "empty" });
+        return text;
+      } catch (e) {
+        const code = ["quota", "http", "response", "empty", "timeout", "network"].includes(e.code) ? e.code : "network";
+        throw Object.assign(new Error(t("customError_" + code)), { code, status: e.status, retryAfterMs: e.retryAfterMs });
+      }
+    }
     return new Promise((resolve, reject) => {
-      if (!CFG.key && CFG.provider !== "ollama")
-        return reject(new Error(t("errNoKey", CFG.provider)));
-      const req = buildRequest(prompt);
+      const req = buildRequest(prompt, cfg);
       GM_xmlhttpRequest({
         method: "POST",
         url: req.url,
@@ -401,13 +843,18 @@ pre { white-space:pre-wrap; color:#c9d1d9; }
   async function run() {
     const requestRun = ++panelRun;
     render(esc(t("panelReading")));
+    const s = snapshot();
     try {
       const article = extractPage();
-      const out = await callProvider(buildPrompt(article, { language: CFG.language, customInstructions: CFG.customInstructions }));
+      const out = await callProvider(buildPrompt(article, s), configuration(s));
       if (requestRun !== panelRun) return;
-      renderResult(article, parseResult(out));
+      if (stale(s)) return render(esc(t("errStale")));
+      const result = parseResult(out);
+      if (s.provider === "custom" && (!result || typeof result !== "object" || Array.isArray(result) || result.parse_error)) throw new Error(t("customError_response"));
+      renderResult(article, result);
     } catch (e) {
       if (requestRun !== panelRun) return;
+      if (stale(s)) return render(esc(t("errStale")));
       render(`<b style="color:#e5484d">${esc(t("errGeneric"))}</b><br><br>${esc(e.message)}`);
     }
   }
@@ -492,46 +939,60 @@ pre { white-space:pre-wrap; color:#c9d1d9; }
     });
   }
 
+  const previewInflight = new Map();
+  async function preview(url, s = snapshot()) {
+    const discarded = () => ({ stale: true });
+    const cacheKey = `${s.generation}\n${url}`;
+    const hit = previewCache.get(cacheKey);
+    if (hit && Date.now() - hit.at < PREVIEW_TTL) return hit.result;
+    if (previewInflight.has(cacheKey)) return previewInflight.get(cacheKey);
+    const work = (async () => {
+      if (Date.now() < cooldownUntil) return { rate_limited: true, retryIn: Math.ceil((cooldownUntil - Date.now()) / 1000) };
+      const article = extractHtmlString(await fetchTarget(url), url);
+      if (stale(s)) return discarded();
+      if (!article.text || article.text.length < 200) return { thin_fetch: true, originalTitle: article.originalTitle, description: article.description };
+      if (previewBusy || Date.now() - lastPreviewAt < s.minIntervalMs) return { throttled: true, originalTitle: article.originalTitle };
+      previewBusy = true;
+      try {
+        const cfg = configuration(s);
+        const usage = getUsage();
+        if (stale(s)) return discarded();
+        if (s.dailyCap > 0 && usage.count >= s.dailyCap) return { capped: true, used: usage.count, cap: s.dailyCap, originalTitle: article.originalTitle };
+        lastPreviewAt = Date.now();
+        bumpUsage();
+        const result = parseResult(await callProvider(buildPrompt(article, s), cfg));
+        if (stale(s)) return discarded();
+        if (cfg.id === "custom" && (!result || typeof result !== "object" || Array.isArray(result) || result.parse_error)) throw new Error(t("customError_response"));
+        return { ...result, originalTitle: article.originalTitle };
+      } catch (e) {
+        if (stale(s)) return discarded();
+        if (e.status === 429 || /\b429\b|quota|rate|RESOURCE_EXHAUSTED/i.test(String(e?.message))) {
+          cooldownUntil = Date.now() + (e.retryAfterMs || backoffMsFrom(e.message));
+        }
+        throw e;
+      } finally { previewBusy = false; }
+    })();
+    previewInflight.set(cacheKey, work);
+    try {
+      const result = await work;
+      if (stale(s)) return discarded();
+      if (!result.stale && !result.throttled && !result.rate_limited && !result.capped) previewCache.set(cacheKey, { at: Date.now(), result });
+      return result;
+    } catch (e) {
+      if (stale(s)) return discarded();
+      throw e;
+    } finally { previewInflight.delete(cacheKey); }
+  }
+
   async function previewLink(a, x, y) {
     const url = a.href;
-    // Cache per URL *and* settings so changing provider/model/language refreshes.
-    const cacheKey = [url, CFG.provider, CFG.model, CFG.base, CFG.language, CFG.customInstructions].join("\n");
+    const s = snapshot();
     placeTip(x, y);
-    tip().innerHTML = `<b style="color:#58a6ff">🪝🚫 ${t("brand")}</b> \u00b7 ${esc(t("tipReading"))}<br><span style="color:#888">${esc(url).slice(0, 80)}</span>`;
+    tip().innerHTML = `<b style="color:#58a6ff">🪝🚫 ${t("brand")}</b> · ${esc(t("tipReading"))}<br><span style="color:#888">${esc(url).slice(0, 80)}</span>`;
     try {
-      let result;
-      const hit = previewCache.get(cacheKey);
-      if (hit && Date.now() - hit.at < PREVIEW_TTL) {
-        result = hit.result;
-      } else {
-        const nowC = Date.now();
-        if (nowC < cooldownUntil) {
-          result = { rate_limited: true, retryIn: Math.ceil((cooldownUntil - nowC) / 1000) };
-        } else {
-          const article = extractHtmlString(await fetchTarget(url), url);
-          const usage = getUsage();
-          if (!article.text || article.text.length < 200) {
-            result = { thin_fetch: true, originalTitle: article.originalTitle, description: article.description };
-          } else if (CFG.dailyCap > 0 && usage.count >= CFG.dailyCap) {
-            result = { capped: true, used: usage.count, cap: CFG.dailyCap, originalTitle: article.originalTitle };
-          } else if (previewBusy || Date.now() - lastPreviewAt < CFG.minIntervalMs) {
-            result = { throttled: true, originalTitle: article.originalTitle };
-          } else {
-            previewBusy = true; lastPreviewAt = Date.now();
-            try {
-              if (CFG.key || CFG.provider === "ollama") bumpUsage();
-              result = parseResult(await callProvider(buildPrompt(article, { language: CFG.language, customInstructions: CFG.customInstructions })));
-              result.originalTitle = article.originalTitle;
-            } catch (e) {
-              if (/\b429\b|quota|rate|RESOURCE_EXHAUSTED/i.test(String(e && e.message))) cooldownUntil = Date.now() + backoffMsFrom(e.message);
-              throw e;
-            } finally { previewBusy = false; }
-          }
-        }
-        // Only cache real answers - not transient throttle/cooldown markers.
-        if (!result.throttled && !result.rate_limited && !result.capped) previewCache.set(cacheKey, { at: Date.now(), result });
-      }
+      const result = await preview(url, s);
       if (tipAnchor !== a) return;
+      if (result.stale || stale(s)) return void (tip().innerHTML = esc(t("errStale")));
       if (result.capped)
         return void (tip().innerHTML = `<b style="color:#ffb224">🪝🚫 ${t("brand")}</b> \u00b7 ${esc(t("tipCapped", result.used, result.cap))}`);
       if (result.rate_limited)
@@ -548,6 +1009,7 @@ pre { white-space:pre-wrap; color:#c9d1d9; }
         <div><b style="color:${scoreColor(n)}">${n}/100</b> \u00b7 ${esc(verdict(result.substance_verdict))} \u00b7 ${esc(t("metaWorth"))} <b>${result.worth_clicking ? t("yes") : t("no")}</b></div>
         <div style="color:#bbb;margin-top:4px">${esc(result.summary || "")}</div>`;
     } catch (e) {
+      if (stale(s)) { if (tipAnchor === a) tip().innerHTML = esc(t("errStale")); return; }
       if (tipAnchor === a) tip().innerHTML = `<b style="color:#e5484d">debait</b> \u00b7 ${esc(e.message)}`;
     }
   }

@@ -1,8 +1,7 @@
-// Stores provider + base + model + a per-provider key map so switching
-// providers keeps each key. The active `key` mirrors the current provider's key
-// for the background worker.
+// Per-provider profiles own key/base/model, including intentional empty fields.
+// Active mirrors and the legacy key map remain compatible with older consumers.
 const DEFAULTS = {
-  provider: "openai", base: "", model: "", key: "", keys: {}, language: "",
+  provider: "openai", base: "", model: "", key: "", keys: {}, profiles: {}, language: "",
   previewDwellMs: 500, previewMinIntervalMs: 1500, dailyCap: 200, customInstructions: "", uiLang: "",
 };
 const intOr = (v, d) => { if (v === "" || v == null) return d; const n = Math.round(Number(v)); return Number.isFinite(n) && n >= 0 ? n : d; };
@@ -19,6 +18,13 @@ function applyI18n() {
   globalThis.DebaitI18n.apply();
   document.documentElement.lang = globalThis.DebaitI18n.lang === "zh_TW" ? "zh-TW" : "en";
   renderConnectionStatus();
+  renderProviderHints();
+}
+function renderProviderHints() {
+  const custom = $("provider").value === "custom";
+  for (const id of ["baseHint", "modelHint"]) {
+    if ($(id)) $(id).textContent = t(custom ? "customRequiredHint" : "optOverrideHint");
+  }
 }
 
 const CONNECTION_MESSAGES = {
@@ -30,6 +36,16 @@ const CONNECTION_MESSAGES = {
 };
 let connectionResult = null;
 let testingConnection = false;
+let settingsReady = false;
+const SETTINGS_CONTROLS = ["uiLang", "provider", "key", "base", "model", "language", "customInstructions",
+  "previewDwellMs", "previewMinIntervalMs", "dailyCap", "save", "testConnection"];
+function setSettingsReady(ready) {
+  settingsReady = ready;
+  for (const id of SETTINGS_CONTROLS) $(id).disabled = !ready;
+  $("testConnection").disabled = !ready || testingConnection;
+}
+setSettingsReady(false);
+let connectionGeneration = 0;
 const connectionValues = () => Object.fromEntries(
   ["provider", "key", "base", "model"].map((id) => [id, $(id).value.trim()])
 );
@@ -40,11 +56,12 @@ function renderConnectionStatus() {
   el.dataset.state = connectionResult?.ok ? "success" : connectionResult?.code === "testing" ? "pending" : "error";
 }
 for (const id of ["provider", "key", "base", "model"]) {
-  $(id).addEventListener("input", () => { connectionResult = null; renderConnectionStatus(); });
+  $(id).addEventListener("input", () => { connectionGeneration++; connectionResult = null; renderConnectionStatus(); });
 }
 $("testConnection").addEventListener("click", async () => {
-  if (testingConnection) return;
+  if (!settingsReady || testingConnection) return;
   const values = connectionValues();
+  const generation = connectionGeneration;
   testingConnection = true;
   $("testConnection").disabled = true;
   connectionResult = { ok: false, code: "testing" };
@@ -52,14 +69,14 @@ $("testConnection").addEventListener("click", async () => {
   try {
     const result = await chrome.runtime.sendMessage({ type: "debait:testConnection", settings: values });
     // A success for old credentials must not be shown for newly edited fields.
-    if (JSON.stringify(values) === JSON.stringify(connectionValues())) {
+    if (generation === connectionGeneration && JSON.stringify(values) === JSON.stringify(connectionValues())) {
       connectionResult = result?.code && CONNECTION_MESSAGES[result.code] ? result : { ok: false, code: "network" };
     }
   } catch {
-    if (JSON.stringify(values) === JSON.stringify(connectionValues())) connectionResult = { ok: false, code: "network" };
+    if (generation === connectionGeneration && JSON.stringify(values) === JSON.stringify(connectionValues())) connectionResult = { ok: false, code: "network" };
   } finally {
     testingConnection = false;
-    $("testConnection").disabled = false;
+    $("testConnection").disabled = !settingsReady;
     renderConnectionStatus();
   }
 });
@@ -67,11 +84,16 @@ $("testConnection").addEventListener("click", async () => {
 let state = { ...DEFAULTS };
 
 async function load() {
-  state = { ...DEFAULTS, ...(await chrome.storage.sync.get(DEFAULTS)) };
+  const stored = { ...DEFAULTS, ...(await chrome.storage.sync.get(DEFAULTS)) };
+  state = globalThis.DebaitProfiles.migrate(stored, ["openai", "anthropic", "gemini", "groq", "openrouter", "deepseek", "xai", "mistral", "together", "nvidia", "ollama", "custom"]);
+  if (JSON.stringify(stored) !== JSON.stringify(state)) await chrome.storage.sync.set({
+    profiles: state.profiles, key: state.key, base: state.base, model: state.model,
+  });
   await globalThis.DebaitI18n.init();
   applyI18n();
   $("uiLang").value = state.uiLang || "";
   $("provider").value = state.provider;
+  renderProviderHints();
   $("base").value = state.base || "";
   $("model").value = state.model || "";
   $("language").value = state.language || "";
@@ -79,28 +101,37 @@ async function load() {
   $("previewDwellMs").value = state.previewDwellMs;
   $("previewMinIntervalMs").value = state.previewMinIntervalMs;
   $("dailyCap").value = state.dailyCap;
-  $("key").value = state.keys?.[state.provider] || state.key || "";
+  $("key").value = state.profiles[state.provider].key;
   await renderUsage(state.dailyCap);
-  $("testConnection").disabled = false;
+  setSettingsReady(true);
 }
 
 $("provider").addEventListener("change", () => {
-  // Save current field into the key map, then show the newly selected provider's key.
-  state.keys[state.provider] = $("key").value.trim();
+  if (!settingsReady) {
+    $("provider").value = state.provider;
+    return;
+  }
+  // Keep outgoing unsaved fields page-local; switching itself never writes.
+  connectionGeneration++;
+  state.profiles[state.provider] = Object.fromEntries(["key", "base", "model"].map((id) => [id, $(id).value.trim()]));
   state.provider = $("provider").value;
-  $("key").value = state.keys[state.provider] || "";
+  renderProviderHints();
+  for (const id of ["key", "base", "model"]) $(id).value = state.profiles[state.provider][id];
   connectionResult = null;
   renderConnectionStatus();
 });
 
 $("save").addEventListener("click", async () => {
+  if (!settingsReady) return;
   const provider = $("provider").value;
   const key = $("key").value.trim();
   state.keys[provider] = key;
+  state.profiles[provider] = { key, base: $("base").value.trim(), model: $("model").value.trim() };
   await chrome.storage.sync.set({
     provider,
     key, // active provider's key, used by background.js
     keys: state.keys,
+    profiles: state.profiles,
     base: $("base").value.trim(),
     model: $("model").value.trim(),
     language: $("language").value.trim(),
@@ -128,4 +159,7 @@ $("save").addEventListener("click", async () => {
   el.href = "mailto:" + addr + "?subject=" + encodeURIComponent("debait issue report");
 })();
 
-load();
+load().catch(() => {
+  setSettingsReady(false);
+  $("status").textContent = t("optLoadFailed");
+});

@@ -4,33 +4,78 @@
 // providers.js / prompt.esm.js / extract.js are synced from ../shared via
 // `npm run sync`.
 
-import { resolveProvider, callProvider, PROVIDERS } from "./providers.js";
+import { resolveProvider, callProvider, PROVIDERS, validateConfiguration, providerCapabilities, customError } from "./providers.js";
 import { buildPrompt, parseResult } from "./prompt.esm.js";
 import { extractArticle } from "./extract.js";
 import { isOptionsSender, testConnection } from "./connection-test.js";
+import "./profiles.js";
 import "./messages.gen.js";
 import "./i18n-runtime.js";
 
 const DEFAULTS = {
-  provider: "openai", base: "", model: "", key: "", language: "",
+  provider: "openai", base: "", model: "", key: "", keys: {}, profiles: {}, language: "",
   // Preview rate controls (see Options). 0 = unlimited.
   previewMinIntervalMs: 1500,
   dailyCap: 200,
   customInstructions: "",
 };
 
+let configurationGeneration = 0;
+let settingsMigration;
+function migrateSettings() {
+  if (!settingsMigration) settingsMigration = (async () => {
+    const stored = await chrome.storage.sync.get(DEFAULTS);
+    const s = globalThis.DebaitProfiles.migrate({ ...DEFAULTS, ...stored }, Object.keys(PROVIDERS));
+    if (JSON.stringify(stored.profiles) !== JSON.stringify(s.profiles) ||
+        ["key", "base", "model"].some((field) => stored[field] !== s[field])) {
+      await chrome.storage.sync.set({ profiles: s.profiles, key: s.key, base: s.base, model: s.model });
+    }
+  })();
+  return settingsMigration;
+}
 async function settings() {
-  const s = await chrome.storage.sync.get(DEFAULTS);
-  return { ...DEFAULTS, ...s };
+  await migrateSettings();
+  const stored = await chrome.storage.sync.get(DEFAULTS);
+  return globalThis.DebaitProfiles.migrate({ ...DEFAULTS, ...stored }, Object.keys(PROVIDERS));
+}
+
+function configuration(s) {
+  try {
+    if (!PROVIDERS[s.provider]) throw new Error(globalThis.DebaitI18n.t("errUnknownProvider", [s.provider]));
+    if (providerCapabilities(s.provider).keyRequired && !s.key) throw new Error(globalThis.DebaitI18n.t("errNoKey", [s.provider]));
+    return validateConfiguration(resolveProvider({ provider: s.provider, base: s.base, model: s.model, key: s.key }));
+  } catch (e) {
+    if (s.provider === "custom") throw new Error(globalThis.DebaitI18n.t("errCustomSettings"));
+    throw e;
+  }
+}
+
+function providerFailure(error, s) {
+  if (s.provider !== "custom") return error;
+  return Object.assign(new Error(globalThis.DebaitI18n.t("customError_" +
+    (["http", "quota", "response", "empty", "timeout", "network"].includes(error.code) ? error.code : "network"))),
+    { code: error.code, status: error.status, retryAfterMs: error.retryAfterMs });
 }
 
 async function complete(prompt) {
   await globalThis.DebaitI18n.init();
+  await migrateSettings();
+  const generation = configurationGeneration;
   const s = await settings();
-  if (!PROVIDERS[s.provider]) throw new Error(globalThis.DebaitI18n.t("errUnknownProvider", [s.provider]));
-  const cfg = resolveProvider({ provider: s.provider, base: s.base, model: s.model, key: s.key });
-  if (!cfg.key && s.provider !== "ollama") throw new Error(globalThis.DebaitI18n.t("errNoKey", [s.provider]));
-  return callProvider(cfg, prompt, { browser: true });
+  if (generation !== configurationGeneration) throw new Error(globalThis.DebaitI18n.t("errStale"));
+  const cfg = configuration(s);
+  let result;
+  try { result = await callProvider(cfg, prompt, { browser: true }); }
+  catch (e) {
+    if (generation !== configurationGeneration) throw new Error(globalThis.DebaitI18n.t("errStale"));
+    throw providerFailure(e, s);
+  }
+  if (generation !== configurationGeneration) throw new Error(globalThis.DebaitI18n.t("errStale"));
+  const parsed = s.provider === "custom" ? parseResult(result) : null;
+  if (s.provider === "custom" && (!parsed || typeof parsed !== "object" || Array.isArray(parsed) || parsed.parse_error)) {
+    throw providerFailure(customError("response"), s);
+  }
+  return result;
 }
 
 // ---- preview: fetch a target URL, extract, debait, cache ------------------
@@ -53,19 +98,12 @@ function backoffMsFrom(message) {
 
 const todayKey = () => new Date().toISOString().slice(0, 10); // UTC YYYY-MM-DD
 
-// Per-day LLM call counter, persisted in storage.local (survives SW restarts).
+// Per-day preview attempt/reservation counter, persisted in storage.local (survives SW restarts).
 async function getUsage() {
   const { debaitUsage } = await chrome.storage.local.get({ debaitUsage: { day: "", count: 0 } });
   if (debaitUsage.day !== todayKey()) return { day: todayKey(), count: 0 };
   return debaitUsage;
 }
-async function bumpUsage() {
-  const u = await getUsage();
-  const next = { day: u.day, count: u.count + 1 };
-  await chrome.storage.local.set({ debaitUsage: next });
-  return next;
-}
-
 async function fetchAndExtract(url) {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), 15000);
@@ -81,67 +119,69 @@ async function fetchAndExtract(url) {
 }
 
 async function preview(url) {
+  await globalThis.DebaitI18n.init();
+  await migrateSettings();
+  const generation = configurationGeneration;
+  const stale = () => generation !== configurationGeneration;
+  const discarded = () => ({ stale: true, url });
   const s = await settings();
-  // Cache per URL *and* settings: changing provider/model/language/base must
-  // not return a stale result for the same link.
-  const cacheKey = [url, s.provider, s.model, s.base, s.language, s.customInstructions].join("\n");
-
+  if (stale()) return discarded();
+  // Non-secret, memory-only generation isolates key/profile changes too.
+  const cacheKey = `${generation}\n${url}`;
   const hit = CACHE.get(cacheKey);
   if (hit && Date.now() - hit.at < CACHE_TTL) return hit.result;
   if (inflight.has(cacheKey)) return inflight.get(cacheKey);
-
-  // In a provider cooldown (after a 429): don't spend another call.
-  const nowOuter = Date.now();
-  if (nowOuter < cooldownUntil) {
-    return { rate_limited: true, retryIn: Math.ceil((cooldownUntil - nowOuter) / 1000), url };
+  if (Date.now() < cooldownUntil) {
+    return { rate_limited: true, retryIn: Math.ceil((cooldownUntil - Date.now()) / 1000), url };
   }
-
   const p = (async () => {
     const article = await fetchAndExtract(url);
+    if (stale()) return discarded();
     if (!article.text || article.text.length < 200) {
-      // Too little to judge from the body — likely JS-rendered/paywalled.
       return { thin_fetch: true, originalTitle: article.originalTitle, description: article.description, url };
     }
-    // Per-day cap: a hard stop so the tool can never silently burn through a
-    // paid quota / daily free-tier allowance.
-    if (s.dailyCap > 0) {
-      const u = await getUsage();
-      if (u.count >= s.dailyCap) {
-        return { capped: true, used: u.count, cap: s.dailyCap, originalTitle: article.originalTitle, url };
-      }
-    }
-    // Throttle the actual LLM call: skip (don't queue) rapid bursts so sweeping
-    // across a feed can't fire dozens of calls. The user can re-hover to retry.
-    const now = Date.now();
-    if (previewBusy || now - lastPreviewAt < (s.previewMinIntervalMs || 0)) {
+    if (previewBusy || Date.now() - lastPreviewAt < (s.previewMinIntervalMs || 0)) {
       return { throttled: true, originalTitle: article.originalTitle, url };
     }
     previewBusy = true;
-    lastPreviewAt = now;
     try {
-      // Count only if we will actually call the provider (missing key fails before any network call).
-      if (s.key || s.provider === "ollama") await bumpUsage();
-      const result = parseResult(await complete(buildPrompt(article, { language: s.language, customInstructions: s.customInstructions })));
+      const cfg = configuration(s); // no count for invalid/missing settings
+      const usage = await getUsage(); // cap rechecked under single-call protection
+      if (stale()) return discarded();
+      if (Date.now() < cooldownUntil) return { rate_limited: true, retryIn: Math.ceil((cooldownUntil - Date.now()) / 1000), url };
+      if (s.dailyCap > 0 && usage.count >= s.dailyCap) {
+        return { capped: true, used: usage.count, cap: s.dailyCap, originalTitle: article.originalTitle, url };
+      }
+      const prompt = buildPrompt(article, { language: s.language, customInstructions: s.customInstructions });
+      lastPreviewAt = Date.now();
+      // Durable reservation before sending. Fail closed on storage failure;
+      // cancellation after reservation conservatively consumes one unit.
+      await chrome.storage.local.set({ debaitUsage: { day: usage.day, count: usage.count + 1 } });
+      if (stale()) return discarded();
+      const text = await callProvider(cfg, prompt, { browser: true });
+      if (stale()) return discarded();
+      const result = parseResult(text);
+      if (cfg.id === "custom" && (!result || typeof result !== "object" || Array.isArray(result) || result.parse_error)) throw customError("response");
       return { ...result, originalTitle: article.originalTitle, url };
     } catch (e) {
-      if (/\b429\b|quota|rate|RESOURCE_EXHAUSTED/i.test(String(e && e.message))) {
-        cooldownUntil = Date.now() + backoffMsFrom(e.message);
+      if (stale()) return discarded();
+      if (e.status === 429 || /\b429\b|quota|rate|RESOURCE_EXHAUSTED/i.test(String(e?.message))) {
+        cooldownUntil = Date.now() + (e.retryAfterMs || backoffMsFrom(e.message));
       }
-      throw e;
-    } finally {
-      previewBusy = false;
-    }
+      if (s.provider === "custom" && e.message === globalThis.DebaitI18n.t("errCustomSettings")) throw e;
+      throw providerFailure(e, s);
+    } finally { previewBusy = false; }
   })();
-
   inflight.set(cacheKey, p);
   try {
     const result = await p;
-    // Only cache real answers — not transient throttle/cooldown/cap markers.
-    if (!result.throttled && !result.rate_limited && !result.capped) CACHE.set(cacheKey, { at: Date.now(), result });
+    if (stale()) return discarded();
+    if (!result.stale && !result.throttled && !result.rate_limited && !result.capped) CACHE.set(cacheKey, { at: Date.now(), result });
     return result;
-  } finally {
-    inflight.delete(cacheKey);
-  }
+  } catch (e) {
+    if (stale()) return discarded();
+    throw e;
+  } finally { inflight.delete(cacheKey); }
 }
 
 let connectionTestBusy = false;
@@ -181,8 +221,7 @@ chrome.runtime.onInstalled.addListener(async (details) => {
     id: "debait-link", title: globalThis.DebaitI18n.t("ctxDebaitLink"), contexts: ["link"],
     targetUrlPatterns: ["https://*/*", "http://*/*"],
   });
-  // First install only: open Options so the user can set a provider + API key
-  // (the extension can't do anything until a key is configured). Not on updates.
+  // First install only: open Options for provider configuration. Not on updates.
   if (details.reason === "install") {
     chrome.runtime.openOptionsPage?.();
   }
@@ -207,6 +246,10 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
 
 // Keep the context-menu label in sync with the chosen interface language.
 chrome.storage.onChanged.addListener(async (changes, area) => {
+  if (area === "sync" && ["provider", "profiles", "keys", "key", "base", "model", "language", "customInstructions"].some((field) => changes[field])) {
+    configurationGeneration++;
+    CACHE.clear();
+  }
   if (area === "sync" && changes.uiLang) {
     await globalThis.DebaitI18n.init();
     for (const [id, key] of [["debait-run", "ctxDebaitPage"], ["debait-link", "ctxDebaitLink"]]) {

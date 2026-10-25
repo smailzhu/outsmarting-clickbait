@@ -43,7 +43,7 @@ Usage:
 
 Backend (auto): first provider whose API key env var is set, else codex CLI.
 Providers: openai, anthropic, gemini, groq, openrouter, deepseek, xai,
-           mistral, together, nvidia, ollama.
+           mistral, together, nvidia, ollama, custom (explicit selection only).
 
   --backend <provider|codex>    force a backend (also DEBAIT_PROVIDER / DEBAIT_BACKEND=codex)
   <PROVIDER>_API_KEY            key per provider, e.g. OPENAI_API_KEY, ANTHROPIC_API_KEY,
@@ -54,6 +54,11 @@ Providers: openai, anthropic, gemini, groq, openrouter, deepseek, xai,
                                 e.g. --lang English | --lang "\u7e41\u9ad4\u4e2d\u6587" | default: auto (match article)
   --instructions <text>         extra instructions appended to the prompt (also
                                 DEBAIT_INSTRUCTIONS); the JSON output shape is kept
+
+  Custom / OpenAI-compatible: requires DEBAIT_BASE_URL and DEBAIT_MODEL.
+  CUSTOM_API_KEY overrides DEBAIT_API_KEY; both optional. No /models support.
+  Endpoint trust: article content is sent to its operator. Keyless remote HTTP
+  is UNENCRYPTED; a key requires HTTPS except on parsed loopback hosts.
 
   --models [provider]           list model IDs available to your key, then exit
                                 (e.g. debait --models openai)

@@ -82,6 +82,7 @@ async function previewLink(a, x, y) {
   if (tipAnchor !== a) return; // user moved on
   if (!resp?.ok) return void (tip().innerHTML = `<b style="color:#e5484d">${t("errGeneric")}</b> · ${esc(resp?.error || t("errUnknown"))}`);
   const r = resp.result;
+  if (r.stale) return void (tip().innerHTML = esc(t("errStale")));
   if (r.capped)
     return void (tip().innerHTML = `<b style="color:#ffb224">🪝🚫 ${t("brand")}</b> · ${esc(t("tipCapped", [String(r.used), String(r.cap)]))}`);
   if (r.rate_limited)
@@ -232,6 +233,7 @@ async function runLink(url) {
     if (!resp?.ok) throw new Error(resp?.error || t("errUnknown"));
     const r = resp.result;
     if (!r || typeof r !== "object") throw new Error(t("errParse"));
+    if (r.stale) return render(esc(t("errStale")));
     if (r.capped) return render(esc(t("tipCapped", [String(r.used), String(r.cap)])));
     if (r.rate_limited) return render(esc(t("linkRateLimited", [String(r.retryIn)])));
     if (r.throttled) return render(esc(t("linkThrottled")));

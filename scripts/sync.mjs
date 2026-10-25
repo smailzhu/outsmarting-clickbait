@@ -7,6 +7,7 @@ import { dirname, join } from "node:path";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const copies = [
+  ["shared/profiles.js", "extension/profiles.js"],
   ["shared/providers.js", "extension/providers.js"],
   ["shared/prompt.js", "extension/prompt.esm.js"],
   ["shared/extract.js", "extension/extract.js"],
@@ -39,3 +40,17 @@ const genPath = join(root, "extension/messages.gen.js");
 const gen = `// AUTO-GENERATED from _locales + locales-extra by \`npm run sync\` — do not edit.\nglobalThis.DebaitMessages = ${JSON.stringify(table)};\n`;
 writeFileSync(genPath, gen);
 console.log(`generated extension/messages.gen.js (${Object.keys(table).join(", ")})`);
+
+// Keep the userscript's custom protocol/validation and profile migration identical
+// to the extension/CLI without remote imports or dependencies.
+const userPath = join(root, "userscript/debait.user.js");
+let user = readFileSync(userPath, "utf8");
+const providers = readFileSync(join(root, "shared/providers.js"), "utf8").replace(/^export /gm, "");
+const profiles = readFileSync(join(root, "shared/profiles.js"), "utf8").replace("globalThis", "profileScope");
+const inline = `  // BEGIN GENERATED CUSTOM HELPERS (npm run sync)\n  const CustomProtocol = (() => {\n${providers}\nreturn { validateCustom, buildRequest, parseResponse, fetchCustomText, providerCapabilities };\n  })();\n  const ProfileProtocol = (() => { const profileScope = {};\n${profiles}\nreturn profileScope.DebaitProfiles; })();\n  // END GENERATED CUSTOM HELPERS`;
+if (!user.includes("  // BEGIN GENERATED CUSTOM HELPERS") || !user.includes("  // END GENERATED CUSTOM HELPERS")) {
+  throw new Error("Userscript generated helper markers missing.");
+}
+user = user.replace(/  \/\/ BEGIN GENERATED CUSTOM HELPERS[\s\S]*?  \/\/ END GENERATED CUSTOM HELPERS/, inline);
+writeFileSync(userPath, user);
+console.log("synced userscript custom helpers");

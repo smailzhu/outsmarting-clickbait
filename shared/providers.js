@@ -12,7 +12,8 @@
 export const SYSTEM =
   "You are a precise editor. Respond with exactly the requested format, nothing else.";
 
-// provider id -> { format, base, model, keyEnv }
+// Capability overrides are centralized here; native providers require keys,
+// support discovery and participate in auto-selection unless overridden.
 export const PROVIDERS = {
   openai:     { format: "openai",    base: "https://api.openai.com/v1",              model: "gpt-4o-mini",             keyEnv: "OPENAI_API_KEY" },
   anthropic:  { format: "anthropic", base: "https://api.anthropic.com/v1",           model: "claude-3-5-haiku-latest", keyEnv: "ANTHROPIC_API_KEY" },
@@ -24,11 +25,65 @@ export const PROVIDERS = {
   mistral:    { format: "openai",    base: "https://api.mistral.ai/v1",              model: "mistral-small-latest",    keyEnv: "MISTRAL_API_KEY" },
   together:   { format: "openai",    base: "https://api.together.xyz/v1",            model: "meta-llama/Llama-3.3-70B-Instruct-Turbo", keyEnv: "TOGETHER_API_KEY" },
   nvidia:     { format: "openai",    base: "https://integrate.api.nvidia.com/v1",    model: "meta/llama-3.3-70b-instruct", keyEnv: "NVIDIA_API_KEY" },
-  ollama:     { format: "openai",    base: "http://localhost:11434/v1",              model: "llama3.1",                keyEnv: "OLLAMA_API_KEY" },
+  custom:     { format: "openai", base: "", model: "", keyEnv: "CUSTOM_API_KEY", keyRequired: false, discovery: false, autoSelect: false },
+  ollama:     { keyRequired: false, format: "openai",    base: "http://localhost:11434/v1",              model: "llama3.1",                keyEnv: "OLLAMA_API_KEY" },
 };
 
+export function providerCapabilities(id) {
+  const def = PROVIDERS[id];
+  return { keyRequired: def?.keyRequired !== false, discovery: def?.discovery !== false,
+    autoSelect: def?.autoSelect !== false };
+}
+
+export const CUSTOM_DISCOVERY_ERROR = "Custom / OpenAI-compatible supports Chat Completions only; model discovery is unsupported. Set an explicit base URL and model.";
+
+class CustomProviderError extends Error {}
+
+export function customError(code, status, retryAfterMs) {
+  const messages = {
+    settings: "Custom settings require an explicit HTTP(S) API base URL and model; key is optional.",
+    suffix: "Use the API base URL, not the /chat/completions endpoint.",
+    https: "A key requires HTTPS except on loopback (localhost, 127/8, or ::1).",
+    http: "Custom endpoint rejected the request.", quota: "Custom endpoint rate limit (429).",
+    response: "Custom endpoint returned an invalid JSON completion response.",
+    empty: "Custom endpoint returned an empty completion.",
+    timeout: "Custom request timed out.", network: "Custom request failed (network, redirect, or body read).",
+  };
+  const error = new CustomProviderError(messages[code] || messages.network);
+  error.code = code;
+  if (status !== undefined) error.status = status;
+  if (retryAfterMs !== undefined) error.retryAfterMs = retryAfterMs;
+  return error;
+}
+
+export function validateCustom({ base, model, key = "" } = {}) {
+  if ([base, model, key].some((v) => typeof v !== "string")) throw customError("settings");
+  base = base.trim(); model = model.trim(); key = key.trim();
+  let url;
+  try { url = new URL(base); } catch { throw customError("settings"); }
+  if (!model || !["http:", "https:"].includes(url.protocol) || url.username || url.password ||
+      url.search || url.hash || base.includes("?") || base.includes("#")) throw customError("settings");
+  base = url.href.replace(/\/+$/, "");
+  if (/\/chat\/completions$/i.test(url.pathname.replace(/\/+$/, ""))) throw customError("suffix");
+  const host = url.hostname.toLowerCase().replace(/^\[|\]$/g, "");
+  const loopback = host === "localhost" || host === "::1" ||
+    /^127\.\d+\.\d+\.\d+$/.test(host);
+  if (key && url.protocol !== "https:" && !loopback) throw customError("https");
+  return { id: "custom", format: "openai", base, model, key };
+}
+
+export function validateConfiguration(cfg) {
+  const validated = cfg.id === "custom" ? validateCustom(cfg) : cfg;
+  if (providerCapabilities(validated.id).keyRequired && !validated.key) {
+    throw new Error(`No API key for provider "${validated.id}".`);
+  }
+  return validated;
+}
+
 export function resolveProvider({ provider, base, model, key } = {}) {
-  const id = (provider || "openai").toLowerCase();
+  if (typeof provider !== "undefined" && typeof provider !== "string") throw customError("settings");
+  const id = (provider || "openai").trim().toLowerCase();
+  if (id === "custom") return validateCustom({ base, model, key });
   const def = PROVIDERS[id];
   if (!def) throw new Error(`Unknown provider "${id}". Known: ${Object.keys(PROVIDERS).join(", ")}`);
   return {
@@ -114,6 +169,7 @@ export function parseResponse(format, data) {
 // ---- model discovery ------------------------------------------------------
 // Build a GET request that lists the models available to this key.
 export function buildModelsRequest(cfg, { browser = false } = {}) {
+  if (!providerCapabilities(cfg.id).discovery) throw new Error(CUSTOM_DISCOVERY_ERROR);
   const { format, base, key } = cfg;
   if (format === "anthropic") {
     const headers = { "x-api-key": key, "anthropic-version": "2023-06-01" };
@@ -193,9 +249,44 @@ export async function listModels(cfg, { browser = false, maxPages = 20 } = {}) {
   return [...new Set(all)].sort();
 }
 
+// Custom transport never follows redirects or carries ambient cookies. One
+// deadline covers headers AND body; all exceptions are replaced with safe errors.
+export async function fetchCustomText(req, { fetchImpl = globalThis.fetch, timeoutMs = 60000, AbortControllerImpl = globalThis.AbortController } = {}) {
+  const ctrl = new AbortControllerImpl();
+  let timer;
+  const deadline = new Promise((_, reject) => {
+    timer = setTimeout(() => { ctrl.abort(); reject(customError("timeout")); }, timeoutMs);
+  });
+  try {
+    return await Promise.race([deadline, (async () => {
+      const res = await fetchImpl(req.url, { method: req.method, headers: req.headers, body: req.body,
+        credentials: "omit", redirect: "error", signal: ctrl.signal });
+      if (!res.ok) {
+        const value = res.headers?.get("retry-after");
+        const seconds = typeof value === "string" && /^\d+(?:\.\d+)?$/.test(value) ? Number(value) : 0;
+        const delay = Math.min(Math.max(seconds * 1000 || 30000, 5000), 300000);
+        const error = customError(res.status === 429 ? "quota" : "http", res.status, delay);
+        ctrl.abort(); // Release unread error bodies before clearing the deadline.
+        throw error;
+      }
+      return await res.text();
+    })()]);
+  } catch (e) {
+    if (e instanceof CustomProviderError) throw e;
+    throw customError(ctrl.signal.aborted ? "timeout" : "network");
+  } finally { clearTimeout(timer); }
+}
+
 export async function callProvider(cfg, prompt, { browser = false, timeoutMs = 60000 } = {}) {
-  if (!cfg.key && cfg.id !== "ollama") throw new Error(`No API key for provider "${cfg.id}".`);
+  cfg = validateConfiguration(cfg);
   const req = buildRequest(cfg, prompt, { browser });
+  if (cfg.id === "custom") {
+    const raw = await fetchCustomText(req, { timeoutMs });
+    let text;
+    try { text = parseResponse(cfg.format, JSON.parse(raw)); } catch { throw customError("response"); }
+    if (!text) throw customError("empty");
+    return text;
+  }
   const res = await fetchTextWithTimeout(req.url, { method: req.method, headers: req.headers, body: req.body }, timeoutMs);
   if (!res.ok) throw new Error(`API ${res.status}: ${res.text.slice(0, 300)}`);
   const data = parseJson(res.text);

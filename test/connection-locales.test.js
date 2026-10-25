@@ -34,3 +34,13 @@ test("connection-test messages exist in all three locales and the runtime table"
     }
   }
 });
+
+test("all generated locale keys stay identical and custom messages are synced", () => {
+  const tables = Object.fromEntries(Object.entries(files).map(([lang, path]) => [lang, JSON.parse(readFileSync(new URL(path, import.meta.url), "utf8"))]));
+  const context = vm.createContext({}); vm.runInContext(readFileSync(new URL("../extension/messages.gen.js", import.meta.url), "utf8"), context);
+  const keys = Object.keys(tables.en).sort();
+  for (const [lang, table] of Object.entries(tables)) {
+    assert.deepEqual(Object.keys(table).sort(), keys);
+    for (const key of keys.filter((key) => /custom|errCustom|errStale|optLoadFailed/.test(key))) assert.equal(context.DebaitMessages[lang][key].message, table[key].message);
+  }
+});

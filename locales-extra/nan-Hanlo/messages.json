@@ -68,8 +68,11 @@
   "optSaved": {
     "message": "存好矣 ✓"
   },
+  "optLoadFailed": {
+    "message": "設定載入袂起來。請重載這頁閣試一擺；編輯佮儲存攏暫停。"
+  },
   "usagePrefix": {
-    "message": "今仔日預覽次數："
+    "message": "今仔日預覽嘗試／保留用量："
   },
   "usageNoCap": {
     "message": "（無上限）"
@@ -173,7 +176,7 @@
     }
   },
   "phKeyOllama": {
-    "message": "sk-...（本機 Ollama 免填）"
+    "message": "自訂／本機 Ollama 會使留空"
   },
   "phBlankDefault": {
     "message": "留空用預設"
@@ -212,7 +215,7 @@
     "message": "請先填 API 金鑰。本機 Ollama 免金鑰。"
   },
   "connectionSettings": {
-    "message": "請檢查供應商、模型 kah API 基底網址。用 HTTP 抑是 HTTPS，網址內底莫囥帳密、查詢參數抑是片段。"
+    "message": "自訂：請填 HTTP(S) API 基底網址佮模型；金鑰會使留空。網址袂使含帳密、查詢、片段抑是 /chat/completions 後綴。有金鑰愛用 HTTPS，loopback 除外。 請檢查供應商、模型 kah API 基底網址。用 HTTP 抑是 HTTPS，網址內底莫囥帳密、查詢參數抑是片段。"
   },
   "connectionAuth": {
     "message": "驗證無過（401）。請確認金鑰是揀 ê 供應商 ê，koh 猶未撤銷。"
@@ -280,5 +283,47 @@
   },
   "popupHintSetup": {
     "message": "頭一擺用？請 tī 下跤 ê 設定揀供應商，有需要就填 API 金鑰。"
+  },
+  "customProvider": {
+    "message": "自訂 / OpenAI 相容"
+  },
+  "customGuidance": {
+    "message": "自訂愛填 API 基底網址佮模型，金鑰會使留空。端點會收著文章資料佮金鑰，請用信任的端點。無金鑰的遠端 HTTP 內容無加密，會予人監看抑是改掉。有金鑰愛用 HTTPS，loopback 除外。干焦支援 Chat Completions，無模型探索抑是自動重試。使用者腳本愛 Chromium 頂的 Tampermonkey ≥4.18、DOM 隔離沙箱佮 CORS 相容端點；擴充功能／CLI 可能會使，直接 Fetch 袂使。"
+  },
+  "errCustomSettings": {
+    "message": "自訂：請填 HTTP(S) API 基底網址佮模型；金鑰會使留空。網址袂使含帳密、查詢、片段抑是 /chat/completions 後綴。有金鑰愛用 HTTPS，loopback 除外。"
+  },
+  "errStale": {
+    "message": "設定改矣，結果已經放棄。請家己閣試一擺。"
+  },
+  "errCustomTransport": {
+    "message": "自訂愛 Chromium 頂的 Tampermonkey ≥4.18、DOM 隔離沙箱佮原生 Fetch 控制。請用擴充功能／CLI 抑是支援的隔離環境佮 CORS 相容端點。袂退轉用 GM 抑是網頁傳輸。"
+  },
+  "promptCustomModel": {
+    "message": "自訂模型（必填，無模型探索）："
+  },
+  "promptCustomBase": {
+    "message": "自訂 API 基底網址（必填，毋免 /chat/completions）。無金鑰 HTTP 無加密："
+  },
+  "customError_http": {
+    "message": "自訂端點拒絕請求。"
+  },
+  "customError_quota": {
+    "message": "自訂端點限流（429）。"
+  },
+  "customError_response": {
+    "message": "自訂端點傳轉無效的 JSON 回應。"
+  },
+  "customError_empty": {
+    "message": "自訂端點傳轉空白結果。"
+  },
+  "customError_timeout": {
+    "message": "自訂請求超過時間。"
+  },
+  "customError_network": {
+    "message": "自訂請求失敗（網路、重新導向、讀取內文抑是 CORS）。"
+  },
+  "customRequiredHint": {
+    "message": "（自訂必填，無預設值）"
   }
 }
