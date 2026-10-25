@@ -19,11 +19,17 @@ The name, short summary, and other submission fields remain in
 [../STORE_LISTING.md](../STORE_LISTING.md). These description files deliberately
 avoid long provider-brand lists (the prior Yellow Argon keyword-spam finding).
 
+These descriptions match the **v0.2.0** feature set.
+
 All three descriptions include:
 - The API-key/local-model requirement and possible provider fees.
-- Current-page analysis and deliberate **Alt+hover** preview.
+- **Test connection** for unsaved settings: one small potentially billable request,
+  without article content or custom instructions.
+- Current-page analysis, deliberate **Alt+hover** preview, and **right-click link previews**.
+- Closable loading/error/result panels that stay closed after late responses.
 - Separate interface/output-language settings and custom instructions.
-- **Preview-only** usage controls; manual analysis is outside those controls.
+- Shared **preview-only** cache and usage controls; manual current-page analysis
+  and connection tests are outside those controls.
 - The 12,000-character extracted-text limit, preview fallback/errors, and AI accuracy caveats.
 - The transmitted URL/title/meta description/text/instructions and Chrome Sync storage.
 

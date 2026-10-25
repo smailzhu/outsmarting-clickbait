@@ -3,6 +3,8 @@ See what is behind a headline before spending time on the article. debait uses A
 SETUP REQUIRED
 Use your own AI-provider API key, or a configured local model. Hosted provider usage charges may apply. Open Settings, select a provider, enter your key if needed, and save.
 
+Before saving, use “Test connection” to check the current provider, model, base URL and API key. It makes one small generation request, which may consume quota or incur charges. No article content or custom instructions are sent. A successful test means the model returned text; a quota error does not necessarily mean the key is invalid.
+
 WHAT YOU GET
 • An honest-title suggestion that describes the article without the hype.
 • A short summary and key points.
@@ -11,13 +13,15 @@ WHAT YOU GET
 
 TWO WAYS TO USE IT
 On an article: click the toolbar icon and choose “Analyze this page,” or right-click and choose “debait this page.”
-Before opening a link: hold Alt and hover over it. debait fetches the target page in the background and shows a preview in a tooltip.
+Before opening a link: hold Alt and hover over it. debait fetches the target page in the background and shows a preview in a tooltip. Alternatively, right-click an HTTP/HTTPS link and choose “debait this link” to show the preview in a closable panel without opening the target.
+
+Loading, error and result panels can be closed. Late responses will not reopen a dismissed panel.
 
 LANGUAGE AND PREFERENCES
 Choose the summary’s output language and add custom instructions in Settings. Interface-language choices include English, Traditional Chinese, and a draft Taiwanese Hokkien mixed-script translation awaiting native-speaker review. Interface and summary languages are separate settings.
 
 USAGE CONTROLS
-Hover previews have an adjustable delay, minimum request interval, and daily cap. They also pause after provider quota errors. These controls reduce requests but do not guarantee that you will stay within your provider’s quota. Manual page analysis is not covered by the preview cap or throttle.
+Hover previews have an adjustable delay, minimum request interval, and daily cap. They also pause after provider quota errors. Right-click link previews share the same cache, request interval, daily cap and cooldown. These controls reduce requests but do not guarantee that you will stay within your provider’s quota. Manual current-page analysis and connection tests are not covered by these preview usage controls.
 
 LIMITATIONS
 Analysis uses the first 12,000 characters of extracted page text, not necessarily the whole article. Preview fetches do not run the target page’s JavaScript; dynamically loaded or paywalled content may be unavailable. If too little text is extracted, the preview shows the target’s meta description or title instead of an AI assessment. Failed requests show an error. Results take time and depend on the provider.
