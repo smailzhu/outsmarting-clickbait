@@ -59,6 +59,32 @@ that result is shown separately and does not establish that the key is invalid.
 In particular, **429 does not necessarily mean the key is invalid**—check the
 provider's billing credits and limits.
 
+## Settings changes (source / development builds)
+
+Settings require explicit **Save**; there is no autosave. An unsaved-change
+indicator and sticky Save bar help keep changes visible. At viewport heights
+of 360px or less the bar scrolls normally instead, so it may not stay visible.
+**Test connection is not Save**: a successful test reminds you to Save when the
+tested connection differs from the saved active configuration. Save is available
+during a Test; while saving, the form stays locked through the display refresh.
+
+With unsaved changes, leaving/reloading may trigger the browser's generic
+confirmation. It requires user activation and is not guaranteed (for example on
+crashes, forced termination or mobile). Confirming exit loses page-local edits;
+restore the original values to revert, or reload and confirm leaving to discard.
+Mail/GitHub links may open another context without unloading Settings and may
+not prompt. Closing during a pending write still risks losing unsaved work.
+
+A write failure keeps changes on the page for another Save attempt (including
+quota failures); a rejected write that partially applied remains conservatively
+unsaved. A refresh warning means settings **already persisted**—reload to update
+the display. An unresolved storage/refresh promise can leave the form locked.
+Each page compares against its own loaded/saved baseline, not live sync: another
+Options tab or synced device may overwrite settings, and full Save is
+last-writer-wins, including dormant profiles. Clearing an authoritative profile
+prevents legacy mirrors from restoring it, but does not erase dormant legacy
+`keys` entries. These changes are not a claim of a store rollout.
+
 ## Right-click menu
 
 - Right-click the page → **debait this page** to analyze the page already open.

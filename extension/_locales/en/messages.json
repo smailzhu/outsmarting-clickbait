@@ -325,5 +325,20 @@
   },
   "customRequiredHint": {
     "message": "(required for Custom — no default)"
+  },
+  "optUnsaved": {
+    "message": "Unsaved changes"
+  },
+  "optSaving": {
+    "message": "Saving…"
+  },
+  "optSaveFailed": {
+    "message": "Settings could not be saved. Any changes are still on this page. Try Save again."
+  },
+  "optSavedRefreshWarning": {
+    "message": "Settings saved, but this page could not refresh. Reload to update the display."
+  },
+  "connectionSaveReminder": {
+    "message": "Save settings to use this configuration."
   }
 }

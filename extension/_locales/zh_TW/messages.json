@@ -325,5 +325,20 @@
   },
   "customRequiredHint": {
     "message": "（自訂必填，無預設值）"
+  },
+  "optUnsaved": {
+    "message": "尚未儲存的變更"
+  },
+  "optSaving": {
+    "message": "儲存中…"
+  },
+  "optSaveFailed": {
+    "message": "無法儲存設定。任何變更仍保留在此頁面，請再按一次「儲存」。"
+  },
+  "optSavedRefreshWarning": {
+    "message": "設定已儲存，但此頁面無法重新整理。請重新載入以更新顯示。"
+  },
+  "connectionSaveReminder": {
+    "message": "請儲存設定，才能使用這組設定。"
   }
 }

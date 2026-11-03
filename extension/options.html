@@ -8,7 +8,16 @@
     input { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 6px; }
     button { margin-top: 16px; padding: 8px 16px; border: none; border-radius: 6px; background: #58a6ff; color: #001; font-weight: 600; cursor: pointer; }
     .hint { color: #777; font-size: 12px; }
-    #status { color: #30a46c; margin-left: 10px; }
+    html { --save-bar-height: 0px; scroll-padding-bottom: calc(var(--save-bar-height) + 12px); }
+    #saveBar { position: sticky; bottom: 0; background: #fff; border-top: 1px solid #ccc; padding: 12px 0; margin-top: 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+    #saveBar button { margin-top: 0; }
+    #status { color: #333; overflow-wrap: anywhere; }
+    #status[data-state="success"] { color: #167343; }
+    #status[data-state="error"] { color: #b42318; }
+    @media (max-height: 360px) {
+      #saveBar { position: static; }
+      html { scroll-padding-bottom: 0; }
+    }
     button:disabled { opacity: .6; cursor: wait; }
     #connectionStatus { overflow-wrap: anywhere; }
     #connectionStatus[data-state="success"] { color: #167343; }
@@ -65,7 +74,7 @@
   <input id="dailyCap" disabled type="number" min="0" step="10" placeholder="200" />
   <p class="hint" id="usage"></p>
 
-  <div style="margin-top:16px">
+  <div id="saveBar">
     <button id="save" disabled data-i18n="optSave">Save</button>
     <span id="status" role="status" aria-live="polite"></span>
   </div>
