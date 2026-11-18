@@ -76,7 +76,7 @@ function renderSaveStatus() {
     : savedRefreshWarning ? "optSavedRefreshWarning" : savedFlash ? "optSaved" : null;
   setText($("status"), key ? t(key) : "");
   $("status").dataset.state = loadFailed || saveFailed || (!saving && !dirty && savedRefreshWarning) ? "error"
-    : key === "optSaved" ? "success" : "neutral";
+    : key === "optSaved" ? "success" : key === "optUnsaved" ? "warning" : "neutral";
 }
 function warnBeforeUnload(event) {
   event.preventDefault();
