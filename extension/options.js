@@ -177,7 +177,29 @@ function applyI18n() {
   renderConnectionStatus();
   renderFieldMarkers();
 }
+function renderKeyHelp() {
+  const hint = $("keyHelp"), text = $("keyHelpText"), anchor = $("keyHelpLink");
+  const id = $("provider").value;
+  const { PROVIDER_HELP_URLS } = globalThis.DebaitProviderHelp;
+  anchor.removeAttribute("href");
+  anchor.hidden = true;
+  setText(text, "");
+  setText(anchor, "");
+  hint.hidden = true;
+  if (!settingsReady) return;
+  if (Object.hasOwn(PROVIDER_HELP_URLS, id)) {
+    anchor.href = PROVIDER_HELP_URLS[id];
+    setText(anchor, t("keyHelpLinkLabel"));
+    anchor.hidden = false;
+  } else if (["openai", "deepseek", "mistral"].includes(id)) {
+    setText(text, t("keyHelpCloudLocal"));
+  } else if (id === "custom" || id === "ollama") {
+    setText(text, t(id === "custom" ? "keyHelpCustom" : "keyHelpOllama"));
+  } else return;
+  hint.hidden = false;
+}
 function renderProviderHints() {
+  renderKeyHelp();
   const custom = $("provider").value === "custom";
   for (const id of ["baseHint", "modelHint"]) {
     if ($(id)) setText($(id), t(custom ? "customRequiredHint" : "optOverrideHint"));
@@ -282,6 +304,7 @@ async function load() {
   const active = baseline.profiles[baseline.provider];
   committed = frozenCopy({ ...state, ...clone(baseline), ...active, keys: clone(state.keys) });
   setSettingsReady(true);
+  renderProviderHints();
   recomputeDirty();
 }
 

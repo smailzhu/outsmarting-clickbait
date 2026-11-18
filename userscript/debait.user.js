@@ -378,6 +378,9 @@ return profileScope.DebaitProfiles; })();
   // ---- i18n (UI chrome) -----------------------------------------------------
   const I18N = {
     en: {
+      sourceLabel: "Source: $1",
+      openRequestedArticle: "Open requested article",
+      openRequestedArticleAria: "Open requested article on $1 (new tab)",
       customProvider: "Custom / OpenAI-compatible",
       customGuidance: "Custom requires an explicit API base URL and model; the key is optional. Trust the endpoint with your article data and any key. Keyless remote HTTP sends content UNENCRYPTED (observable and modifiable in transit). A key requires HTTPS except on loopback. Chat Completions only; no model discovery or automatic retries. Userscript custom requires Tampermonkey ≥4.18 on Chromium, DOM-isolated sandbox, and a CORS-compatible endpoint; extension/CLI may work where direct Fetch cannot.",
       errCustomSettings: "Custom: enter an explicit HTTP(S) API base URL and model. Key is optional. No credentials, query, fragment, or /chat/completions suffix in the base; a key requires HTTPS except on loopback.",
@@ -426,6 +429,9 @@ return profileScope.DebaitProfiles; })();
       promptBase: "Base URL (blank = provider default):",
     },
     zh_TW: {
+      sourceLabel: "來源：$1",
+      openRequestedArticle: "開啟所要求的文章",
+      openRequestedArticleAria: "在新分頁開啟 $1 上所要求的文章",
       customProvider: "自訂 / OpenAI 相容",
       customGuidance: "自訂需明確填入 API 基底網址與模型，金鑰可留空。端點會收到文章資料與任何設定的金鑰，請只使用可信任端點。無金鑰遠端 HTTP 的內容未加密，可遭監看或竄改。有金鑰時須用 HTTPS，回環位址除外。僅支援 Chat Completions，無模型探索或自動重試。使用者腳本需 Chromium 上的 Tampermonkey ≥4.18、DOM 隔離沙箱與 CORS 相容端點；擴充功能／CLI 可能可用而直接 Fetch 不可用。",
       errCustomSettings: "自訂：請填入 HTTP(S) API 基底網址與模型；金鑰可留空。網址不可含帳密、查詢、片段或 /chat/completions 後綴。有金鑰須用 HTTPS，回環位址除外。",
@@ -474,7 +480,7 @@ return profileScope.DebaitProfiles; })();
       promptBase: "\u57fa\u5e95\u7db2\u5740\uff08\u7559\u7a7a\uff1d\u4f9b\u61c9\u5546\u9810\u8a2d\uff09\uff1a",
     },
   };
-  I18N["nan-Hanlo"] = { ...I18N.zh_TW, "customProvider": "自訂 / OpenAI 相容", "customGuidance": "自訂愛填 API 基底網址佮模型，金鑰會使留空。端點會收著文章資料佮金鑰，請用信任的端點。無金鑰的遠端 HTTP 內容無加密，會予人監看抑是改掉。有金鑰愛用 HTTPS，loopback 除外。干焦支援 Chat Completions，無模型探索抑是自動重試。使用者腳本愛 Chromium 頂的 Tampermonkey ≥4.18、DOM 隔離沙箱佮 CORS 相容端點；擴充功能／CLI 可能會使，直接 Fetch 袂使。", "errCustomSettings": "自訂：請填 HTTP(S) API 基底網址佮模型；金鑰會使留空。網址袂使含帳密、查詢、片段抑是 /chat/completions 後綴。有金鑰愛用 HTTPS，loopback 除外。", "errStale": "設定改矣，結果已經放棄。請家己閣試一擺。", "errCustomTransport": "自訂愛 Chromium 頂的 Tampermonkey ≥4.18、DOM 隔離沙箱佮原生 Fetch 控制。請用擴充功能／CLI 抑是支援的隔離環境佮 CORS 相容端點。袂退轉用 GM 抑是網頁傳輸。", "promptCustomModel": "自訂模型（必填，無模型探索）：", "promptCustomBase": "自訂 API 基底網址（必填，毋免 /chat/completions）。無金鑰 HTTP 無加密：", "customError_http": "自訂端點拒絕請求。", "customError_quota": "自訂端點限流（429）。", "customError_response": "自訂端點傳轉無效的 JSON 回應。", "customError_empty": "自訂端點傳轉空白結果。", "customError_timeout": "自訂請求超過時間。", "customError_network": "自訂請求失敗（網路、重新導向、讀取內文抑是 CORS）。", "brand": "debait", "labelOriginal": "原本標題", "labelHonest": "老實標題", "labelSummary": "摘要", "labelKeyPoints": "重點", "labelBaitSignals": "騙點閱的手路", "metaClickbait": "騙點閱", "metaWorth": "值得點：", "yes": "是", "no": "毋是", "verdict_substantial": "有料", "verdict_thin": "單薄", "verdict_empty": "空空", "panelReading": "咧讀取頁面…", "errGeneric": "debait 錯誤", "errParse": "無法度解析模型輸出。", "closeTitle": "關掉", "tipReading": "咧讀取…", "tipThin": "讀無內文（JS 動態產生抑是付費牆）。", "tipThrottled": "慢咧，一擺懸停一个連結，等一下閣試。", "tipRateLimited": "供應商咧限流，約 $1 秒了後閣恢復（等一下閣懸停）。", "tipCapped": "已經到每日預覽上限（$1/$2）。會使佇選單調懸。", "errNoKey": "猶未設定「$1」的 API 金鑰，請用選單設定。", "launcherTitle": "debait 這个頁面", "menuChooseProvider": "debait：揀供應商", "menuSetKey": "debait：設定 API 金鑰（目前供應商）", "menuSetLanguage": "debait：設定輸出語言", "menuSetInstructions": "debait：設定自訂指示", "promptInstructions": "加佇提示詞的自訂指示（JSON 輸出格式照舊）。留空會清掉：", "menuSetLimits": "debait：設定預覽限制", "menuShowUsage": "debait：看今仔日用量", "menuSetModel": "debait：設定模型覆寫", "menuSetBase": "debait：設定基底網址覆寫", "menuAnalyze": "debait：分析這个頁面", "promptProvider": "供應商，揀其中一个：\n$1", "alertUnknownProvider": "毋知影的供應商。", "promptSetKey": "「$1」的 API 金鑰（存佇本機，自訂會使留空）：", "promptLanguage": "標題／摘要的輸出語言（留空＝自動，佮文章仝款）：\n譬如 English、繁體中文、日本語、台語", "promptDwell": "預覽進前的懸停延遲（毫秒）：", "promptInterval": "預覽呼叫的上短間隔（毫秒）：", "promptDailyCap": "每日預覽上限（0＝無限制）：", "alertNonNegative": "請填無負數的數字。", "usageAlertPrefix": "debait 今仔日預覽呼叫：", "usageNoCap": "（無上限）", "promptModel": "模型（留空＝供應商預設）：", "promptBase": "基底網址（留空＝供應商預設）：" };
+  I18N["nan-Hanlo"] = { ...I18N.zh_TW, "sourceLabel": "來源：$1", "openRequestedArticle": "開啟所要求的文章", "openRequestedArticleAria": "佇新分頁開啟 $1 頂所要求的文章", "customProvider": "自訂 / OpenAI 相容", "customGuidance": "自訂愛填 API 基底網址佮模型，金鑰會使留空。端點會收著文章資料佮金鑰，請用信任的端點。無金鑰的遠端 HTTP 內容無加密，會予人監看抑是改掉。有金鑰愛用 HTTPS，loopback 除外。干焦支援 Chat Completions，無模型探索抑是自動重試。使用者腳本愛 Chromium 頂的 Tampermonkey ≥4.18、DOM 隔離沙箱佮 CORS 相容端點；擴充功能／CLI 可能會使，直接 Fetch 袂使。", "errCustomSettings": "自訂：請填 HTTP(S) API 基底網址佮模型；金鑰會使留空。網址袂使含帳密、查詢、片段抑是 /chat/completions 後綴。有金鑰愛用 HTTPS，loopback 除外。", "errStale": "設定改矣，結果已經放棄。請家己閣試一擺。", "errCustomTransport": "自訂愛 Chromium 頂的 Tampermonkey ≥4.18、DOM 隔離沙箱佮原生 Fetch 控制。請用擴充功能／CLI 抑是支援的隔離環境佮 CORS 相容端點。袂退轉用 GM 抑是網頁傳輸。", "promptCustomModel": "自訂模型（必填，無模型探索）：", "promptCustomBase": "自訂 API 基底網址（必填，毋免 /chat/completions）。無金鑰 HTTP 無加密：", "customError_http": "自訂端點拒絕請求。", "customError_quota": "自訂端點限流（429）。", "customError_response": "自訂端點傳轉無效的 JSON 回應。", "customError_empty": "自訂端點傳轉空白結果。", "customError_timeout": "自訂請求超過時間。", "customError_network": "自訂請求失敗（網路、重新導向、讀取內文抑是 CORS）。", "brand": "debait", "labelOriginal": "原本標題", "labelHonest": "老實標題", "labelSummary": "摘要", "labelKeyPoints": "重點", "labelBaitSignals": "騙點閱的手路", "metaClickbait": "騙點閱", "metaWorth": "值得點：", "yes": "是", "no": "毋是", "verdict_substantial": "有料", "verdict_thin": "單薄", "verdict_empty": "空空", "panelReading": "咧讀取頁面…", "errGeneric": "debait 錯誤", "errParse": "無法度解析模型輸出。", "closeTitle": "關掉", "tipReading": "咧讀取…", "tipThin": "讀無內文（JS 動態產生抑是付費牆）。", "tipThrottled": "慢咧，一擺懸停一个連結，等一下閣試。", "tipRateLimited": "供應商咧限流，約 $1 秒了後閣恢復（等一下閣懸停）。", "tipCapped": "已經到每日預覽上限（$1/$2）。會使佇選單調懸。", "errNoKey": "猶未設定「$1」的 API 金鑰，請用選單設定。", "launcherTitle": "debait 這个頁面", "menuChooseProvider": "debait：揀供應商", "menuSetKey": "debait：設定 API 金鑰（目前供應商）", "menuSetLanguage": "debait：設定輸出語言", "menuSetInstructions": "debait：設定自訂指示", "promptInstructions": "加佇提示詞的自訂指示（JSON 輸出格式照舊）。留空會清掉：", "menuSetLimits": "debait：設定預覽限制", "menuShowUsage": "debait：看今仔日用量", "menuSetModel": "debait：設定模型覆寫", "menuSetBase": "debait：設定基底網址覆寫", "menuAnalyze": "debait：分析這个頁面", "promptProvider": "供應商，揀其中一个：\n$1", "alertUnknownProvider": "毋知影的供應商。", "promptSetKey": "「$1」的 API 金鑰（存佇本機，自訂會使留空）：", "promptLanguage": "標題／摘要的輸出語言（留空＝自動，佮文章仝款）：\n譬如 English、繁體中文、日本語、台語", "promptDwell": "預覽進前的懸停延遲（毫秒）：", "promptInterval": "預覽呼叫的上短間隔（毫秒）：", "promptDailyCap": "每日預覽上限（0＝無限制）：", "alertNonNegative": "請填無負數的數字。", "usageAlertPrefix": "debait 今仔日預覽呼叫：", "usageNoCap": "（無上限）", "promptModel": "模型（留空＝供應商預設）：", "promptBase": "基底網址（留空＝供應商預設）：" };
   const UI_LANG = (() => {
     const l = (navigator.language || "en").toLowerCase();
     if (l.startsWith("nan")) return "nan-Hanlo";
@@ -765,6 +771,7 @@ ${body || "(no extractable text — the page may be JS-rendered or paywalled)"}
 .x { cursor:pointer; color:#9aa4b2; font-size:16px; line-height:1; padding:2px 7px; border-radius:6px; border:0; background:transparent; }
 .x:hover { background:#20262e; color:#fff; }
 .x:focus-visible { outline:2px solid #6cb6ff; outline-offset:2px; }
+.source { color:#9aa4b2; font-size:12px; margin-top:12px; }
 .lbl { color:#9aa4b2; font-size:11px; letter-spacing:.07em; text-transform:uppercase; margin-top:6px; }
 .orig { color:#c9d1d9; margin:2px 0 6px; }
 .title { font-weight:600; font-size:15px; margin:2px 0 10px; }
@@ -776,9 +783,93 @@ ul { margin:4px 0 10px; padding-left:20px; } li { margin:3px 0; }
 pre { white-space:pre-wrap; color:#c9d1d9; }
 `;
 
+  let launcherButton = null;
+  function safeSourceUrl(raw) {
+    if (typeof raw !== "string" || raw.length < 1 || raw.length > 2048 || /[\u0000-\u001F\u007F-\u009F\s]/.test(raw)) return null;
+    try {
+      const u = new URL(raw);
+      if (!["http:", "https:"].includes(u.protocol) || u.username || u.password || !u.hostname) return null;
+      return Object.freeze({ href: u.href, host: u.hostname });
+    } catch { return null; }
+  }
+
+  function panelEscapeEventEligible(event) {
+    return event.isTrusted === true && event.key === "Escape" && !event.repeat
+      && !event.isComposing && event.keyCode !== 229 && !event.defaultPrevented
+      && !event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey;
+  }
+  function shouldClosePanelOnEscape(eventFacts, contextFacts) {
+    return panelEscapeEventEligible(eventFacts) && !!contextFacts && !contextFacts.uncertain
+      && !contextFacts.fullscreen && !contextFacts.overlay
+      && (contextFacts.panelPath || contextFacts.neutralFocus || contextFacts.launcherFocus);
+  }
+
+  // Read-only, bounded checks: any uncertainty keeps the close button available
+  // rather than consuming a page control's Escape. No focus is moved.
+  function readPanelEscapeContext(host, event) {
+    const facts = { uncertain: true, fullscreen: false, overlay: false,
+      panelPath: false, neutralFocus: false, launcherFocus: false };
+    try {
+      const path = event.composedPath();
+      if (!Array.isArray(path) || !path.length || !path.every((node) => node !== null && (typeof node === "object" || typeof node === "function"))) return facts;
+      let active = document.activeElement;
+      const focusSeen = new Set();
+      while (active) {
+        if (focusSeen.has(active) || focusSeen.size >= 100) return facts;
+        focusSeen.add(active);
+        const shadow = active.shadowRoot;
+        if (String(active.tagName).includes("-") && shadow === null) return facts;
+        const deeper = shadow ? shadow.activeElement : null;
+        if (!deeper) break;
+        active = deeper;
+      }
+      facts.fullscreen = !!document.fullscreenElement;
+      if (facts.fullscreen) return facts;
+      const roots = new Set([document]), seen = new Set();
+      const stack = [{ children: document.children, index: 0 }];
+      while (stack.length) {
+        const frame = stack[stack.length - 1];
+        if (frame.index >= frame.children.length) { stack.pop(); continue; }
+        const element = frame.children[frame.index++];
+        if (seen.has(element) || seen.size >= 10000) return facts;
+        seen.add(element);
+        if (element === host) continue;
+        if (element.matches('dialog[open]') || element.matches('[aria-modal="true"]') || element.matches(':popover-open')) {
+          facts.overlay = true;
+          return facts;
+        }
+        const shadow = element.shadowRoot;
+        if (shadow) {
+          if (roots.has(shadow) || roots.size >= 100) return facts;
+          roots.add(shadow);
+          stack.push({ children: shadow.children, index: 0 });
+        }
+        stack.push({ children: element.children, index: 0 });
+      }
+      facts.panelPath = path.includes(host);
+      facts.neutralFocus = active === null || active === document.body || active === document.documentElement;
+      facts.launcherFocus = launcherButton !== null && active === launcherButton;
+      facts.uncertain = false;
+    } catch { /* Uninspectable focus, roots or selectors veto dismissal. */ }
+    return facts;
+  }
+
+  let panelHost = null;
+  function detachPanelKey(host) {
+    if (host?.__onKey) {
+      window.removeEventListener("keydown", host.__onKey, false);
+      host.__onKey = null;
+    }
+  }
+
   function panel() {
     let host = document.getElementById(PANEL_ID);
-    if (host && host.__content) return host.__content;
+    if (panelHost && (!panelHost.isConnected || host !== panelHost)) {
+      detachPanelKey(panelHost);
+      panelHost.remove();
+      panelHost = null;
+    }
+    if (host && host === panelHost && host.__content) return host.__content;
     host = document.createElement("div");
     host.id = PANEL_ID;
     host.style.cssText = "all:initial; position:fixed; z-index:2147483647;";
@@ -790,16 +881,46 @@ pre { white-space:pre-wrap; color:#c9d1d9; }
     root.append(style, content);
     document.body.appendChild(host);
     host.__content = content;
+    panelHost = host;
+    host.__onKey = function onPanelKey(event) {
+      if (!host.isConnected || host !== panelHost || document.getElementById(PANEL_ID) !== host) {
+        detachPanelKey(host);
+        host.remove();
+        if (panelHost === host) panelHost = null;
+        return;
+      }
+      if (!panelEscapeEventEligible(event)) return;
+      if (shouldClosePanelOnEscape(event, readPanelEscapeContext(host, event))) closePanel();
+    };
+    window.addEventListener("keydown", host.__onKey, false);
     return content;
   }
 
   let panelRun = 0;
-  function closePanel() { panelRun++; document.getElementById(PANEL_ID)?.remove(); }
-  function render(html) {
+  function closePanel(owner = panelHost) {
+    if (!owner) return;
+    detachPanelKey(owner);
+    owner.remove();
+    if (owner === panelHost) {
+      panelRun++;
+      panelHost = null;
+    }
+  }
+  function render(html, source, openRequested = false) {
     const content = panel();
     // Include the dismissible header for every state, not only successful results.
     content.innerHTML = hd() + html;
-    content.getRootNode().querySelector(".x")?.addEventListener("click", closePanel);
+    const owner = content.getRootNode().host;
+    content.getRootNode().querySelector(".x")?.addEventListener("click", () => closePanel(owner));
+    if (source) {
+      const row = document.createElement("div");
+      row.className = "source";
+      const label = document.createElement("span");
+      label.className = "source-host";
+      label.textContent = t("sourceLabel", source.host);
+      row.appendChild(label);
+      content.appendChild(row);
+    }
   }
   function hd() {
     const label = esc(t("closeTitle")).replace(/"/g, "&quot;");
@@ -807,8 +928,8 @@ pre { white-space:pre-wrap; color:#c9d1d9; }
   }
   function esc(s) { return String(s ?? "").replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c])); }
 
-  function renderResult(a, r) {
-    if (r.parse_error) return render(`${esc(t("errParse"))}<pre>${esc(r.raw)}</pre>`);
+  function renderResult(a, r, source, openRequested = false) {
+    if (r.parse_error) return render(`${esc(t("errParse"))}<pre>${esc(r.raw)}</pre>`, source, openRequested);
     const n = clampScore(r.clickbait_score);
     const col = scoreColor(n);
     const kp = Array.isArray(r.key_points) && r.key_points.length
@@ -825,13 +946,14 @@ pre { white-space:pre-wrap; color:#c9d1d9; }
       <div class="lbl">${esc(t("labelSummary"))}</div>
       <div class="sum">${esc(r.summary)}</div>
       ${kp}${sig}
-    `);
+    `, source, openRequested);
   }
 
   // floating launcher button
   function addButton() {
     if (document.getElementById("debait-btn")) return;
     const b = document.createElement("button");
+    launcherButton = b;
     b.id = "debait-btn";
     b.textContent = "🪝🚫";
     b.title = t("launcherTitle");
@@ -841,21 +963,22 @@ pre { white-space:pre-wrap; color:#c9d1d9; }
   }
 
   async function run() {
+    const source = safeSourceUrl(location.href);
     const requestRun = ++panelRun;
-    render(esc(t("panelReading")));
+    render(esc(t("panelReading")), source, false);
     const s = snapshot();
     try {
       const article = extractPage();
       const out = await callProvider(buildPrompt(article, s), configuration(s));
       if (requestRun !== panelRun) return;
-      if (stale(s)) return render(esc(t("errStale")));
+      if (stale(s)) return render(esc(t("errStale")), source, false);
       const result = parseResult(out);
       if (s.provider === "custom" && (!result || typeof result !== "object" || Array.isArray(result) || result.parse_error)) throw new Error(t("customError_response"));
-      renderResult(article, result);
+      renderResult(article, result, source, false);
     } catch (e) {
       if (requestRun !== panelRun) return;
-      if (stale(s)) return render(esc(t("errStale")));
-      render(`<b style="color:#e5484d">${esc(t("errGeneric"))}</b><br><br>${esc(e.message)}`);
+      if (stale(s)) return render(esc(t("errStale")), source, false);
+      render(`<b style="color:#e5484d">${esc(t("errGeneric"))}</b><br><br>${esc(e.message)}`, source, false);
     }
   }
 

@@ -253,6 +253,52 @@ No GitHub account? Email the author at **cusp-preacher-blot [at] duck [dot] com*
 [issue](https://github.com/smailzhu/outsmarting-clickbait/issues). In the extension,
 see **Options** for a one-click contact link.
 
+## Setup help, source context and dismissal
+
+Settings offers static, opt-in official API-key help links for Anthropic, Gemini,
+Groq, OpenRouter, xAI, Together and NVIDIA. OpenAI, DeepSeek and Mistral currently
+have local dashboard/documentation guidance instead of unverified links. Custom
+endpoints get operator/key-optional guidance; local Ollama needs no key. Help
+follows the visible selection, including unsaved switches. Clicking a help link
+opens a new tab; merely viewing/switching/rerendering help does not navigate,
+collect keys, save settings or make a provider request. Sign-in/key acquisition
+workflows have not been authenticated or browser-validated, and official URLs
+and redirects can change.
+
+Current-page extension/userscript panels show the captured requested hostname
+only, not a duplicate-page link. An extension's explicit link analysis also has
+**Open requested article**: a normal new-tab link to the captured requested URL,
+not a model URL or a verified final origin/publisher. Fetches and navigation may
+redirect. Labels never include credentials, paths or query/fragment values; the
+navigation URL retains legitimate query/fragment values already present (which
+may themselves contain tokens). No stored/form secrets are appended. If source
+validation rejects a URL, only this decorative row/link is hidden; existing
+preview eligibility, canonical request URLs and analysis remain unchanged.
+
+The ✕ button remains available in every panel state. Trusted, unmodified Escape
+can also dismiss when focus is on the panel or neutral document body/root (or
+no element); the userscript additionally recognizes only the launcher button it
+actually created, by identity. Other page buttons, links, editors and widgets
+are ineligible. Chromium right-click can leave focus on the requested page link,
+so Escape may do nothing until focus becomes eligible; use ✕ or Tab into the
+panel. No focus trap, autofocus or explicit focus restoration is added.
+
+Fullscreen, open dialogs, any `[aria-modal="true"]` (even hidden/stale), and open
+popovers in the document/reachable open shadow roots veto Escape, including
+panel/launcher focus. Read-only checks stop at 10,000 elements, 100 roots (the
+document counts as one), and 100 focused elements: exhausted budgets, unsupported
+popover selectors or access errors disable Escape for that event. Hidden/stale
+modal markers can disable it indefinitely. Closed shadow overlays cannot all be
+inspected; focused opaque custom roots are vetoed. Top-frame Escape does not
+handle iframe events. ✕ is the fallback for all these conservative limits.
+Native focus, IME, popovers, shadow behavior and new-tab/noreferrer handling
+still need real-browser checks; no screenshot/manual accessibility claim is made.
+The panel's sole window Escape listener is bubble-phase and never prevents the
+default or stops propagation. Earlier page handlers can veto it; later window
+handlers do not have guaranteed priority. Tooltip/Alt behavior is unchanged.
+Closing suppresses late display, not already-dispatched work or incurred usage;
+it does not cancel or refund provider requests.
+
 ## License
 
 MIT

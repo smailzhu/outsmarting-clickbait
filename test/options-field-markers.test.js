@@ -350,7 +350,8 @@ function assertStructure(page) {
   for (const node of [...editableControls.map((id) => page.nodes[`${id}Modified`]), note]) {
     for (const attr of ["role", "aria-live", "aria-invalid"]) assert.equal(node.getAttribute(attr), null);
   }
-  assert.equal(elements.filter((node) => node.getAttribute("aria-live")).length, 2, "existing global live regions only");
+  assert.deepEqual(elements.filter((node) => node.getAttribute("aria-live")).map((node) => node.getAttribute("id")).sort(),
+    ["connectionStatus", "keyHelp", "status"], "only the two existing statuses and approved setup-help live region");
 }
 test("options.html parsed marker structure is persistent, localized and non-live; bad nesting fails", async () => {
   const gate = deferred(), page = createPage({ connectedDOM: true, beforeRead: () => gate.promise });
@@ -383,7 +384,10 @@ test("options.html parsed CSS is contrast-safe amber border only, preserves inli
   }
   assert.match(css, /input \{[^}]*border: 1px solid #767676; border-radius: 6px;/);
   assert.doesNotMatch(modified.map((rule) => rule.declarations).join(" "), /(?:^|;)\s*(?:background|outline|box-shadow|border-width|height|white-space|display)\s*:/);
-  assert.doesNotMatch(html, /requireAltForHover|:focus[^}]*\{|outline\s*:\s*(?:none|0)/);
+  assert.deepEqual(rules.filter((rule) => /:focus/.test(rule.selector)), [
+    { selector: '#keyHelpLink:focus-visible', declarations: 'outline: 2px solid #0969da; outline-offset: 2px;' },
+  ], "only the approved help-anchor ring; control/marker native focus remains unchanged");
+  assert.doesNotMatch(html, /requireAltForHover|outline\s*:\s*(?:none|0)/);
 });
 
 test("options.js clean pending Save and clean write failure keep all markers off independently of status", async () => {

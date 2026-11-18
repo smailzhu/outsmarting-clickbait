@@ -6,6 +6,7 @@ import { resolveProvider, callProvider, PROVIDERS, validateConfiguration, provid
 import { buildPrompt, parseResult } from "../shared/prompt.js";
 import { extractArticle } from "../shared/extract.js";
 import "../shared/profiles.js";
+import { panelDom } from "./helpers/panel-page.js";
 
 const output = JSON.stringify({ choices: [{ message: { content: '{"honest_title":"Fixture"}' } }] });
 const articleHtml = `<article>${"A factual local article. ".repeat(20)}</article>`;
@@ -14,16 +15,8 @@ const flush = () => new Promise((resolve) => setImmediate(resolve));
 const initial = (key = "") => ({ provider: "custom", profiles: { custom: { key, base: "http://localhost:8000/v1", model: "fixture" } }, previewMinIntervalMs: 0, minIntervalMs: 0, dailyCap: 1 });
 
 function dom() {
-  const hosts = new Map();
-  const document = {
-    title: "Fixture title", querySelector: () => null, addEventListener() {}, getElementById: (id) => hosts.get(id),
-    createElement: () => ({ style: {}, className: "", innerHTML: "", remove() { hosts.delete(this.id); },
-      attachShadow() {
-        const root = { host: this, children: [], append(...nodes) { for (const node of nodes) { node.root = root; root.children.push(node); } }, querySelector: () => ({ addEventListener() {} }) };
-        this.shadowRoot = root; return root;
-      }, getRootNode() { return this.root; } }),
-    body: { appendChild: (node) => hosts.set(node.id, node), cloneNode: () => ({ innerText: "article ".repeat(50), querySelectorAll: () => [] }) },
-  };
+  const { document } = panelDom();
+  const hosts = { get: (id) => document.getElementById(id) };
   class DOMParser { parseFromString() { return { querySelector: () => null, body: { textContent: "article ".repeat(50), querySelectorAll: () => [] } }; } }
   return { document, DOMParser, hosts };
 }
@@ -36,7 +29,7 @@ function userscript(values = initial(), { info = { scriptHandler: "Tampermonkey"
   // realm/control enforcement is explicitly NOT proven by this simulation.
   const nativeFetch = new Proxy(async (...args) => { fetchCalls.push(args); return fetchImpl(...args); }, {});
   const context = vm.createContext({ ...nodes, URL, navigator: { language: lang, userAgent: chromium ? "Mozilla/5.0 Chrome/120.0" : "Firefox/120.0" }, location: { href: "https://article.example/" },
-    window: { addEventListener() {}, innerWidth: 1200, innerHeight: 900 },
+    window: { addEventListener() {}, removeEventListener() {}, innerWidth: 1200, innerHeight: 900 },
     unsafeWindow: { fetch: (...args) => { pageCalls.push(args); assert.fail("never use page transport"); } },
     fetch: nativeFetch, Request: new Proxy(requestImpl, {}), AbortController: new Proxy(AbortController, {}),
     setTimeout: (fn, ms) => setTimeout(fn, fastTimeout && ms === 60000 ? 10 : ms), clearTimeout,

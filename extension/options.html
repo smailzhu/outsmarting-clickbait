@@ -8,6 +8,7 @@
     input { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #767676; border-radius: 6px; }
     button { margin-top: 16px; padding: 8px 16px; border: none; border-radius: 6px; background: #58a6ff; color: #001; font-weight: 600; cursor: pointer; }
     a { color: #0969da; }
+    #keyHelpLink:focus-visible { outline: 2px solid #0969da; outline-offset: 2px; }
     .hint { color: #666; font-size: 12px; }
     [data-modified="true"] { border-color: #b45309 !important; }
     .field-modified { color: #92400e; font-weight: 600; }
@@ -59,7 +60,8 @@
   <p id="otherProvidersModified" class="hint field-modified-note" hidden data-i18n="optOtherProvidersModified">Other provider settings also have unsaved changes.</p>
   <p class="hint" data-i18n="customGuidance"></p>
   <label for="key"><span data-i18n="optKey">API key</span> <span id="keyModified" class="field-modified" aria-hidden="true" hidden data-i18n="optFieldModified">Modified</span></label>
-  <input id="key" disabled type="password" data-i18n-ph="phKeyOllama" placeholder="sk-... (not needed for local Ollama)" />
+  <input id="key" aria-describedby="keyHelp" disabled type="password" data-i18n-ph="phKeyOllama" placeholder="sk-... (not needed for local Ollama)" />
+  <p id="keyHelp" class="hint" aria-live="polite" hidden><span id="keyHelpText"></span><a id="keyHelpLink" target="_blank" rel="noopener noreferrer" hidden></a></p>
   <label for="base"><span data-i18n="optBase">API base URL</span> <span id="baseModified" class="field-modified" aria-hidden="true" hidden data-i18n="optFieldModified">Modified</span> <span id="baseHint" class="hint" data-i18n="optOverrideHint">(optional — overrides provider default)</span></label>
   <input id="base" disabled type="text" data-i18n-ph="phBlankDefault" placeholder="leave blank for default" />
   <label for="model"><span data-i18n="optModel">Model</span> <span id="modelModified" class="field-modified" aria-hidden="true" hidden data-i18n="optFieldModified">Modified</span> <span id="modelHint" class="hint" data-i18n="optOverrideHint">(optional — overrides provider default)</span></label>
@@ -96,6 +98,7 @@
   <script src="messages.gen.js"></script>
   <script src="i18n-runtime.js"></script>
   <script src="profiles.js"></script>
+  <script src="provider-help.js"></script>
   <script src="options.js"></script>
 </body>
 </html>

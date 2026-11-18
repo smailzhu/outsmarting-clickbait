@@ -355,5 +355,36 @@
   },
   "connectionSaveReminder": {
     "message": "請儲存設定，才能使用這組設定。"
+  },
+  "keyHelpLinkLabel": {
+    "message": "去哪裡取得 API 金鑰？"
+  },
+  "keyHelpCloudLocal": {
+    "message": "請到供應商控制台或文件查看如何取得 API 金鑰。"
+  },
+  "keyHelpCustom": {
+    "message": "金鑰由端點營運者提供；某些端點不需要金鑰。"
+  },
+  "keyHelpOllama": {
+    "message": "本機 Ollama 不需要金鑰。"
+  },
+  "sourceLabel": {
+    "message": "來源：$1",
+    "placeholders": {
+      "host": {
+        "content": "$1"
+      }
+    }
+  },
+  "openRequestedArticle": {
+    "message": "開啟所要求的文章"
+  },
+  "openRequestedArticleAria": {
+    "message": "在新分頁開啟 $1 上所要求的文章",
+    "placeholders": {
+      "host": {
+        "content": "$1"
+      }
+    }
   }
 }

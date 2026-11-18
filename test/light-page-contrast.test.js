@@ -69,13 +69,15 @@ for (const [name, page] of [["options.html", options], ["popup.html", popup]]) {
     assert.equal(button.background, "#58a6ff");
     assert.equal(button.color, "#001");
     contrast(button.color, button.background, 4.5, `${name} enabled button text`);
-    for (const { properties } of [...page.rules, ...page.inline]) {
+    const helpRing = page.rules.filter(({ selector }) => selector === "#keyHelpLink:focus-visible");
+    assert.deepEqual(helpRing, name === "options.html" ? [{ selector: "#keyHelpLink:focus-visible", properties: { outline: "2px solid #0969da", "outline-offset": "2px" } }] : []);
+    for (const { properties } of [...page.rules.filter(({ selector }) => selector !== "#keyHelpLink:focus-visible"), ...page.inline]) {
       for (const property of Object.keys(properties)) {
         assert.doesNotMatch(property, /^(?:outline(?:-.*)?|text-decoration(?:-.*)?|forced-color-adjust|color-scheme)$/,
           `${name} must not override native focus, underlines or browser colors`);
       }
     }
-    assert.doesNotMatch(page.css, /:focus|forced-colors|prefers-color-scheme/);
+    assert.doesNotMatch(page.css.replace(/#keyHelpLink:focus-visible\s*\{[^}]*\}/, ""), /:focus|forced-colors|prefers-color-scheme/);
   });
 }
 

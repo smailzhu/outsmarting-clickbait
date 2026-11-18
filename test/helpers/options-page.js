@@ -34,7 +34,7 @@ function eventTarget() {
 export function createPage({ initial = { key: "saved-key" }, beforeRead, beforeWrite, beforeI18n, beforeUsage,
   beforeApply, translate = (key) => key, applyStaticLabels = false, realI18n = false,
   connectedDOM = realI18n, htmlSource } = {}) {
-  const store = structuredClone(initial), nodes = {}, writes = [], attempts = [], messages = [], pending = [], timers = [], consoleOutput = [];
+  const store = structuredClone(initial), nodes = {}, writes = [], attempts = [], messages = [], pending = [], timers = [], consoleOutput = [], navigations = [], fetchCalls = [];
   const calls = { syncGet: 0, syncSet: 0, localGet: 0, localSet: 0, i18nInit: 0, i18nApply: 0 };
   const window = eventTarget();
   const document = {
@@ -44,7 +44,7 @@ export function createPage({ initial = { key: "saved-key" }, beforeRead, beforeW
   document.activeElement = document.body;
   const html = htmlSource ?? readFileSync(new URL("../../extension/options.html", import.meta.url), "utf8");
   const fields = [...lockedControls, ...editableControls.map((id) => `${id}Modified`), "otherProvidersModified",
-    "usage", "connectionStatus", "status", "reportLink", "saveBar", "baseHint", "modelHint", "discardHint"];
+    "usage", "connectionStatus", "status", "reportLink", "saveBar", "baseHint", "modelHint", "discardHint", "keyHelp", "keyHelpText", "keyHelpLink"];
   function createElement(tagName, attributes) {
     const id = attributes.id;
     let value = "", text = "", disabled = Object.hasOwn(attributes, "disabled");
@@ -78,6 +78,15 @@ export function createPage({ initial = { key: "saved-key" }, beforeRead, beforeW
       focus() { if (!disabled) { document.activeElement = this; this.focusCalls++; } },
       getBoundingClientRect() { return { height: this.height }; },
     };
+    for (const key of ["href", "target", "rel"]) Object.defineProperty(node, key, {
+      get() { return attributes[key] || ""; },
+      set(value) { attributes[key] = key === "href" ? new URL(String(value)).href : String(value); },
+    });
+    node.click = async () => {
+      if (disabled) return;
+      await node.dispatchEvent({ type: "click", target: node });
+      if (tagName === "a" && node.hasAttribute("href")) navigations.push({ href: node.href, target: node.target, rel: node.rel });
+    };
     if (id) nodes[id] = node;
     return node;
   }
@@ -96,6 +105,10 @@ export function createPage({ initial = { key: "saved-key" }, beforeRead, beforeW
     const attrs = Object.fromEntries([...tag.matchAll(/([^\s=<>/]+)(?:\s*=\s*"([^"]*)")?/g)].map((m) => [m[1], m[2] || ""]));
     createElement(tag.match(/^<(\w+)/)?.[1] || "span", { ...attrs, id });
   }
+  if (!connectedDOM) {
+    nodes.keyHelp.children = [nodes.keyHelpText, nodes.keyHelpLink];
+    for (const child of nodes.keyHelp.children) child.parentElement = nodes.keyHelp;
+  }
   let i18n = {
     lang: "en", t: (key, subs) => translate(key, i18n.lang, subs),
     init: async () => { calls.i18nInit++; await beforeI18n?.(); i18n.lang = store.uiLang || "en"; },
@@ -107,7 +120,8 @@ export function createPage({ initial = { key: "saved-key" }, beforeRead, beforeW
   };
   const resizeObservers = [];
   const context = vm.createContext({
-    document, window, structuredClone,
+    document, window, structuredClone, URL,
+    fetch: (...args) => { fetchCalls.push(args); throw new Error("unexpected fetch"); },
     chrome: {
       storage: {
         sync: {
@@ -144,9 +158,9 @@ export function createPage({ initial = { key: "saved-key" }, beforeRead, beforeW
     i18n.init = async () => { calls.i18nInit++; await beforeI18n?.(); return init(); };
     i18n.apply = (...args) => { calls.i18nApply++; beforeApply?.(); return apply(...args); };
   }
-  for (const file of ["profiles.js", "options.js"]) vm.runInContext(readFileSync(new URL(`../../extension/${file}`, import.meta.url), "utf8"), context);
+  for (const file of ["profiles.js", "provider-help.js", "options.js"]) vm.runInContext(readFileSync(new URL(`../../extension/${file}`, import.meta.url), "utf8"), context);
   return {
-    nodes, document, window, context, store, writes, attempts, messages, pending, timers, i18n, calls, resizeObservers, consoleOutput,
+    nodes, document, window, context, store, writes, attempts, messages, pending, timers, i18n, calls, resizeObservers, consoleOutput, navigations, fetchCalls,
     resolveReply: (reply) => pending[0].resolve(reply),
     switchTo: async (id) => { nodes.provider.value = id; await nodes.provider.dispatch("input"); await nodes.provider.dispatch("change"); },
     edit: async (id, value, type = "input") => { nodes[id].value = value; await nodes[id].dispatch(type); },

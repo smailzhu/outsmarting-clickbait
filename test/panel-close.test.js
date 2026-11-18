@@ -1,63 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
 import vm from "node:vm";
 
-// Small DOM double exercising the real panel rendering and async run functions
-// without installing a DOM/browser dependency. Browser layout is not simulated.
-function setup(kind) {
-  const hosts = new Map();
-  const label = 'Close "panel"';
-  const document = {
-    getElementById: (id) => hosts.get(id),
-    createElement: () => ({
-      style: {}, className: "", innerHTML: "",
-      attachShadow() {
-        const root = {
-          host: this, children: [],
-          append(...children) { for (const child of children) { child.root = this; this.children.push(child); } },
-          querySelector() {
-            const content = this.children.find((el) => el.className === "wrap");
-            return content?.innerHTML.includes('class="x"') ? content.closeButton : undefined;
-          },
-        };
-        this.shadowRoot = root;
-        return root;
-      },
-      getRootNode() { return this.root; },
-      closeButton: { addEventListener(_event, handler) { this.click = handler; } },
-      remove() { hosts.delete(this.id); },
-    }),
-    body: { appendChild(host) { hosts.set(host.id, host); } },
-  };
-  const pending = [];
-  const request = (...args) => new Promise((resolve, reject) => pending.push({ resolve, reject, args }));
-  const context = vm.createContext({
-    document, URL,
-    t: (key) => key === "closeTitle" ? label : key,
-    verdict: (value) => value,
-    extractPage: () => ({ text: "body", originalTitle: "Original" }),
-    buildPrompt: () => "prompt", callProvider: request,
-    parseResult: JSON.parse, CFG: {}, snapshot: () => ({}), configuration: (s) => s, stale: () => false,
-    DebaitI18n: { init: async () => {}, t: (key) => key === "closeTitle" ? label : key, verdict: (v) => v },
-    DebaitPrompt: { buildPrompt: () => "prompt", parseResult: JSON.parse },
-    chrome: { storage: { sync: { get: async () => ({}) } }, runtime: { sendMessage: request } },
-  });
-  const source = readFileSync(new URL(kind === "extension" ? "../extension/content.js" : "../userscript/debait.user.js", import.meta.url), "utf8");
-  const start = source.indexOf('const PANEL_ID = "debait-panel-host";');
-  const end = kind === "extension" ? source.indexOf("chrome.runtime.onMessage.addListener", start) :
-    source.indexOf("// ---- Alt+hover link preview", start);
-  assert.ok(start >= 0 && end > start);
-  vm.runInContext(source.slice(start, end), context);
-  const content = () => hosts.get("debait-panel-host")?.__content;
-  const close = () => content().closeButton.click();
-  const finish = (index, result) => {
-    if (result instanceof Error) pending[index].reject(result);
-    else pending[index].resolve(kind === "extension" ? { ok: true, text: JSON.stringify(result) } : JSON.stringify(result));
-  };
-  const finishPreview = (index, result) => pending[index].resolve({ ok: true, result });
-  return { context, hosts, pending, content, close, finish, finishPreview, flush: () => new Promise((r) => setImmediate(r)) };
-}
+import { setupPanel as setup } from "./helpers/panel-page.js";
 
 test("extension: right-click link uses the preview path and displays a dismissible result", async () => {
   const page = setup("extension");

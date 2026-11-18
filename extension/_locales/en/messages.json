@@ -355,5 +355,36 @@
   },
   "connectionSaveReminder": {
     "message": "Save settings to use this configuration."
+  },
+  "keyHelpLinkLabel": {
+    "message": "Where do I get an API key?"
+  },
+  "keyHelpCloudLocal": {
+    "message": "Check your provider dashboard or documentation for an API key."
+  },
+  "keyHelpCustom": {
+    "message": "Your endpoint's operator provides the key; some endpoints need none."
+  },
+  "keyHelpOllama": {
+    "message": "No key needed for local Ollama."
+  },
+  "sourceLabel": {
+    "message": "Source: $1",
+    "placeholders": {
+      "host": {
+        "content": "$1"
+      }
+    }
+  },
+  "openRequestedArticle": {
+    "message": "Open requested article"
+  },
+  "openRequestedArticleAria": {
+    "message": "Open requested article on $1 (new tab)",
+    "placeholders": {
+      "host": {
+        "content": "$1"
+      }
+    }
   }
 }

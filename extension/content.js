@@ -141,6 +141,9 @@ const PANEL_CSS = `
 .x { cursor:pointer; color:#9aa4b2; font-size:16px; line-height:1; padding:2px 7px; border-radius:6px; border:0; background:transparent; }
 .x:hover { background:#20262e; color:#fff; }
 .x:focus-visible { outline:2px solid #6cb6ff; outline-offset:2px; }
+.source { color:#9aa4b2; font-size:12px; margin-top:12px; }
+.source-open { color:#6cb6ff; margin-left:8px; }
+.source-open:focus-visible { outline:2px solid #6cb6ff; outline-offset:2px; }
 .lbl { color:#9aa4b2; font-size:11px; letter-spacing:.07em; text-transform:uppercase; margin-top:6px; }
 .orig { color:#c9d1d9; margin:2px 0 6px; }
 .title { font-weight:600; font-size:15px; margin:2px 0 10px; }
@@ -152,9 +155,91 @@ ul { margin:4px 0 10px; padding-left:20px; } li { margin:3px 0; }
 pre { white-space:pre-wrap; color:#c9d1d9; }
 `;
 
+function safeSourceUrl(raw) {
+  if (typeof raw !== "string" || raw.length < 1 || raw.length > 2048 || /[\u0000-\u001F\u007F-\u009F\s]/.test(raw)) return null;
+  try {
+    const u = new URL(raw);
+    if (!["http:", "https:"].includes(u.protocol) || u.username || u.password || !u.hostname) return null;
+    return Object.freeze({ href: u.href, host: u.hostname });
+  } catch { return null; }
+}
+
+function panelEscapeEventEligible(event) {
+  return event.isTrusted === true && event.key === "Escape" && !event.repeat
+    && !event.isComposing && event.keyCode !== 229 && !event.defaultPrevented
+    && !event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey;
+}
+function shouldClosePanelOnEscape(eventFacts, contextFacts) {
+  return panelEscapeEventEligible(eventFacts) && !!contextFacts && !contextFacts.uncertain
+    && !contextFacts.fullscreen && !contextFacts.overlay
+    && (contextFacts.panelPath || contextFacts.neutralFocus);
+}
+
+// Read-only, bounded checks: any uncertainty keeps the close button available
+// rather than consuming a page control's Escape. No focus is moved.
+function readPanelEscapeContext(host, event) {
+  const facts = { uncertain: true, fullscreen: false, overlay: false,
+    panelPath: false, neutralFocus: false, launcherFocus: false };
+  try {
+    const path = event.composedPath();
+    if (!Array.isArray(path) || !path.length || !path.every((node) => node !== null && (typeof node === "object" || typeof node === "function"))) return facts;
+    let active = document.activeElement;
+    const focusSeen = new Set();
+    while (active) {
+      if (focusSeen.has(active) || focusSeen.size >= 100) return facts;
+      focusSeen.add(active);
+      const shadow = active.shadowRoot;
+      if (String(active.tagName).includes("-") && shadow === null) return facts;
+      const deeper = shadow ? shadow.activeElement : null;
+      if (!deeper) break;
+      active = deeper;
+    }
+    facts.fullscreen = !!document.fullscreenElement;
+    if (facts.fullscreen) return facts;
+    const roots = new Set([document]), seen = new Set();
+    const stack = [{ children: document.children, index: 0 }];
+    while (stack.length) {
+      const frame = stack[stack.length - 1];
+      if (frame.index >= frame.children.length) { stack.pop(); continue; }
+      const element = frame.children[frame.index++];
+      if (seen.has(element) || seen.size >= 10000) return facts;
+      seen.add(element);
+      if (element === host) continue;
+      if (element.matches('dialog[open]') || element.matches('[aria-modal="true"]') || element.matches(':popover-open')) {
+        facts.overlay = true;
+        return facts;
+      }
+      const shadow = element.shadowRoot;
+      if (shadow) {
+        if (roots.has(shadow) || roots.size >= 100) return facts;
+        roots.add(shadow);
+        stack.push({ children: shadow.children, index: 0 });
+      }
+      stack.push({ children: element.children, index: 0 });
+    }
+    facts.panelPath = path.includes(host);
+    facts.neutralFocus = active === null || active === document.body || active === document.documentElement;
+    facts.uncertain = false;
+  } catch { /* Uninspectable focus, roots or selectors veto dismissal. */ }
+  return facts;
+}
+
+let panelHost = null;
+function detachPanelKey(host) {
+  if (host?.__onKey) {
+    window.removeEventListener("keydown", host.__onKey, false);
+    host.__onKey = null;
+  }
+}
+
 function panel() {
   let host = document.getElementById(PANEL_ID);
-  if (host && host.__content) return host.__content;
+  if (panelHost && (!panelHost.isConnected || host !== panelHost)) {
+    detachPanelKey(panelHost);
+    panelHost.remove();
+    panelHost = null;
+  }
+  if (host && host === panelHost && host.__content) return host.__content;
   host = document.createElement("div");
   host.id = PANEL_ID;
   host.style.cssText = "all:initial; position:fixed; z-index:2147483647;";
@@ -166,23 +251,64 @@ function panel() {
   root.append(style, content);
   document.body.appendChild(host);
   host.__content = content;
+  panelHost = host;
+  host.__onKey = function onPanelKey(event) {
+    if (!host.isConnected || host !== panelHost || document.getElementById(PANEL_ID) !== host) {
+      detachPanelKey(host);
+      host.remove();
+      if (panelHost === host) panelHost = null;
+      return;
+    }
+    if (!panelEscapeEventEligible(event)) return;
+    if (shouldClosePanelOnEscape(event, readPanelEscapeContext(host, event))) closePanel();
+  };
+  window.addEventListener("keydown", host.__onKey, false);
   return content;
 }
 let panelRun = 0;
-const closePanel = () => { panelRun++; document.getElementById(PANEL_ID)?.remove(); };
-const render = (html) => {
+function closePanel(owner = panelHost) {
+  if (!owner) return;
+  detachPanelKey(owner);
+  owner.remove();
+  // A close control belonging to an older panel must not dismiss a newer one.
+  if (owner === panelHost) {
+    panelRun++;
+    panelHost = null;
+  }
+}
+const render = (html, source, openRequested = false) => {
   const content = panel();
   // Every state gets the same dismissible header, including loading/errors.
   content.innerHTML = hd() + html;
-  content.getRootNode().querySelector(".x")?.addEventListener("click", closePanel);
+  const owner = content.getRootNode().host;
+  content.getRootNode().querySelector(".x")?.addEventListener("click", () => closePanel(owner));
+  if (source) {
+    const row = document.createElement("div");
+    row.className = "source";
+    const label = document.createElement("span");
+    label.className = "source-host";
+    label.textContent = t("sourceLabel", [source.host]);
+    row.appendChild(label);
+    if (openRequested) {
+      const a = document.createElement("a");
+      a.className = "source-open";
+      a.href = source.href;
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      a.textContent = t("openRequestedArticle");
+      a.setAttribute("aria-label", t("openRequestedArticleAria", [source.host]));
+      row.appendChild(a);
+    }
+    content.appendChild(row);
+  }
 };
 const hd = () => {
   const label = esc(t("closeTitle")).replace(/"/g, "&quot;");
   return `<div class="hd"><span class="brand">🪝🚫 ${esc(t("brand"))}</span><button type="button" class="x" title="${label}" aria-label="${label}">✕</button></div>`;
 };
 
-function renderResult(a, r) {
-  if (!r || r.parse_error) return render(`${esc(t("errParse"))}<pre>${esc(r && r.raw)}</pre>`);
+function renderResult(a, r, source, openRequested = false) {
+  if (!r || r.parse_error) return render(`${esc(t("errParse"))}<pre>${esc(r && r.raw)}</pre>`, source, openRequested);
   const n = clampScore(r.clickbait_score);
   const col = scoreColor(n);
   const kp = Array.isArray(r.key_points) && r.key_points.length
@@ -199,12 +325,13 @@ function renderResult(a, r) {
     <div class="lbl">${esc(t("labelSummary"))}</div>
     <div class="sum">${esc(r.summary)}</div>
     ${kp}${sig}
-  `);
+  `, source, openRequested);
 }
 
 async function run() {
+  const source = safeSourceUrl(location.href);
   const requestRun = ++panelRun;
-  render(esc(t("panelReading")));
+  render(esc(t("panelReading")), source, false);
   try {
     const article = extractPage();
     const { language, customInstructions } = await chrome.storage.sync.get({ language: "", customInstructions: "" });
@@ -212,19 +339,20 @@ async function run() {
     const prompt = globalThis.DebaitPrompt.buildPrompt(article, { language, customInstructions });
     const resp = await chrome.runtime.sendMessage({ type: "debait:complete", prompt });
     if (requestRun !== panelRun) return;
-    if (!resp?.ok) return render(`<b style="color:#e5484d">${esc(t("errGeneric"))}</b><br><br>${esc(resp?.error || t("errUnknown"))}`);
-    renderResult(article, globalThis.DebaitPrompt.parseResult(resp.text));
+    if (!resp?.ok) return render(`<b style="color:#e5484d">${esc(t("errGeneric"))}</b><br><br>${esc(resp?.error || t("errUnknown"))}`, source, false);
+    renderResult(article, globalThis.DebaitPrompt.parseResult(resp.text), source, false);
   } catch (e) {
     if (requestRun !== panelRun) return;
-    render(`<b style="color:#e5484d">${esc(t("errGeneric"))}</b><br><br>${esc(e?.message || String(e))}`);
+    render(`<b style="color:#e5484d">${esc(t("errGeneric"))}</b><br><br>${esc(e?.message || String(e))}`, source, false);
   }
 }
 
 // Explicit link action keeps its result in the normal dismissible panel rather
 // than a hover tooltip (which disappears when the mouse moves).
 async function runLink(url) {
+  const source = safeSourceUrl(url);
   const requestRun = ++panelRun;
-  render(esc(t("panelReading")));
+  render(esc(t("panelReading")), source, true);
   try {
     const target = new URL(url);
     if (!["https:", "http:"].includes(target.protocol)) throw new Error(t("linkInvalid"));
@@ -233,15 +361,15 @@ async function runLink(url) {
     if (!resp?.ok) throw new Error(resp?.error || t("errUnknown"));
     const r = resp.result;
     if (!r || typeof r !== "object") throw new Error(t("errParse"));
-    if (r.stale) return render(esc(t("errStale")));
-    if (r.capped) return render(esc(t("tipCapped", [String(r.used), String(r.cap)])));
-    if (r.rate_limited) return render(esc(t("linkRateLimited", [String(r.retryIn)])));
-    if (r.throttled) return render(esc(t("linkThrottled")));
-    if (r.thin_fetch) return render(`${esc(t("tipThin"))}<p>${esc(r.description || r.originalTitle || "")}</p>`);
-    renderResult({ originalTitle: r.originalTitle || target.href }, r);
+    if (r.stale) return render(esc(t("errStale")), source, true);
+    if (r.capped) return render(esc(t("tipCapped", [String(r.used), String(r.cap)])), source, true);
+    if (r.rate_limited) return render(esc(t("linkRateLimited", [String(r.retryIn)])), source, true);
+    if (r.throttled) return render(esc(t("linkThrottled")), source, true);
+    if (r.thin_fetch) return render(`${esc(t("tipThin"))}<p>${esc(r.description || r.originalTitle || "")}</p>`, source, true);
+    renderResult({ originalTitle: r.originalTitle || target.href }, r, source, true);
   } catch (e) {
     if (requestRun !== panelRun) return;
-    render(`<b style="color:#e5484d">${esc(t("errGeneric"))}</b><br><br>${esc(e?.message || String(e))}`);
+    render(`<b style="color:#e5484d">${esc(t("errGeneric"))}</b><br><br>${esc(e?.message || String(e))}`, source, true);
   }
 }
 
