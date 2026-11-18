@@ -3,11 +3,12 @@
 <head>
   <meta charset="utf-8" />
   <style>
-    body { font: 14px/1.5 system-ui, sans-serif; max-width: 460px; margin: 40px auto; padding: 0 16px; }
+    body { font: 14px/1.5 system-ui, sans-serif; max-width: 460px; margin: 40px auto; padding: 0 16px; background: #fff; color: #111; }
     label { display: block; margin: 14px 0 4px; font-weight: 600; }
-    input { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 6px; }
+    input { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #767676; border-radius: 6px; }
     button { margin-top: 16px; padding: 8px 16px; border: none; border-radius: 6px; background: #58a6ff; color: #001; font-weight: 600; cursor: pointer; }
-    .hint { color: #777; font-size: 12px; }
+    a { color: #0969da; }
+    .hint { color: #666; font-size: 12px; }
     [data-modified="true"] { border-color: #b45309 !important; }
     .field-modified { color: #92400e; font-weight: 600; }
     .field-modified-note { color: #92400e; }
@@ -34,14 +35,14 @@
   <h1>🪝🚫 <span data-i18n="optTitle">debait settings</span></h1>
   <p class="hint" data-i18n="optStoredHint">Your API key is stored in chrome.storage.sync and only sent to the selected provider.</p>
   <label for="uiLang"><span data-i18n="optUiLanguage">Interface language</span> <span id="uiLangModified" class="field-modified" aria-hidden="true" hidden data-i18n="optFieldModified">Modified</span> <span class="hint" data-i18n="optUiLanguageHint">(the extension's buttons &amp; labels; Auto = follow your browser)</span></label>
-  <select id="uiLang" disabled style="width:100%;padding:8px;border:1px solid #ccc;border-radius:6px">
+  <select id="uiLang" disabled style="width:100%;padding:8px;border:1px solid #767676;border-radius:6px">
     <option value="" data-i18n="interfaceAuto">Auto (browser)</option>
     <option value="en">English</option>
     <option value="zh_TW">繁體中文</option>
     <option value="nan-Hanlo">台語（漢羅）</option>
   </select>
   <label for="provider"><span data-i18n="optProvider">Provider</span> <span id="providerModified" class="field-modified" aria-hidden="true" hidden data-i18n="optFieldModified">Modified</span></label>
-  <select id="provider" disabled style="width:100%;padding:8px;border:1px solid #ccc;border-radius:6px">
+  <select id="provider" disabled style="width:100%;padding:8px;border:1px solid #767676;border-radius:6px">
     <option value="openai">OpenAI</option>
     <option value="anthropic">Anthropic (Claude)</option>
     <option value="gemini">Google Gemini</option>
@@ -69,7 +70,7 @@
   <label for="language"><span data-i18n="optLanguage">Output language</span> <span id="languageModified" class="field-modified" aria-hidden="true" hidden data-i18n="optFieldModified">Modified</span> <span class="hint" data-i18n="optLanguageHint">(title &amp; summary; blank = auto, match the article)</span></label>
   <input id="language" disabled type="text" placeholder="auto — or English, 繁體中文, 日本語, Español" />
   <label for="customInstructions"><span data-i18n="optInstructions">Custom instructions</span> <span id="customInstructionsModified" class="field-modified" aria-hidden="true" hidden data-i18n="optFieldModified">Modified</span> <span class="hint" data-i18n="optInstructionsHint">(optional — appended to the prompt; the JSON output shape is kept)</span></label>
-  <textarea id="customInstructions" disabled rows="3" style="width:100%;padding:8px;box-sizing:border-box;border:1px solid #ccc;border-radius:6px;font:13px/1.4 system-ui,sans-serif" placeholder="e.g. Be harsher on sensational framing. Add a one-line TL;DR in the summary."></textarea>
+  <textarea id="customInstructions" disabled rows="3" style="width:100%;padding:8px;box-sizing:border-box;border:1px solid #767676;border-radius:6px;font:13px/1.4 system-ui,sans-serif" placeholder="e.g. Be harsher on sensational framing. Add a one-line TL;DR in the summary."></textarea>
 
   <h2 style="font-size:15px;margin:22px 0 4px" data-i18n="optLimitsTitle">Hover preview limits</h2>
   <p class="hint" data-i18n="optLimitsHint">Preview fetches + summarizes a link before you click. These caps stop bursty hovering from blowing your provider quota.</p>

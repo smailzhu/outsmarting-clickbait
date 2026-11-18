@@ -379,9 +379,9 @@ test("options.html parsed CSS is contrast-safe amber border only, preserves inli
   assert.ok(css.indexOf(".field-modified-note") > css.indexOf(".hint"));
   for (const id of ["uiLang", "provider", "customInstructions"]) {
     const tag = html.match(new RegExp(`<[^>]+id="${id}"[^>]*>`))[0];
-    assert.match(tag, /border:1px solid #ccc;border-radius:6px/);
+    assert.match(tag, /border:1px solid #767676;border-radius:6px/);
   }
-  assert.match(css, /input \{[^}]*border: 1px solid #ccc; border-radius: 6px;/);
+  assert.match(css, /input \{[^}]*border: 1px solid #767676; border-radius: 6px;/);
   assert.doesNotMatch(modified.map((rule) => rule.declarations).join(" "), /(?:^|;)\s*(?:background|outline|box-shadow|border-width|height|white-space|display)\s*:/);
   assert.doesNotMatch(html, /requireAltForHover|:focus[^}]*\{|outline\s*:\s*(?:none|0)/);
 });
