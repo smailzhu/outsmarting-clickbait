@@ -65,6 +65,15 @@
   "optSave": {
     "message": "儲存"
   },
+  "optDiscard": {
+    "message": "捨棄變更"
+  },
+  "optDiscardHint": {
+    "message": "捨棄會還原此頁面上次儲存的設定（不是預設值）。"
+  },
+  "optDiscarded": {
+    "message": "已捨棄變更。"
+  },
   "optSaved": {
     "message": "已儲存 ✓"
   },

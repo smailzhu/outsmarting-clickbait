@@ -62,28 +62,49 @@ provider's billing credits and limits.
 ## Settings changes (source / development builds)
 
 Settings require explicit **Save**; there is no autosave. An unsaved-change
-indicator and sticky Save bar help keep changes visible. At viewport heights
-of 360px or less the bar scrolls normally instead, so it may not stay visible.
+indicator and sticky Save/Discard bar help keep changes visible. At viewport
+heights of 360px or less the bar scrolls normally instead, so it may not stay
+visible. **Discard changes** restores this page's loaded or last successfully
+persisted normalized settings, including all provider profiles and intentionally
+empty credentials, not defaults or another tab/device's later writes. A failed
+Save leaves the previous baseline authoritative; a successful write advances it.
+Discard is available only with unsaved changes once loading finishes, and is
+locked while saving. Save remains available even when the page is clean.
+
 **Test connection is not Save**: a successful test reminds you to Save when the
-tested connection differs from the saved active configuration. Save is available
-during a Test; while saving, the form stays locked through the display refresh.
+tested connection differs from the saved active configuration. Save and Discard
+are available during a Test; while saving, the form stays locked through the
+display refresh. Discard makes no settings-storage reads/writes or API calls and
+does not undo requests, costs or quota already incurred. It invalidates pending
+Test feedback even for non-connection edits, without canceling the request; Test
+stays busy until that request settles. Valid settled results remain if the
+restored active connection tuple is unchanged; changed-tuple results are cleared.
 
 With unsaved changes, leaving/reloading may trigger the browser's generic
 confirmation. It requires user activation and is not guaranteed (for example on
 crashes, forced termination or mobile). Confirming exit loses page-local edits;
-restore the original values to revert, or reload and confirm leaving to discard.
+use Discard to restore the saved baseline without leaving this page.
 Mail/GitHub links may open another context without unloading Settings and may
 not prompt. Closing during a pending write still risks losing unsaved work.
 
 A write failure keeps changes on the page for another Save attempt (including
 quota failures); a rejected write that partially applied remains conservatively
-unsaved. A refresh warning means settings **already persisted**—reload to update
-the display. An unresolved storage/refresh promise can leave the form locked.
+unsaved. A refresh warning means settings **already persisted**. Discard preserves
+that warning and does not retry the secondary locale/usage display refresh.
+Unsaved interface-language choices are not applied; Discard restores the selector
+only. Usage is last-read information and stays untouched: after a failed refresh
+it may show an older cap/count than the restored fields, and malformed initial
+caps may display differently from the normalized fields (even as unlimited).
+Reload reruns the existing display refresh against stored state, but does not
+repair malformed stored inputs; correct those via Save. An unresolved
+storage/refresh promise can leave the form locked.
+
 Each page compares against its own loaded/saved baseline, not live sync: another
 Options tab or synced device may overwrite settings, and full Save is
 last-writer-wins, including dormant profiles. Clearing an authoritative profile
 prevents legacy mirrors from restoring it, but does not erase dormant legacy
-`keys` entries. These changes are not a claim of a store rollout.
+`keys` entries. These changes are source/development behavior, not a claim of a
+store rollout.
 
 ## Right-click menu
 

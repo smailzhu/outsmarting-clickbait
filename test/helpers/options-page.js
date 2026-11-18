@@ -2,7 +2,9 @@ import vm from "node:vm";
 import { readFileSync } from "node:fs";
 
 export const editableControls = ["uiLang", "provider", "key", "base", "model", "language", "customInstructions",
-  "previewDwellMs", "previewMinIntervalMs", "dailyCap", "save", "testConnection"];
+  "previewDwellMs", "previewMinIntervalMs", "dailyCap"];
+export const actionControls = ["save", "discard", "testConnection"];
+export const lockedControls = [...editableControls, ...actionControls];
 export function deferred() {
   let resolve, reject;
   const promise = new Promise((res, rej) => { resolve = res; reject = rej; });
@@ -31,6 +33,7 @@ function eventTarget() {
 export function createPage({ initial = { key: "saved-key" }, beforeRead, beforeWrite, beforeI18n, beforeUsage,
   beforeApply, translate = (key) => key, applyStaticLabels = false } = {}) {
   const store = structuredClone(initial), nodes = {}, writes = [], attempts = [], messages = [], pending = [], timers = [], consoleOutput = [];
+  const calls = { syncGet: 0, syncSet: 0, localGet: 0, localSet: 0, i18nInit: 0, i18nApply: 0 };
   const window = eventTarget();
   const document = {
     body: {}, activeElement: null, getElementById: (id) => nodes[id],
@@ -38,9 +41,9 @@ export function createPage({ initial = { key: "saved-key" }, beforeRead, beforeW
   };
   document.activeElement = document.body;
   const html = readFileSync(new URL("../../extension/options.html", import.meta.url), "utf8");
-  const fields = [...editableControls, "usage", "connectionStatus", "status", "reportLink", "saveBar", "baseHint", "modelHint"];
+  const fields = [...lockedControls, "usage", "connectionStatus", "status", "reportLink", "saveBar", "baseHint", "modelHint", "discardHint"];
   for (const id of fields) {
-    let value = "", text = "", disabled = editableControls.includes(id);
+    let value = "", text = "", disabled = lockedControls.includes(id);
     const tag = html.match(new RegExp(`<[^>]+\\bid="${id}"[^>]*>`))?.[0] || "";
     const select = html.match(new RegExp(`<select\\b[^>]*id="${id}"[^>]*>([\\s\\S]*?)</select>`));
     const values = select ? [...select[1].matchAll(/<option value="([^"]*)"/g)].map((m) => m[1]) : null;
@@ -63,8 +66,12 @@ export function createPage({ initial = { key: "saved-key" }, beforeRead, beforeW
   }
   const i18n = {
     lang: "en", t: (key, subs) => translate(key, i18n.lang, subs),
-    init: async () => { await beforeI18n?.(); i18n.lang = store.uiLang || "en"; },
-    apply() { beforeApply?.(); if (applyStaticLabels) nodes.save.textContent = i18n.t("optSave"); },
+    init: async () => { calls.i18nInit++; await beforeI18n?.(); i18n.lang = store.uiLang || "en"; },
+    apply() {
+      calls.i18nApply++;
+      beforeApply?.();
+      if (applyStaticLabels) for (const [id, key] of [["save", "optSave"], ["discard", "optDiscard"], ["discardHint", "optDiscardHint"]]) nodes[id].textContent = i18n.t(key);
+    },
   };
   const resizeObservers = [];
   const context = vm.createContext({
@@ -72,8 +79,9 @@ export function createPage({ initial = { key: "saved-key" }, beforeRead, beforeW
     chrome: {
       storage: {
         sync: {
-          get: async (defaults) => { await beforeRead?.(); return { ...defaults, ...structuredClone(store) }; },
+          get: async (defaults) => { calls.syncGet++; await beforeRead?.(); return { ...defaults, ...structuredClone(store) }; },
           set: async (data) => {
+            calls.syncSet++;
             const serialized = structuredClone(data);
             attempts.push({ data: serialized, reference: data });
             await beforeWrite?.(serialized, attempts.length);
@@ -81,7 +89,10 @@ export function createPage({ initial = { key: "saved-key" }, beforeRead, beforeW
             Object.assign(store, structuredClone(serialized));
           },
         },
-        local: { get: async (defaults) => { await beforeUsage?.(); return defaults; } },
+        local: {
+          get: async (defaults) => { calls.localGet++; await beforeUsage?.(); return defaults; },
+          set: async () => { calls.localSet++; },
+        },
       },
       runtime: { sendMessage: (data) => { messages.push(structuredClone(data)); return new Promise((resolve, reject) => pending.push({ resolve, reject })); } },
     },
@@ -96,7 +107,7 @@ export function createPage({ initial = { key: "saved-key" }, beforeRead, beforeW
   });
   for (const file of ["profiles.js", "options.js"]) vm.runInContext(readFileSync(new URL(`../../extension/${file}`, import.meta.url), "utf8"), context);
   return {
-    nodes, document, window, context, store, writes, attempts, messages, pending, timers, i18n, resizeObservers, consoleOutput,
+    nodes, document, window, context, store, writes, attempts, messages, pending, timers, i18n, calls, resizeObservers, consoleOutput,
     resolveReply: (reply) => pending[0].resolve(reply),
     switchTo: async (id) => { nodes.provider.value = id; await nodes.provider.dispatch("input"); await nodes.provider.dispatch("change"); },
     edit: async (id, value, type = "input") => { nodes[id].value = value; await nodes[id].dispatch(type); },

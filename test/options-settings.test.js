@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import vm from "node:vm";
-import { createPage, deferred, editableControls } from "./helpers/options-page.js";
+import { createPage, deferred, editableControls, lockedControls } from "./helpers/options-page.js";
 
 const providerIds = ["openai", "anthropic", "gemini", "groq", "openrouter", "deepseek", "xai", "mistral", "together", "nvidia", "ollama", "custom"];
 const secrets = ["KEY_SENTINEL_928", "BASE_SENTINEL_731", "MODEL_SENTINEL_612", "ERROR_SENTINEL_529", "INSTRUCTIONS_SENTINEL_417", "ARTICLE_SENTINEL_318", "UPSTREAM_SENTINEL_219"];
@@ -36,7 +36,7 @@ function feedback(page, status, connection) {
 }
 const unloadCount = (page) => page.window.listeners.get("beforeunload")?.size || 0;
 function locked(page, expected) {
-  for (const id of editableControls) assert.equal(page.nodes[id].disabled, expected, id);
+  for (const id of lockedControls) assert.equal(page.nodes[id].disabled, expected || (id === "discard" && !readState(page, "dirty")), id);
 }
 async function succeedTest(page) {
   const run = page.nodes.testConnection.dispatch("click");
@@ -69,11 +69,14 @@ for (const stage of ["beforeRead", "beforeWrite", "beforeI18n", "beforeUsage"]) 
     const gate = deferred(), page = createPage({ [stage]: () => gate.promise });
     await page.flush();
     const attempts = page.attempts.length, generation = connectionGenerationOf(page), drafts = plain(readState(page, "draftProfiles"));
-    for (const id of editableControls.filter((id) => !["save", "testConnection"].includes(id))) {
+    const discardBefore = discardCheckpoint(page), owner = readState(page, "draftProvider"), unload = readState(page, "unloadAttached");
+    await page.nodes.discard.dispatch("click"); unchangedDiscardState(page, discardBefore);
+    assert.equal(readState(page, "draftProvider"), owner); assert.equal(readState(page, "unloadAttached"), unload);
+    for (const id of editableControls) {
       page.nodes[id].value = id === "provider" ? "custom" : "premature";
       await page.nodes[id].dispatch("input"); await page.nodes[id].dispatch("change");
     }
-    await page.nodes.save.dispatch("click"); await page.nodes.testConnection.dispatch("click");
+    await page.nodes.save.dispatch("click"); await page.nodes.testConnection.dispatch("click"); await page.nodes.discard.dispatch("click");
     locked(page, true); feedback(page, "");
     assert.deepEqual(plain(readState(page, "draftProfiles")), drafts);
     assert.equal(connectionGenerationOf(page), generation);
@@ -81,6 +84,9 @@ for (const stage of ["beforeRead", "beforeWrite", "beforeI18n", "beforeUsage"]) 
     if (reject) gate.reject(new Error(secrets.slice(3).join(" "))); else gate.resolve();
     await page.flush();
     locked(page, reject); feedback(page, reject ? "optLoadFailed" : ""); assert.equal(unloadCount(page), 0);
+    const settledBefore = discardCheckpoint(page), settledGeneration = connectionGenerationOf(page);
+    await page.nodes.discard.dispatch("click"); unchangedDiscardState(page, settledBefore);
+    assert.equal(connectionGenerationOf(page), settledGeneration); feedback(page, reject ? "optLoadFailed" : "");
     assert.equal(page.writes.length, reject && ["beforeRead", "beforeWrite"].includes(stage) ? 0 : 1);
   });
 }
@@ -173,8 +179,8 @@ test("options.js detached pending Save captures exact full payload, guards doubl
   assert.deepEqual(page.attempts[0].data, expected);
   assert.deepEqual(Object.keys(page.attempts[0].data).sort(), ["provider", "key", "keys", "profiles", "base", "model", "language", "customInstructions", "uiLang", "previewDwellMs", "previewMinIntervalMs", "dailyCap"].sort());
   const drafts = plain(readState(page, "draftProfiles")), generation = connectionGenerationOf(page);
-  await page.nodes.save.dispatch("click"); await page.nodes.testConnection.dispatch("click");
-  for (const id of editableControls.filter((id) => !["save", "testConnection"].includes(id))) {
+  await page.nodes.save.dispatch("click"); await page.nodes.testConnection.dispatch("click"); await page.nodes.discard.dispatch("click");
+  for (const id of editableControls) {
     const original = page.nodes[id].value;
     page.nodes[id].value = id === "provider" ? "gemini" : "synthetic";
     await page.nodes[id].dispatch("input"); await page.nodes[id].dispatch("change");
@@ -367,7 +373,7 @@ function contrast(hex) {
 }
 test("options.html disabled attributes, single live regions and sticky-bar CSS checks reject missing markup", () => {
   const html = readFileSync(new URL("../extension/options.html", import.meta.url), "utf8");
-  for (const id of editableControls) {
+  for (const id of lockedControls) {
     const tag = requiredTag(html, id, ["disabled"]);
     assert.throws(() => requiredTag(html.replace(tag, tag.replace(/\sdisabled/, "")), id, ["disabled"]));
     assert.throws(() => requiredTag(html.replace(tag, ""), id));
@@ -416,4 +422,265 @@ test("options.js failure and refresh-warning dynamic statuses retranslate withou
   page.i18n.lang = "nan-Hanlo"; readState(page, "applyI18n()"); feedback(page, "nan-Hanlo:optSavedRefreshWarning");
   await page.edit("language", "Japanese"); feedback(page, "nan-Hanlo:optUnsaved");
   await page.edit("language", "English"); feedback(page, "nan-Hanlo:optSavedRefreshWarning");
+});
+
+function discardCheckpoint(page) {
+  return {
+    calls: { ...page.calls }, attempts: page.attempts.length, writes: page.writes.length,
+    messages: page.messages.length, timers: page.timers.length, usage: page.nodes.usage.textContent,
+    locale: page.i18n.lang, store: JSON.stringify(page.store),
+    baseline: readState(page, "baseline"), committed: readState(page, "committed"),
+    baselineJSON: readState(page, "JSON.stringify(baseline)"), committedJSON: readState(page, "JSON.stringify(committed)"),
+    owner: readState(page, "baselineOwner"),
+  };
+}
+function unchangedDiscardState(page, before) {
+  assert.deepEqual(page.calls, before.calls, "Discard must not invoke storage or i18n");
+  assert.equal(page.attempts.length, before.attempts); assert.equal(page.writes.length, before.writes);
+  assert.equal(page.messages.length, before.messages); assert.equal(page.timers.length, before.timers);
+  assert.equal(page.nodes.usage.textContent, before.usage); assert.equal(page.i18n.lang, before.locale);
+  assert.equal(JSON.stringify(page.store), before.store);
+  assert.equal(readState(page, "baseline"), before.baseline); assert.equal(readState(page, "committed"), before.committed);
+  assert.equal(readState(page, "JSON.stringify(baseline)"), before.baselineJSON);
+  assert.equal(readState(page, "JSON.stringify(committed)"), before.committedJSON);
+  assert.equal(readState(page, "baselineOwner"), before.owner);
+}
+async function discard(page, status = "optDiscarded") {
+  assert.equal(page.nodes.discard.disabled, false);
+  const before = discardCheckpoint(page);
+  await page.nodes.discard.dispatch("click");
+  unchangedDiscardState(page, before);
+  assert.equal(readState(page, "canonical(buildDraft()) === canonical(baseline)"), true);
+  assert.equal(readState(page, "dirty"), false); assert.equal(unloadCount(page), 0);
+  assert.equal(page.nodes.discard.disabled, true); assert.equal(page.nodes.save.disabled, false);
+  assert.equal(readState(page, "draftProfiles !== baseline.profiles && draftProfiles[baselineOwner] !== baseline.profiles[baselineOwner]"), true);
+  assert.equal(readState(page, "Object.isFrozen(baseline) && Object.isFrozen(baseline.profiles[baselineOwner]) && Object.isFrozen(committed.keys)"), true);
+  feedback(page, status);
+}
+
+test("options.js clean synthetic Discard is a guarded no-op, including after manual reversion", async () => {
+  const page = await ready();
+  for (const afterRevert of [false, true]) {
+    if (afterRevert) {
+      await page.edit("language", "Japanese"); assert.equal(page.nodes.discard.disabled, false);
+      await page.edit("language", "English");
+    }
+    const before = discardCheckpoint(page), generation = connectionGenerationOf(page);
+    assert.equal(page.nodes.discard.disabled, true);
+    await page.nodes.discard.dispatch("click"); unchangedDiscardState(page, before);
+    feedback(page, ""); assert.equal(connectionGenerationOf(page), generation);
+    assert.equal(readState(page, "discardedNotice"), false); assert.equal(unloadCount(page), 0);
+  }
+});
+for (const [id, value] of Object.entries(dirtyEdits)) test(`options.js Discard restores ${id} without side effects`, async () => {
+  const page = await ready(), original = page.nodes[id].value;
+  if (id === "provider") await page.switchTo(value); else await page.edit(id, value);
+  assert.equal(page.nodes.discard.disabled, false); await discard(page);
+  assert.equal(page.nodes[id].value, original);
+});
+test("options.js Discard restores all hidden/active profiles and globals, including authoritative empty fields", async () => {
+  const initial = initialSettings(); initial.profiles.gemini = { key: "", base: "", model: "" };
+  const page = await ready({ initial });
+  await page.edit("key", "active-draft"); await page.switchTo("gemini");
+  for (const id of ["key", "base", "model"]) await page.edit(id, `hidden-${id}`);
+  await page.switchTo("custom");
+  for (const [id, value] of Object.entries(dirtyEdits).filter(([id]) => id !== "provider")) await page.edit(id, value);
+  await discard(page);
+  assert.deepEqual(plain(readState(page, "draftProfiles")), initial.profiles);
+  for (const id of editableControls.filter((id) => id !== "provider")) assert.equal(page.nodes[id].value, String(initial[id]), id);
+  assert.equal(page.nodes.provider.value, "openai");
+  await page.switchTo("gemini"); for (const id of ["key", "base", "model"]) assert.equal(page.nodes[id].value, "");
+  await page.switchTo("openai"); feedback(page, "");
+  assert.deepEqual(plain(readState(page, "draftProfiles.unknown")), initial.profiles.unknown);
+});
+for (const cap of ["abc", -3, 0]) test(`options.js Discard restores normalized fields but leaves inherited usage untouched for initial cap ${cap}`, async () => {
+  const page = await ready({ initial: initialSettings({ uiLang: "fr", language: " English ", customInstructions: " instructions ",
+    previewDwellMs: 15.4, previewMinIntervalMs: -3, dailyCap: cap }) });
+  const usage = page.nodes.usage.textContent;
+  for (const [id, value] of [["uiLang", "zh_TW"], ["language", "Japanese"], ["customInstructions", "draft"],
+    ["previewDwellMs", 900], ["previewMinIntervalMs", 1000], ["dailyCap", 25]]) await page.edit(id, value);
+  await discard(page);
+  assert.equal(page.nodes.uiLang.value, ""); assert.equal(page.nodes.language.value, "English");
+  assert.equal(page.nodes.customInstructions.value, "instructions"); assert.equal(page.nodes.previewDwellMs.value, "15");
+  assert.equal(page.nodes.previewMinIntervalMs.value, "1500"); assert.equal(page.nodes.dailyCap.value, cap === 0 ? "0" : "200");
+  assert.equal(page.nodes.usage.textContent, usage);
+  assert.match(usage, /usageNoCap$/); // inherited initial display, not a new normalized render
+});
+function removedSettings() {
+  const initial = initialSettings({ provider: "removed-provider" });
+  initial.profiles[initial.provider] = { key: "retained-key", base: "retained-base", model: "retained-model" };
+  Object.assign(initial, initial.profiles[initial.provider]);
+  return initial;
+}
+for (const saved of [false, true]) test(`options.js Discard keeps removed provider owner separate from empty select, saved=${saved}`, async () => {
+  const initial = removedSettings(), page = await ready({ initial });
+  if (saved) { await page.edit("key", "new-removed-key"); await page.nodes.save.dispatch("click"); }
+  const owned = plain(readState(page, "baseline.profiles[baselineOwner]"));
+  await page.edit("key", "draft-key"); await page.edit("language", "Japanese"); await discard(page);
+  assert.equal(page.nodes.provider.value, ""); assert.equal(readState(page, "draftProvider"), initial.provider);
+  assert.equal(readState(page, "baselineOwner"), initial.provider);
+  assert.equal(readState(page, 'Object.hasOwn(draftProfiles, "")'), false);
+  assert.deepEqual(plain(readState(page, "draftProfiles[baselineOwner]")), owned);
+  await page.switchTo("openai"); await page.edit("key", "draft-openai"); await discard(page);
+  assert.equal(page.nodes.provider.value, ""); assert.equal(page.nodes.key.value, owned.key);
+  await succeedTest(page); feedback(page, "optDiscarded", "connectionSuccess"); // reminder uses owner, not rejected select
+  await page.nodes.save.dispatch("click");
+  assert.equal(page.store.provider, ""); for (const id of ["key", "base", "model"]) assert.equal(page.store[id], "");
+  assert.deepEqual(page.store.profiles[initial.provider], owned); assert.equal(Object.hasOwn(page.store.profiles, ""), false);
+  assert.equal(page.store.keys[""], "");
+});
+test("options.js successful Save advances baseline owner from removed provider using synchronous detached capture", async () => {
+  const gate = deferred(), page = await ready({ initial: removedSettings(), beforeWrite: () => gate.promise });
+  await page.switchTo("openai"); await page.edit("key", "new-owned-key");
+  const run = page.nodes.save.dispatch("click");
+  vm.runInContext('draftProvider = "removed-provider"', page.context); // after capture, cannot change Save ownership
+  gate.resolve(); await run;
+  assert.equal(readState(page, "baselineOwner"), "openai");
+  await page.edit("language", "Japanese"); await discard(page);
+  assert.equal(readState(page, "draftProvider"), "openai"); assert.equal(page.nodes.key.value, "new-owned-key");
+});
+test("options.js failed Save does not advance baseline owner and Discard clears failed-draft feedback", async () => {
+  const page = await ready({ initial: removedSettings(), beforeWrite: () => { throw new Error("fixture"); } });
+  await page.switchTo("gemini"); await page.edit("key", "draft"); await page.nodes.save.dispatch("click");
+  feedback(page, "optSaveFailed"); assert.equal(readState(page, "baselineOwner"), "removed-provider");
+  await discard(page); assert.equal(readState(page, "saveFailed"), false); assert.equal(page.nodes.key.value, "retained-key");
+});
+test("options.js Discard restores last successful Save rather than initial load, including cleared credentials and cap", async () => {
+  const page = await ready(); await page.switchTo("gemini");
+  for (const id of ["key", "base", "model"]) await page.edit(id, "");
+  await page.edit("dailyCap", 25.4); await page.nodes.save.dispatch("click");
+  const saved = plain(readState(page, "baseline"));
+  await page.switchTo("openai"); await page.edit("key", "draft-key"); await page.edit("dailyCap", 999); await discard(page);
+  assert.deepEqual(plain(readState(page, "buildDraft()")), saved);
+  assert.equal(page.nodes.provider.value, "gemini"); assert.equal(page.nodes.dailyCap.value, "25");
+  for (const id of ["key", "base", "model"]) assert.equal(page.nodes[id].value, "");
+});
+for (const stage of ["init", "apply", "usage"]) test(`options.js Discard preserves persisted ${stage} refresh warning and last-read cap/locale`, async () => {
+  let calls = 0;
+  const fail = () => { if (++calls > 1) throw new Error("fixture refresh error"); };
+  const page = await ready(stage === "init" ? { beforeI18n: fail } : stage === "apply" ? { beforeApply: fail } : { beforeUsage: fail });
+  const usage = page.nodes.usage.textContent;
+  await page.edit("dailyCap", 25.4); await page.edit("uiLang", "zh_TW"); await page.nodes.save.dispatch("click");
+  feedback(page, "optSavedRefreshWarning"); assert.equal(readState(page, "savedRefreshWarning"), true);
+  const locale = page.i18n.lang;
+  await page.edit("dailyCap", 999); await page.edit("uiLang", "nan-Hanlo"); await discard(page, "optSavedRefreshWarning");
+  assert.equal(page.nodes.status.dataset.state, "error"); assert.equal(readState(page, "savedRefreshWarning"), true);
+  assert.equal(page.nodes.dailyCap.value, "25"); assert.equal(page.nodes.uiLang.value, "zh_TW");
+  assert.equal(page.nodes.usage.textContent, usage); assert.match(usage, / \/ 200$/); assert.equal(page.i18n.lang, locale);
+});
+for (const stage of ["write", "refresh"]) test(`options.js synthetic Discard during Save ${stage} is a no-op`, async () => {
+  const gate = deferred(); let calls = 0;
+  const page = await ready(stage === "write" ? { beforeWrite: () => gate.promise } : { beforeI18n: () => ++calls > 1 ? gate.promise : undefined });
+  await page.edit("key", "saved-new"); const run = page.nodes.save.dispatch("click"); await page.flush();
+  const before = discardCheckpoint(page), draft = readState(page, "canonical(buildDraft())"), generation = connectionGenerationOf(page);
+  assert.equal(page.nodes.discard.disabled, true); await page.nodes.discard.dispatch("click"); unchangedDiscardState(page, before);
+  assert.equal(readState(page, "canonical(buildDraft())"), draft); assert.equal(connectionGenerationOf(page), generation);
+  feedback(page, "optSaving"); gate.resolve(); await run;
+});
+for (const tuple of ["unchanged", "changed", "return"]) for (const outcome of ["success", "error", "rejection"]) {
+  test(`options.js pending Test ${tuple} Discard invalidates late ${outcome} without canceling busy state`, async () => {
+    const page = await ready();
+    if (tuple === "changed") await page.edit("key", "tested-draft");
+    const run = page.nodes.testConnection.dispatch("click");
+    if (tuple === "return") { await page.edit("key", "temporary"); await page.edit("key", secrets[0]); }
+    await page.edit("language", "Japanese"); assert.equal(page.nodes.discard.disabled, false);
+    const generation = connectionGenerationOf(page); await discard(page);
+    assert.equal(connectionGenerationOf(page), generation + 1);
+    assert.equal(readState(page, "testingConnection"), true); assert.equal(page.nodes.testConnection.disabled, true);
+    feedback(page, "optDiscarded", "");
+    await page.nodes.testConnection.dispatch("click"); assert.equal(page.messages.length, 1);
+    if (outcome === "rejection") page.pending[0].reject(new Error(secrets[3]));
+    else page.resolveReply(outcome === "success" ? { ok: true, code: "success" } : { ok: false, code: "auth" });
+    await run; feedback(page, "optDiscarded", ""); assert.equal(page.nodes.testConnection.disabled, false);
+    assert.equal(connectionGenerationOf(page), generation + 1); assert.equal(readState(page, "testedTuple"), null);
+  });
+}
+for (const code of ["success", "auth"]) test(`options.js settled unchanged-tuple ${code} survives language-only Discard`, async () => {
+  const page = await ready(), run = page.nodes.testConnection.dispatch("click");
+  page.resolveReply({ ok: code === "success", code }); await run;
+  const generation = connectionGenerationOf(page); await page.edit("language", "Japanese"); await discard(page);
+  feedback(page, "optDiscarded", code === "success" ? "connectionSuccess" : "connectionAuth");
+  assert.equal(connectionGenerationOf(page), generation);
+});
+for (const id of ["provider", "key", "base", "model"]) test(`options.js settled unsaved ${id} Discard clears result/reminder`, async () => {
+  const page = await ready(); if (id === "provider") await page.switchTo("gemini"); else await page.edit(id, dirtyEdits[id]);
+  await succeedTest(page); feedback(page, "optUnsaved", "connectionSuccess connectionSaveReminder");
+  const generation = connectionGenerationOf(page); await discard(page);
+  feedback(page, "optDiscarded", ""); assert.equal(connectionGenerationOf(page), generation + 1);
+  assert.equal(readState(page, "testedTuple"), null);
+});
+test("options.js hidden-profile-only Discard preserves valid settled active result", async () => {
+  const page = await ready(); await page.switchTo("gemini"); await page.edit("key", "hidden-draft"); await page.switchTo("openai");
+  await succeedTest(page); const generation = connectionGenerationOf(page); await discard(page);
+  feedback(page, "optDiscarded", "connectionSuccess"); assert.equal(connectionGenerationOf(page), generation);
+});
+for (const action of ["input", "change", "provider-input", "provider-change", "save", "test"]) {
+  test(`options.js Discard notice ${action === "test" ? "survives" : "clears on"} ${action} and canceled flash cannot erase it`, async () => {
+    const page = await ready(); await page.nodes.save.dispatch("click"); await page.edit("language", "Japanese"); await discard(page);
+    assert.equal(page.nodes.status.dataset.state, "neutral"); assert.equal(page.timers[0].cancelled, true);
+    page.fireTimer(0, true); feedback(page, "optDiscarded");
+    if (["input", "change"].includes(action)) await page.nodes.language.dispatch(action);
+    if (action.startsWith("provider-")) await page.nodes.provider.dispatch(action.slice("provider-".length));
+    if (action === "save") await page.nodes.save.dispatch("click");
+    if (action === "test") await succeedTest(page);
+    assert.equal(readState(page, "discardedNotice"), action === "test");
+    feedback(page, action === "test" ? "optDiscarded" : action === "save" ? "optSaved" : "");
+  });
+}
+for (const focused of ["discard", "language", "reportLink", "body"]) test(`options.js Discard conditionally transfers focus only from ${focused}`, async () => {
+  const page = await ready(); await page.edit("language", "Japanese");
+  if (focused !== "body") page.nodes[focused].focus();
+  const active = page.document.activeElement; await discard(page);
+  assert.equal(page.document.activeElement, focused === "discard" ? page.nodes.save : active);
+  assert.equal(page.nodes.save.focusCalls, focused === "discard" ? 1 : 0);
+});
+test("options.html Discard is secondary, statically disabled, described outside sticky bar and ordered after Save", () => {
+  const html = readFileSync(new URL("../extension/options.html", import.meta.url), "utf8");
+  requiredTag(html, "discard", ["type=button", "disabled", "data-i18n=optDiscard", "aria-describedby=discardHint"]);
+  requiredTag(html, "discardHint", ["class=hint", "data-i18n=optDiscardHint"]);
+  assert.match(html, /<p class="hint" id="discardHint"[^>]*>[^<]+<\/p>\s*<div id="saveBar">/);
+  assert.match(html, /<div id="saveBar">\s*<button id="save"[^>]*>[^<]+<\/button>\s*<button id="discard"[^>]*>[^<]+<\/button>\s*<span id="status"/);
+  assert.match(html, /#discard \{ background: #fff; color: #333; border: 1px solid #777; \}/);
+  assert.match(html, /#discard:disabled \{ cursor: default; \}/);
+  assert.ok(contrast("333333") >= 4.5); assert.doesNotMatch(html, /outline\s*:\s*(?:none|0)/);
+});
+
+test("options.js synchronous initial locale apply failure keeps synthetic Discard fail-closed", async () => {
+  const page = createPage({ initial: initialSettings(), beforeApply: () => { throw new Error("fixture"); } });
+  await page.flush(); const before = discardCheckpoint(page), generation = connectionGenerationOf(page);
+  locked(page, true); await page.nodes.discard.dispatch("click"); unchangedDiscardState(page, before);
+  feedback(page, "optLoadFailed"); assert.equal(connectionGenerationOf(page), generation);
+  assert.equal(readState(page, "baseline"), null); assert.equal(readState(page, "baselineOwner"), null); assert.equal(unloadCount(page), 0);
+});
+test("options.js Discard explicitly rejects a settled testedTuple mismatching the restored active connection", async () => {
+  const page = await ready(); await succeedTest(page); await page.edit("language", "Japanese");
+  vm.runInContext('testedTuple.key = "obsolete-key"', page.context);
+  const generation = connectionGenerationOf(page); await discard(page); feedback(page, "optDiscarded", "");
+  assert.equal(connectionGenerationOf(page), generation + 1);
+});
+
+for (const id of ["provider", "key", "base", "model"]) test(`options.js settled unsaved ${id} error is cleared by Discard`, async () => {
+  const page = await ready(); if (id === "provider") await page.switchTo("gemini"); else await page.edit(id, dirtyEdits[id]);
+  const run = page.nodes.testConnection.dispatch("click"); page.resolveReply({ ok: false, code: "auth" }); await run;
+  feedback(page, "optUnsaved", "connectionAuth"); const generation = connectionGenerationOf(page);
+  await discard(page); feedback(page, "optDiscarded", ""); assert.equal(connectionGenerationOf(page), generation + 1);
+});
+test("options.js canceled saved-flash callback cannot erase Discard, newer dirty feedback or preserved warning", async () => {
+  let failRefresh = false;
+  const page = await ready({ beforeI18n: () => { if (failRefresh) throw new Error("fixture"); } });
+  await page.nodes.save.dispatch("click"); await page.edit("language", "Japanese"); await discard(page);
+  page.fireTimer(0, true); feedback(page, "optDiscarded");
+  await page.edit("language", "Spanish"); page.fireTimer(0, true); feedback(page, "optUnsaved");
+  failRefresh = true; await page.nodes.save.dispatch("click"); await page.edit("language", "French");
+  await discard(page, "optSavedRefreshWarning"); page.fireTimer(0, true); feedback(page, "optSavedRefreshWarning");
+  assert.equal(readState(page, "savedRefreshWarning"), true); assert.equal(page.nodes.status.dataset.state, "error");
+});
+
+test("options.js Discard on migrated legacy settings restores page baseline without repeating migration or deleting keys", async () => {
+  const page = await ready({ initial: { provider: "openai", key: "legacy-key", keys: { gemini: "legacy-hidden" } } });
+  assert.equal(page.writes.length, 1); assert.equal(page.nodes.discard.disabled, true);
+  await page.edit("key", "draft-key"); await page.switchTo("gemini"); await page.edit("key", ""); await discard(page);
+  assert.equal(page.nodes.provider.value, "openai"); assert.equal(page.nodes.key.value, "legacy-key");
+  assert.deepEqual(page.store.keys, { gemini: "legacy-hidden" });
+  await page.switchTo("gemini"); assert.equal(page.nodes.key.value, "legacy-hidden"); assert.equal(page.writes.length, 1);
 });

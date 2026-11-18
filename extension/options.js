@@ -22,6 +22,8 @@ const normalizeProfile = (profile) => Object.fromEntries(["key", "base", "model"
 let draftProfiles = {};
 let draftProvider = DEFAULTS.provider;
 let baseline = null;
+// A removed provider can own the visible fields even when the select is empty.
+let baselineOwner = null;
 let committed = null;
 let settingsReady = false;
 let saving = false;
@@ -31,6 +33,7 @@ let dirty = false;
 let saveFailed = false;
 let savedRefreshWarning = false;
 let savedFlash = false;
+let discardedNotice = false;
 let flashTimer = null;
 let flashToken = 0;
 let unloadAttached = false;
@@ -38,7 +41,7 @@ let connectionResult = null;
 let testedTuple = null;
 let connectionGeneration = 0;
 const SETTINGS_CONTROLS = ["uiLang", "provider", "key", "base", "model", "language", "customInstructions",
-  "previewDwellMs", "previewMinIntervalMs", "dailyCap", "save", "testConnection"];
+  "previewDwellMs", "previewMinIntervalMs", "dailyCap", "save", "discard", "testConnection"];
 
 // The editable projection is shared by load, comparison and Save. Mirrors never
 // participate; sorted profile ids make insertion order irrelevant to comparison.
@@ -53,6 +56,15 @@ function buildDraft() {
     dailyCap: intOr($("dailyCap").value, 200), profiles,
   };
 }
+function applySnapshotToForm(snapshot, owner) {
+  draftProfiles = clone(snapshot.profiles);
+  draftProvider = owner;
+  $("provider").value = snapshot.provider;
+  const profile = normalizeProfile(snapshot.profiles[owner]);
+  for (const id of ["key", "base", "model"]) $(id).value = profile[id];
+  for (const id of ["uiLang", "language", "customInstructions"]) $(id).value = snapshot[id];
+  for (const id of ["previewDwellMs", "previewMinIntervalMs", "dailyCap"]) $(id).value = String(snapshot[id]);
+}
 function canonical(snapshot) {
   return JSON.stringify({
     provider: snapshot.provider, uiLang: snapshot.uiLang, language: snapshot.language, customInstructions: snapshot.customInstructions,
@@ -61,7 +73,8 @@ function canonical(snapshot) {
   });
 }
 function renderControls() {
-  for (const id of SETTINGS_CONTROLS) $(id).disabled = !settingsReady || saving || (id === "testConnection" && testingConnection);
+  for (const id of SETTINGS_CONTROLS) $(id).disabled = !settingsReady || saving
+    || (id === "discard" && !dirty) || (id === "testConnection" && testingConnection);
   setText($("save"), t(saving ? "optSaving" : "optSave"));
 }
 function setSettingsReady(ready) {
@@ -73,7 +86,7 @@ function setText(el, text) {
 }
 function renderSaveStatus() {
   const key = loadFailed ? "optLoadFailed" : saving ? "optSaving" : saveFailed ? "optSaveFailed" : dirty ? "optUnsaved"
-    : savedRefreshWarning ? "optSavedRefreshWarning" : savedFlash ? "optSaved" : null;
+    : savedRefreshWarning ? "optSavedRefreshWarning" : discardedNotice ? "optDiscarded" : savedFlash ? "optSaved" : null;
   setText($("status"), key ? t(key) : "");
   $("status").dataset.state = loadFailed || saveFailed || (!saving && !dirty && savedRefreshWarning) ? "error"
     : key === "optSaved" ? "success" : key === "optUnsaved" ? "warning" : "neutral";
@@ -90,6 +103,7 @@ function recomputeDirty() {
     window[desired ? "addEventListener" : "removeEventListener"]("beforeunload", warnBeforeUnload);
     unloadAttached = desired;
   }
+  renderControls();
   renderSaveStatus();
 }
 function invalidateSavedFlash() {
@@ -97,6 +111,7 @@ function invalidateSavedFlash() {
   if (flashTimer !== null) clearTimeout(flashTimer);
   flashTimer = null;
   savedFlash = false;
+  discardedNotice = false;
 }
 function startSavedFlashTimer() {
   const token = flashToken;
@@ -141,7 +156,7 @@ const connectionValues = () => Object.fromEntries(
 function renderConnectionStatus() {
   const el = $("connectionStatus");
   let text = connectionResult ? t(CONNECTION_MESSAGES[connectionResult.code] || "connectionNetwork", [String(connectionResult.status || "")]) : "";
-  const activeTuple = baseline && { provider: baseline.provider, ...normalizeProfile(baseline.profiles[baseline.provider]) };
+  const activeTuple = baseline && { provider: baseline.provider, ...normalizeProfile(baseline.profiles[baselineOwner]) };
   if (testedTuple && JSON.stringify(testedTuple) !== JSON.stringify(activeTuple)) text += " " + t("connectionSaveReminder");
   setText(el, text);
   el.dataset.state = connectionResult?.ok ? "success" : connectionResult?.code === "testing" ? "pending" : "error";
@@ -153,7 +168,7 @@ function clearConnectionResult() {
   renderConnectionStatus();
 }
 setSettingsReady(false);
-for (const id of SETTINGS_CONTROLS.filter((id) => !["provider", "save", "testConnection"].includes(id))) {
+for (const id of SETTINGS_CONTROLS.filter((id) => !["provider", "save", "discard", "testConnection"].includes(id))) {
   for (const type of ["input", "change"]) $(id).addEventListener(type, () => {
     if (!settingsReady || saving) return;
     invalidateSavedFlash();
@@ -223,16 +238,37 @@ async function load() {
   for (const id of ["previewDwellMs", "previewMinIntervalMs", "dailyCap"]) $(id).value = state[id];
   await renderUsage(state.dailyCap);
   baseline = frozenCopy(buildDraft());
+  baselineOwner = draftProvider;
   const active = baseline.profiles[baseline.provider];
   committed = frozenCopy({ ...state, ...clone(baseline), ...active, keys: clone(state.keys) });
   setSettingsReady(true);
   recomputeDirty();
 }
 
+$("discard").addEventListener("click", () => {
+  if (!settingsReady || saving || !dirty) return;
+  const restoreDiscardFocus = document.activeElement === $("discard");
+  const before = connectionValues();
+  applySnapshotToForm(baseline, baselineOwner);
+  const restored = connectionValues();
+  invalidateSavedFlash();
+  saveFailed = false;
+  discardedNotice = true;
+  // A dispatched Test is not canceled; invalidate its feedback even when only
+  // non-connection fields changed, leaving its busy state to the existing finally.
+  if (testingConnection || JSON.stringify(before) !== JSON.stringify(restored)
+    || (testedTuple && JSON.stringify(testedTuple) !== JSON.stringify(restored))) clearConnectionResult();
+  renderProviderHints();
+  recomputeDirty();
+  renderConnectionStatus();
+  if (restoreDiscardFocus && !$("save").disabled) $("save").focus();
+});
+
 $("save").addEventListener("click", async () => {
   if (!settingsReady || saving) return;
   const restoreSaveFocus = document.activeElement === $("save");
   const snapshot = frozenCopy(buildDraft());
+  const snapshotOwner = draftProvider;
   const { provider, profiles } = snapshot;
   // A stored provider removed from the dropdown becomes an empty select value.
   // Preserve its dormant profile and use an empty active mirror rather than
@@ -261,6 +297,7 @@ $("save").addEventListener("click", async () => {
     // Persistence is authoritative before the secondary display refresh starts.
     committed = frozenCopy(payload);
     baseline = frozenCopy(snapshot);
+    baselineOwner = snapshotOwner;
     draftProfiles = clone(snapshot.profiles);
     recomputeDirty();
     renderConnectionStatus();

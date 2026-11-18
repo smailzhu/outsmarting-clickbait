@@ -12,7 +12,7 @@ function statusFor(flags = {}) {
   const status = { textContent: "", dataset: {} };
   const context = vm.createContext({
     loadFailed: false, saving: false, saveFailed: false, dirty: false,
-    savedRefreshWarning: false, savedFlash: false, ...flags,
+    savedRefreshWarning: false, discardedNotice: false, savedFlash: false, ...flags,
     $: () => status, t: (key) => key,
     setText: (el, text) => { el.textContent = text; },
   });
@@ -50,4 +50,19 @@ test("amber CSS has accessible contrast against the white Save bar", () => {
   const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
   const contrast = 1.05 / (luminance + 0.05);
   assert.ok(contrast >= 4.5, `Amber text must meet AA normal-text contrast: ${contrast}`);
+});
+
+test("options.js neutral Discard notice obeys status priority without hiding refresh failures", () => {
+  for (const [flags, state, text] of [
+    [{ discardedNotice: true }, "neutral", "optDiscarded"],
+    [{ discardedNotice: true, savedFlash: true }, "neutral", "optDiscarded"],
+    [{ discardedNotice: true, savedRefreshWarning: true }, "error", "optSavedRefreshWarning"],
+    [{ discardedNotice: true, dirty: true, savedRefreshWarning: true }, "warning", "optUnsaved"],
+    [{ discardedNotice: true, saveFailed: true, dirty: true }, "error", "optSaveFailed"],
+    [{ discardedNotice: true, saving: true, dirty: true, savedRefreshWarning: true }, "neutral", "optSaving"],
+    [{ discardedNotice: true, loadFailed: true, saving: true }, "error", "optLoadFailed"],
+  ]) {
+    const status = statusFor(flags);
+    assert.equal(status.dataset.state, state); assert.equal(status.textContent, text);
+  }
 });

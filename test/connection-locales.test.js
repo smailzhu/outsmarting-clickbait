@@ -56,7 +56,9 @@ test("all locale source keys and full generated entries including placeholders a
 });
 test("locale parity rejects removed new keys, stale entries and changed placeholders", () => {
   for (const mutate of [
-    (generated) => { delete generated.en.optUnsaved; },
+    (generated) => { delete generated.en.optDiscard; },
+    (generated) => { generated["nan-Hanlo"].optDiscardHint.message = "stale"; },
+    (generated) => { delete generated.zh_TW.optDiscarded; },
     (generated) => { generated.zh_TW.connectionSaveReminder.message = "stale"; },
     (generated) => { generated.en.connectionHttp.placeholders = {}; },
   ]) {
@@ -76,4 +78,27 @@ test("real i18n init falls back internally on storage rejection rather than thro
   assert.equal(context.DebaitI18n.lang, "zh_TW");
   const messages = JSON.parse(readFileSync(new URL(files.zh_TW, import.meta.url), "utf8"));
   assert.equal(context.DebaitI18n.t("optSaveFailed"), messages.optSaveFailed.message);
+});
+
+for (const lang of Object.keys(files)) test(`options.js Discard labels, page-local hint and neutral announcement use real ${lang} runtime translations`, async () => {
+  const { createPage } = await import("./helpers/options-page.js");
+  const context = vm.createContext({ chrome: {
+    i18n: { getUILanguage: () => "en" }, storage: { sync: { get: async () => ({ uiLang: lang }) } },
+  } });
+  for (const source of ["messages.gen.js", "i18n-runtime.js"]) vm.runInContext(readFileSync(new URL(`../extension/${source}`, import.meta.url), "utf8"), context);
+  await context.DebaitI18n.init(); assert.equal(context.DebaitI18n.lang, lang);
+  const messages = JSON.parse(readFileSync(new URL(files[lang], import.meta.url), "utf8"));
+  const page = createPage({ initial: { key: "saved-key", uiLang: lang }, applyStaticLabels: true,
+    translate: (key, _lang, subs) => context.DebaitI18n.t(key, subs) });
+  await page.flush(); await page.edit("language", "Japanese"); await page.nodes.discard.dispatch("click");
+  for (const [id, key] of [["discard", "optDiscard"], ["discardHint", "optDiscardHint"], ["status", "optDiscarded"]]) {
+    assert.ok(messages[key].message && messages[key].message !== key);
+    assert.equal(page.nodes[id].textContent, messages[key].message, `${lang}/${key}`);
+    if (lang !== "en") assert.notEqual(messages[key].message, JSON.parse(readFileSync(new URL(files.en, import.meta.url), "utf8"))[key].message);
+  }
+  assert.equal(page.nodes.status.dataset.state, "neutral"); assert.equal(page.nodes.uiLang.value, lang);
+  // Source/layout contract only: no claim of physical three-language wrapping.
+  const html = readFileSync(new URL("../extension/options.html", import.meta.url), "utf8");
+  assert.match(html, /#saveBar \{[^}]*flex-wrap: wrap/); assert.match(html, /#status \{[^}]*overflow-wrap: anywhere/);
+  assert.match(html, /@media \(max-height: 360px\)[\s\S]*?#saveBar \{ position: static; \}/);
 });

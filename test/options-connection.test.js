@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-import { createPage, deferred, editableControls } from "./helpers/options-page.js";
+import { createPage, deferred, lockedControls } from "./helpers/options-page.js";
 
 test("settings connection test uses unsaved values, disables repeats, and does not save", async () => {
   const page = createPage();
@@ -56,7 +56,7 @@ test("connection results clear when a provider switch changes the key", async ()
 });
 
 function assertControlsDisabled(page, disabled) {
-  for (const id of editableControls) assert.equal(page.nodes[id].disabled, disabled, id);
+  for (const id of lockedControls) assert.equal(page.nodes[id].disabled, disabled || id === "discard", id);
 }
 async function assertEarlyActionsIgnored(page) {
   assertControlsDisabled(page, true);
@@ -67,6 +67,7 @@ async function assertEarlyActionsIgnored(page) {
   await page.nodes.provider.dispatch("change");
   await page.nodes.save.dispatch("click");
   await page.nodes.testConnection.dispatch("click");
+  await page.nodes.discard.dispatch("click");
   assert.deepEqual(page.store, before);
   assert.equal(page.writes.length, writes);
   assert.equal(page.messages.length, messages);
@@ -74,7 +75,7 @@ async function assertEarlyActionsIgnored(page) {
 
 test("Options controls start disabled in markup, before scripts or storage run", () => {
   const html = readFileSync(new URL("../extension/options.html", import.meta.url), "utf8");
-  for (const id of editableControls) {
+  for (const id of lockedControls) {
     const tag = html.match(new RegExp(`<[^>]+\\bid="${id}"[^>]*>`))?.[0];
     assert.ok(tag && /\sdisabled(?:\s|>|=)/.test(tag), id);
   }

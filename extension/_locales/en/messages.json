@@ -65,6 +65,15 @@
   "optSave": {
     "message": "Save"
   },
+  "optDiscard": {
+    "message": "Discard changes"
+  },
+  "optDiscardHint": {
+    "message": "Discard restores your last saved settings on this page (not defaults)."
+  },
+  "optDiscarded": {
+    "message": "Changes discarded."
+  },
   "optSaved": {
     "message": "Saved ✓"
   },

@@ -65,6 +65,15 @@
   "optSave": {
     "message": "儲存"
   },
+  "optDiscard": {
+    "message": "放棄變更"
+  },
+  "optDiscardHint": {
+    "message": "放棄會恢復這頁頂一擺儲存的設定（毋是預設值）。"
+  },
+  "optDiscarded": {
+    "message": "變更放棄矣。"
+  },
   "optSaved": {
     "message": "存好矣 ✓"
   },
