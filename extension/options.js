@@ -95,9 +95,48 @@ function warnBeforeUnload(event) {
   event.preventDefault();
   event.returnValue = "";
 }
+const GLOBAL_MARKER_FIELDS = ["uiLang", "provider", "language", "customInstructions",
+  "previewDwellMs", "previewMinIntervalMs", "dailyCap"];
+const PROFILE_MARKER_FIELDS = ["key", "base", "model"];
+const scalarEqual = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+function describeModified(control, id, visible) {
+  const tokens = (control.getAttribute("aria-describedby") || "").split(/\s+/).filter(Boolean);
+  const next = tokens.filter((token) => token !== id);
+  if (visible) next.push(id);
+  if (next.length) control.setAttribute("aria-describedby", next.join(" "));
+  else control.removeAttribute("aria-describedby");
+}
+function renderFieldMarkers() {
+  const ready = settingsReady && baseline;
+  const draft = ready ? buildDraft() : null;
+  const current = ready ? draft.profiles[draftProvider] : null;
+  const saved = ready ? normalizeProfile(baseline.profiles[draftProvider]) : null;
+  for (const id of [...GLOBAL_MARKER_FIELDS, ...PROFILE_MARKER_FIELDS]) {
+    const modified = !!ready && !scalarEqual(
+      PROFILE_MARKER_FIELDS.includes(id) ? current[id] : draft[id],
+      PROFILE_MARKER_FIELDS.includes(id) ? saved[id] : baseline[id]);
+    const control = $(id), marker = $(`${id}Modified`);
+    if (marker) marker.hidden = !modified;
+    if (modified) control.dataset.modified = "true";
+    else delete control.dataset.modified;
+    describeModified(control, `${id}Modified`, modified);
+  }
+  // Membership matters even for empty dormant profiles, just as in canonical().
+  const ids = ready ? [...new Set([...Object.keys(draft.profiles), ...Object.keys(baseline.profiles)])].sort() : [];
+  const otherModified = ids.some((id) => {
+    if (id === draftProvider) return false;
+    if (Object.hasOwn(draft.profiles, id) !== Object.hasOwn(baseline.profiles, id)) return true;
+    const a = normalizeProfile(draft.profiles[id]), b = normalizeProfile(baseline.profiles[id]);
+    return PROFILE_MARKER_FIELDS.some((field) => !scalarEqual(a[field], b[field]));
+  });
+  const note = $("otherProvidersModified");
+  if (note) note.hidden = !otherModified;
+  describeModified($("provider"), "otherProvidersModified", otherModified);
+}
 function recomputeDirty() {
-  if (!settingsReady) return;
+  if (!settingsReady) { renderFieldMarkers(); return; }
   dirty = canonical(buildDraft()) !== canonical(baseline);
+  renderFieldMarkers();
   const desired = settingsReady && dirty;
   if (desired !== unloadAttached) {
     window[desired ? "addEventListener" : "removeEventListener"]("beforeunload", warnBeforeUnload);
@@ -136,6 +175,7 @@ function applyI18n() {
   renderControls();
   renderSaveStatus();
   renderConnectionStatus();
+  renderFieldMarkers();
 }
 function renderProviderHints() {
   const custom = $("provider").value === "custom";
@@ -342,5 +382,6 @@ if (typeof ResizeObserver !== "undefined") new ResizeObserver(measureSaveBar).ob
 load().catch(() => {
   loadFailed = true;
   setSettingsReady(false);
+  renderFieldMarkers();
   renderSaveStatus();
 });

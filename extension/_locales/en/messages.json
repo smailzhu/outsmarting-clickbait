@@ -335,6 +335,12 @@
   "customRequiredHint": {
     "message": "(required for Custom — no default)"
   },
+  "optFieldModified": {
+    "message": "Modified"
+  },
+  "optOtherProvidersModified": {
+    "message": "Other provider settings also have unsaved changes."
+  },
   "optUnsaved": {
     "message": "Unsaved changes"
   },

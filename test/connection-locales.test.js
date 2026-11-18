@@ -57,6 +57,8 @@ test("all locale source keys and full generated entries including placeholders a
 test("locale parity rejects removed new keys, stale entries and changed placeholders", () => {
   for (const mutate of [
     (generated) => { delete generated.en.optDiscard; },
+    (generated) => { delete generated.zh_TW.optFieldModified; },
+    (generated) => { generated["nan-Hanlo"].optOtherProvidersModified.message = "stale"; },
     (generated) => { generated["nan-Hanlo"].optDiscardHint.message = "stale"; },
     (generated) => { delete generated.zh_TW.optDiscarded; },
     (generated) => { generated.zh_TW.connectionSaveReminder.message = "stale"; },
@@ -101,4 +103,16 @@ for (const lang of Object.keys(files)) test(`options.js Discard labels, page-loc
   const html = readFileSync(new URL("../extension/options.html", import.meta.url), "utf8");
   assert.match(html, /#saveBar \{[^}]*flex-wrap: wrap/); assert.match(html, /#status \{[^}]*overflow-wrap: anywhere/);
   assert.match(html, /@media \(max-height: 360px\)[\s\S]*?#saveBar \{ position: static; \}/);
+});
+
+for (const [lang, path] of Object.entries(files)) test(`field marker messages in ${lang} are nonempty, generic and exactly generated`, async () => {
+  const { tables, generated } = localeTables();
+  for (const key of ["optFieldModified", "optOtherProvidersModified"]) {
+    const entry = tables[lang][key];
+    assert.ok(entry.message.trim()); assert.equal(entry.placeholders, undefined);
+    assert.doesNotMatch(entry.message, /\$|https?:|\b(?:openai|gemini|anthropic)\b|\d/i);
+    assert.deepEqual(generated[lang][key], entry);
+    if (lang !== "en") assert.notEqual(entry.message, tables.en[key].message);
+  }
+  assert.equal(JSON.parse(readFileSync(new URL(path, import.meta.url), "utf8")).optOtherProvidersModified.message, generated[lang].optOtherProvidersModified.message);
 });

@@ -32,6 +32,8 @@ function safeText(page) {
 function feedback(page, status, connection) {
   assert.equal(page.nodes.status.textContent, status);
   if (connection !== undefined) assert.equal(page.nodes.connectionStatus.textContent, connection);
+  const visible = editableControls.some((id) => !page.nodes[`${id}Modified`].hidden) || !page.nodes.otherProvidersModified.hidden;
+  assert.equal(visible, readState(page, "settingsReady && dirty"), "lifecycle dirty/marker equivalence (including retained provider input rendering)");
   safeText(page);
 }
 const unloadCount = (page) => page.window.listeners.get("beforeunload")?.size || 0;

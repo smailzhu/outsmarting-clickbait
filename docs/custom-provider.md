@@ -86,6 +86,15 @@ Extension provider switching keeps outgoing unsaved fields in page-local state;
 switching or testing does not save edits. Save persists all profiles and the
 chosen active mirrors. Userscript menus persist the current provider's profile.
 
+Developer note: options field markers derive from the same immutable baseline
+and Save-normalized projection as dirty state (trimmed strings and rounded/default
+numbers), not raw keystrokes or legacy mirrors. Visible credentials belong to the
+current profile owner, which can differ from an empty select for a removed
+provider. The generic other-provider note follows canonical dormant membership:
+absent and authoritative-empty profiles differ, although native migration normally
+fills every selectable profile and makes that structural edge unreachable.
+Markers render locally without reads, writes or provider requests.
+
 Every **preview** provider call reserves one durable usage unit before sending,
 including keyless custom, Ollama, HTTP/network/timeout/parse failures and a sent call whose result becomes
 stale. Invalid configuration or unavailable safe transport, cached answers,

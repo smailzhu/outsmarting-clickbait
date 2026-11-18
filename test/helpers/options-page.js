@@ -1,5 +1,6 @@
 import vm from "node:vm";
 import { readFileSync } from "node:fs";
+import { parseOptionsHtml } from "./options-dom.js";
 
 export const editableControls = ["uiLang", "provider", "key", "base", "model", "language", "customInstructions",
   "previewDwellMs", "previewMinIntervalMs", "dailyCap"];
@@ -31,7 +32,8 @@ function eventTarget() {
 // Browser-like seams only: multiple listeners, serialized-at-invocation storage,
 // rejected select values, input coercion, disabled focus loss and explicit timers.
 export function createPage({ initial = { key: "saved-key" }, beforeRead, beforeWrite, beforeI18n, beforeUsage,
-  beforeApply, translate = (key) => key, applyStaticLabels = false } = {}) {
+  beforeApply, translate = (key) => key, applyStaticLabels = false, realI18n = false,
+  connectedDOM = realI18n, htmlSource } = {}) {
   const store = structuredClone(initial), nodes = {}, writes = [], attempts = [], messages = [], pending = [], timers = [], consoleOutput = [];
   const calls = { syncGet: 0, syncSet: 0, localGet: 0, localSet: 0, i18nInit: 0, i18nApply: 0 };
   const window = eventTarget();
@@ -40,15 +42,25 @@ export function createPage({ initial = { key: "saved-key" }, beforeRead, beforeW
     documentElement: { style: { properties: {}, setProperty(key, value) { this.properties[key] = value; } } },
   };
   document.activeElement = document.body;
-  const html = readFileSync(new URL("../../extension/options.html", import.meta.url), "utf8");
-  const fields = [...lockedControls, "usage", "connectionStatus", "status", "reportLink", "saveBar", "baseHint", "modelHint", "discardHint"];
-  for (const id of fields) {
-    let value = "", text = "", disabled = lockedControls.includes(id);
+  const html = htmlSource ?? readFileSync(new URL("../../extension/options.html", import.meta.url), "utf8");
+  const fields = [...lockedControls, ...editableControls.map((id) => `${id}Modified`), "otherProvidersModified",
+    "usage", "connectionStatus", "status", "reportLink", "saveBar", "baseHint", "modelHint", "discardHint"];
+  function createElement(tagName, attributes) {
+    const id = attributes.id;
+    let value = "", text = "", disabled = Object.hasOwn(attributes, "disabled");
     const tag = html.match(new RegExp(`<[^>]+\\bid="${id}"[^>]*>`))?.[0] || "";
     const select = html.match(new RegExp(`<select\\b[^>]*id="${id}"[^>]*>([\\s\\S]*?)</select>`));
     const values = select ? [...select[1].matchAll(/<option value="([^"]*)"/g)].map((m) => m[1]) : null;
-    nodes[id] = {
-      ...eventTarget(), dataset: {}, textWrites: 0, focusCalls: 0, height: 64,
+    const node = {
+      ...eventTarget(), tagName, children: [], parentElement: null,
+      dataset: Object.fromEntries(Object.entries(attributes).filter(([key]) => key.startsWith("data-")).map(([key, value]) => [key.slice(5).replace(/-([a-z])/g, (_, ch) => ch.toUpperCase()), value])),
+      textWrites: 0, focusCalls: 0, height: 64,
+      getAttribute(name) { return Object.hasOwn(attributes, name) ? attributes[name] : null; },
+      hasAttribute(name) { return Object.hasOwn(attributes, name); },
+      setAttribute(name, value) { attributes[name] = String(value); },
+      removeAttribute(name) { delete attributes[name]; },
+      get hidden() { return Object.hasOwn(attributes, "hidden"); },
+      set hidden(next) { if (next) attributes.hidden = ""; else delete attributes.hidden; },
       get value() { return value; },
       set value(next) {
         value = String(next);
@@ -56,15 +68,35 @@ export function createPage({ initial = { key: "saved-key" }, beforeRead, beforeW
         if (/type="number"/.test(tag) && (value.trim() !== value || (value !== "" && !Number.isFinite(Number(value))))) value = "";
         if (/<input/.test(tag) && !/type="number"/.test(tag)) value = value.replace(/[\r\n]/g, "");
       },
-      get textContent() { return text; },
-      set textContent(next) { text = String(next); this.textWrites++; },
+      get textContent() { return text + this.children.map((child) => child.textContent).join(""); },
+      set textContent(next) {
+        for (const child of this.children) child.parentElement = null;
+        this.children = []; text = String(next); this.textWrites++;
+      },
       get disabled() { return disabled; },
       set disabled(next) { disabled = next; if (disabled && document.activeElement === this) document.activeElement = document.body; },
       focus() { if (!disabled) { document.activeElement = this; this.focusCalls++; } },
       getBoundingClientRect() { return { height: this.height }; },
     };
+    if (id) nodes[id] = node;
+    return node;
   }
-  const i18n = {
+  if (connectedDOM) {
+    const tree = parseOptionsHtml(html, createElement);
+    document.getElementById = tree.getElementById;
+    document.querySelectorAll = tree.querySelectorAll;
+    document.elements = tree.elements;
+    document.body = tree.elements().find((node) => node.tagName === "body");
+    const style = document.documentElement.style;
+    document.documentElement = tree.elements().find((node) => node.tagName === "html");
+    document.documentElement.style = style;
+    document.activeElement = document.body;
+  } else for (const id of fields) {
+    const tag = html.match(new RegExp(`<[^>]+\\bid="${id}"[^>]*>`))?.[0] || "";
+    const attrs = Object.fromEntries([...tag.matchAll(/([^\s=<>/]+)(?:\s*=\s*"([^"]*)")?/g)].map((m) => [m[1], m[2] || ""]));
+    createElement(tag.match(/^<(\w+)/)?.[1] || "span", { ...attrs, id });
+  }
+  let i18n = {
     lang: "en", t: (key, subs) => translate(key, i18n.lang, subs),
     init: async () => { calls.i18nInit++; await beforeI18n?.(); i18n.lang = store.uiLang || "en"; },
     apply() {
@@ -105,6 +137,13 @@ export function createPage({ initial = { key: "saved-key" }, beforeRead, beforeW
     },
     console: Object.fromEntries(["log", "error", "warn", "info", "debug"].map((key) => [key, (...args) => consoleOutput.push(args.join(" "))])),
   });
+  if (realI18n) {
+    for (const file of ["messages.gen.js", "i18n-runtime.js"]) vm.runInContext(readFileSync(new URL(`../../extension/${file}`, import.meta.url), "utf8"), context);
+    i18n = context.DebaitI18n;
+    const init = i18n.init, apply = i18n.apply;
+    i18n.init = async () => { calls.i18nInit++; await beforeI18n?.(); return init(); };
+    i18n.apply = (...args) => { calls.i18nApply++; beforeApply?.(); return apply(...args); };
+  }
   for (const file of ["profiles.js", "options.js"]) vm.runInContext(readFileSync(new URL(`../../extension/${file}`, import.meta.url), "utf8"), context);
   return {
     nodes, document, window, context, store, writes, attempts, messages, pending, timers, i18n, calls, resizeObservers, consoleOutput,

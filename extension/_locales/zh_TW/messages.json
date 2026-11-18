@@ -335,6 +335,12 @@
   "customRequiredHint": {
     "message": "（自訂必填，無預設值）"
   },
+  "optFieldModified": {
+    "message": "已修改"
+  },
+  "optOtherProvidersModified": {
+    "message": "其他供應商的設定也有尚未儲存的變更。"
+  },
   "optUnsaved": {
     "message": "尚未儲存的變更"
   },

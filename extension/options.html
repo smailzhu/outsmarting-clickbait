@@ -8,6 +8,9 @@
     input { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 6px; }
     button { margin-top: 16px; padding: 8px 16px; border: none; border-radius: 6px; background: #58a6ff; color: #001; font-weight: 600; cursor: pointer; }
     .hint { color: #777; font-size: 12px; }
+    [data-modified="true"] { border-color: #b45309 !important; }
+    .field-modified { color: #92400e; font-weight: 600; }
+    .field-modified-note { color: #92400e; }
     html { --save-bar-height: 0px; scroll-padding-bottom: calc(var(--save-bar-height) + 12px); }
     #saveBar { position: sticky; bottom: 0; background: #fff; border-top: 1px solid #ccc; padding: 12px 0; margin-top: 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
     #saveBar button { margin-top: 0; }
@@ -30,14 +33,14 @@
 <body>
   <h1>🪝🚫 <span data-i18n="optTitle">debait settings</span></h1>
   <p class="hint" data-i18n="optStoredHint">Your API key is stored in chrome.storage.sync and only sent to the selected provider.</p>
-  <label for="uiLang"><span data-i18n="optUiLanguage">Interface language</span> <span class="hint" data-i18n="optUiLanguageHint">(the extension's buttons &amp; labels; Auto = follow your browser)</span></label>
+  <label for="uiLang"><span data-i18n="optUiLanguage">Interface language</span> <span id="uiLangModified" class="field-modified" aria-hidden="true" hidden data-i18n="optFieldModified">Modified</span> <span class="hint" data-i18n="optUiLanguageHint">(the extension's buttons &amp; labels; Auto = follow your browser)</span></label>
   <select id="uiLang" disabled style="width:100%;padding:8px;border:1px solid #ccc;border-radius:6px">
     <option value="" data-i18n="interfaceAuto">Auto (browser)</option>
     <option value="en">English</option>
     <option value="zh_TW">繁體中文</option>
     <option value="nan-Hanlo">台語（漢羅）</option>
   </select>
-  <label for="provider" data-i18n="optProvider">Provider</label>
+  <label for="provider"><span data-i18n="optProvider">Provider</span> <span id="providerModified" class="field-modified" aria-hidden="true" hidden data-i18n="optFieldModified">Modified</span></label>
   <select id="provider" disabled style="width:100%;padding:8px;border:1px solid #ccc;border-radius:6px">
     <option value="openai">OpenAI</option>
     <option value="anthropic">Anthropic (Claude)</option>
@@ -52,28 +55,29 @@
     <option value="custom" data-i18n="customProvider">Custom / OpenAI-compatible</option>
     <option value="ollama">Ollama (local)</option>
   </select>
+  <p id="otherProvidersModified" class="hint field-modified-note" hidden data-i18n="optOtherProvidersModified">Other provider settings also have unsaved changes.</p>
   <p class="hint" data-i18n="customGuidance"></p>
-  <label for="key" data-i18n="optKey">API key</label>
+  <label for="key"><span data-i18n="optKey">API key</span> <span id="keyModified" class="field-modified" aria-hidden="true" hidden data-i18n="optFieldModified">Modified</span></label>
   <input id="key" disabled type="password" data-i18n-ph="phKeyOllama" placeholder="sk-... (not needed for local Ollama)" />
-  <label for="base"><span data-i18n="optBase">API base URL</span> <span id="baseHint" class="hint" data-i18n="optOverrideHint">(optional — overrides provider default)</span></label>
+  <label for="base"><span data-i18n="optBase">API base URL</span> <span id="baseModified" class="field-modified" aria-hidden="true" hidden data-i18n="optFieldModified">Modified</span> <span id="baseHint" class="hint" data-i18n="optOverrideHint">(optional — overrides provider default)</span></label>
   <input id="base" disabled type="text" data-i18n-ph="phBlankDefault" placeholder="leave blank for default" />
-  <label for="model"><span data-i18n="optModel">Model</span> <span id="modelHint" class="hint" data-i18n="optOverrideHint">(optional — overrides provider default)</span></label>
+  <label for="model"><span data-i18n="optModel">Model</span> <span id="modelModified" class="field-modified" aria-hidden="true" hidden data-i18n="optFieldModified">Modified</span> <span id="modelHint" class="hint" data-i18n="optOverrideHint">(optional — overrides provider default)</span></label>
   <input id="model" disabled type="text" data-i18n-ph="phBlankDefault" placeholder="leave blank for default" />
   <button id="testConnection" type="button" data-i18n="connectionTestButton" disabled>Test connection</button>
   <p class="hint" data-i18n="connectionTestHint">Tests the current provider, model and key without saving. Makes one small generation request; quota or usage charges may apply. No article content is sent.</p>
   <p id="connectionStatus" role="status" aria-live="polite" aria-atomic="true"></p>
-  <label for="language"><span data-i18n="optLanguage">Output language</span> <span class="hint" data-i18n="optLanguageHint">(title &amp; summary; blank = auto, match the article)</span></label>
+  <label for="language"><span data-i18n="optLanguage">Output language</span> <span id="languageModified" class="field-modified" aria-hidden="true" hidden data-i18n="optFieldModified">Modified</span> <span class="hint" data-i18n="optLanguageHint">(title &amp; summary; blank = auto, match the article)</span></label>
   <input id="language" disabled type="text" placeholder="auto — or English, 繁體中文, 日本語, Español" />
-  <label for="customInstructions"><span data-i18n="optInstructions">Custom instructions</span> <span class="hint" data-i18n="optInstructionsHint">(optional — appended to the prompt; the JSON output shape is kept)</span></label>
+  <label for="customInstructions"><span data-i18n="optInstructions">Custom instructions</span> <span id="customInstructionsModified" class="field-modified" aria-hidden="true" hidden data-i18n="optFieldModified">Modified</span> <span class="hint" data-i18n="optInstructionsHint">(optional — appended to the prompt; the JSON output shape is kept)</span></label>
   <textarea id="customInstructions" disabled rows="3" style="width:100%;padding:8px;box-sizing:border-box;border:1px solid #ccc;border-radius:6px;font:13px/1.4 system-ui,sans-serif" placeholder="e.g. Be harsher on sensational framing. Add a one-line TL;DR in the summary."></textarea>
 
   <h2 style="font-size:15px;margin:22px 0 4px" data-i18n="optLimitsTitle">Hover preview limits</h2>
   <p class="hint" data-i18n="optLimitsHint">Preview fetches + summarizes a link before you click. These caps stop bursty hovering from blowing your provider quota.</p>
-  <label for="previewDwellMs"><span data-i18n="optDwell">Hover dwell (ms)</span> <span class="hint" data-i18n="optDwellHint">before a preview fires</span></label>
+  <label for="previewDwellMs"><span data-i18n="optDwell">Hover dwell (ms)</span> <span id="previewDwellMsModified" class="field-modified" aria-hidden="true" hidden data-i18n="optFieldModified">Modified</span> <span class="hint" data-i18n="optDwellHint">before a preview fires</span></label>
   <input id="previewDwellMs" disabled type="number" min="0" step="50" placeholder="500" />
-  <label for="previewMinIntervalMs" data-i18n="optInterval">Min interval between previews (ms)</label>
+  <label for="previewMinIntervalMs"><span data-i18n="optInterval">Min interval between previews (ms)</span> <span id="previewMinIntervalMsModified" class="field-modified" aria-hidden="true" hidden data-i18n="optFieldModified">Modified</span></label>
   <input id="previewMinIntervalMs" disabled type="number" min="0" step="100" placeholder="1500" />
-  <label for="dailyCap"><span data-i18n="optDailyCap">Daily preview cap</span> <span class="hint" data-i18n="optDailyCapHint">(0 = unlimited)</span></label>
+  <label for="dailyCap"><span data-i18n="optDailyCap">Daily preview cap</span> <span id="dailyCapModified" class="field-modified" aria-hidden="true" hidden data-i18n="optFieldModified">Modified</span> <span class="hint" data-i18n="optDailyCapHint">(0 = unlimited)</span></label>
   <input id="dailyCap" disabled type="number" min="0" step="10" placeholder="200" />
   <p class="hint" id="usage"></p>
 
