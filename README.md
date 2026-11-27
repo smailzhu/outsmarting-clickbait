@@ -37,7 +37,7 @@ Ships in three forms from one shared prompt:
 
 The prompt + result parsing live once in [`shared/prompt.js`](shared/prompt.js);
 the browser builds reuse it. **Most named hosted providers require their own API
-key; local Ollama and unreleased custom can be keyless** — the `codex` CLI backend is CLI-only.
+key; local Ollama and custom endpoints can be keyless** — the `codex` CLI backend is CLI-only.
 
 `debait` fetches an article, reads the whole thing with an LLM, and prints:
 
@@ -77,7 +77,7 @@ a provider with your own API key, or a configured local model.
    folder (the one containing `manifest.json`).
 4. Click the 🪝🚫 toolbar icon → **Settings** → pick a provider, paste your
    API key, Save. Then **Analyze this page**, right-click → *debait this page*,
-   or **Alt+hover** a link to preview it before clicking.
+   or your **chosen hover mode** on a link to preview it before clicking.
 
 > Chromium can't install a raw `.zip` directly — load the unzipped folder as an
 > unpacked extension. (Sideloaded extensions show a one-time "Developer mode"
@@ -87,6 +87,114 @@ a provider with your own API key, or a configured local model.
 opening it. Results appear in a closable panel; the action shares hover previews’
 cache and usage limits. Right-clicking the page still offers **debait this page**
 for current-page analysis. See [right-click menu details](extension/README.md#right-click-menu).
+
+## Hover consent and cancellation (v0.4.0)
+
+This source feature is **extension-only**, not a store-rollout claim. Choose
+**Shift + hover**, **Alt + hover**, or **Hover without a modifier** in Settings,
+then **Save**. New local state without visible saved configuration starts Shift;
+existing raw configuration visible at first initialization keeps Alt, and saved
+legacy literal `false` keeps Hover without a modifier. Unsaved edits/failed Saves
+never change content policy; Discard restores the loaded or successfully saved
+selection.
+The userscript remains separately **Alt+hover**; manual/right-click is independent.
+
+Missing or invalid local AI configuration shows plain Settings guidance before
+any target fetch, provider call or preview quota work; this transient outcome is
+not cached. With **Hover without a modifier**, each otherwise eligible,
+movement/dwell-qualified link hover may show the setup tooltip until configured.
+There is no scanning, preloading, automatic Settings opening or linked-site
+contact for this outcome. Keyless providers can pass local preflight and still
+fail generically on hover when unreachable; saving settings does not validate a
+key. The manual right-click link action shares the dismissible setup outcome.
+The owner confirmed the main Shift checks on Windows/Edge, and three-locale
+setup-tooltip layout passed in Chromium. Advanced lifecycle, failure-injection,
+and assistive-technology coverage remain incomplete; see
+[documented verification risks](docs/hover-activation.md).
+
+Hold Shift and **move physically over a link**. Pressing Shift alone NEVER starts
+preview, even at dwell 0, while typing, or with a resting pointer. Alt alone can
+start on a recorded stationary link only on a trusted fresh release/repress,
+nonrepeat, with readable noneditable focus and no observed shortcut/composition.
+Shift/Alt movement uses only the selected key (mixed modifiers remain allowed).
+Observed typing/composition or focus entering editable/uncertain contexts cancels
+Shift interests and keyboard-origin Alt, without reviving movement credit.
+Deliberate subsequent new Shift movement can start again even in editable focus.
+No key interception or focus movement: hover, do not click. **Shift+click may open
+a new window**; Alt release can expose menus. Shift does not remove every OS shortcut.
+
+Preferences resolve exact case-sensitive `hoverActivation: shift|alt|none` first;
+any malformed present canonical value safely requires Shift, not Hover without a
+modifier. Without
+canonical, legacy `requireAltForHover` literal false means none; every other present
+value means Alt. Explicit Save writes canonical plus the legacy mirror
+`requireAltForHover: mode !== "none"` together. Older builds interpret saved Shift
+as Alt. Legacy-only updates cannot override a present canonical preference.
+
+Fallback uses **local first-successful snapshot provenance**, not global install
+history. A non-secret, write-once local `hoverActivationProvenanceV1` marker is set
+under an extension-origin exclusive Web Lock before Options/background automatic
+four-field profile migration. Load can write this metadata and existing provider
+migration, but NEVER either activation preference. Raw own saved preferences or
+provider/profiles/keys/key/base/model/language/customInstructions/uiLang/dwell/
+interval/cap classify existing regardless of emptiness; defaults/unrelated usage
+are not evidence. Fresh stays Shift after automatic migration and later evidence-
+only sync. In particular published **0.3.0 Save had no legacy hover preference**:
+if its evidence-only configuration arrives AFTER this device classified fresh,
+it stays Shift; choose Alt and Save explicitly to sync an authoritative preference.
+Another device/reinstall/local clear classifies its then-visible snapshot anew.
+
+Sync-only clear keeps local fallback. Local-only clear leaves explicit sync
+preferences authoritative but missing fallback UNKNOWN; genuine Settings reload
+or worker startup can classify again. Full clear with settled empty storage is
+fresh. Marker removal cancels fallback hover and locks Options, without automatic
+retry/revival/repair. Reload after storage operations settle; external clear during
+an already-invoked migration/Save is not cross-area atomic or guaranteed safe.
+Malformed present markers are preserved and require Shift. Missing Web Locks,
+failed read/write/lock or invalidated epoch skips ONLY worker persistent migration;
+manual/right-click/current-page analysis still uses existing in-memory provider
+normalization. Options editing/Save/Discard/Test Connection stays disabled with
+reload guidance. Automatic fallback hover stays silently disabled without known
+provenance; explicit known preference plus known dwell can still work independently.
+No polling, per-request retries, secret logging or fallback preference writes.
+
+With **Hover without a modifier**, ordinary movement-qualified hover can contact
+a linked site and send its URL, title, description and extracted text to your AI endpoint,
+using quota and potentially costing money. Keep a comfortable dwell (500 ms is
+the default): low dwell, including **0 ms**, can start as soon as eligible movement
+rests on a link; 0 is not a cost/privacy bypass and still uses an async timer.
+Fetching precedes AI throttle checks; unlimited limits cannot prevent all contacts.
+This choice syncs to your sync profile and applies only after Save.
+
+Hover requires a **visible, focused page**, known saved mode/dwell and trusted
+input. First positional sample only establishes a screen-position baseline;
+child/layout events at equal screen coordinates never start/restart a dwell.
+Selected-key release cancels dwell, connected work and displayed success/error;
+unrelated release does not. None ignores incidental modifier/typing/focus rules.
+Lifecycle/settings changes consume movement credit and never auto-start/retry.
+Move again, or use guarded fresh Alt in legacy mode. Browser-reported screen
+movement is **not hardware-action attestation** or a prediction of future keys.
+
+Moving away, changing/removing the link, scroll, pointerdown/contextmenu, blur,
+hidden visibility and pagehide withdraw only that hover port's interest. The
+worker aborts target preparation if its last owner leaves before AI dispatch;
+another hover or manual owner of the same URL keeps shared work alive. It checks
+interest after awaited preparation and before provider invocation. This is
+**worker-observed cancellation**: a disconnect still in IPC transit can lose the
+dispatch race. It cannot undo a linked-site contact, a sent AI request or cost.
+Cancellation during a durable quota reservation can still consume one unit and
+the interval slot even with no AI call; no rollback/refund is promised. After
+dispatch, work continues: successful, nonstale results can be cached for 30 minutes
+even after all hover owners leave, so a later same-configuration cache hit needs
+no new target fetch, AI request or quota. Errors/stale/canceled-pre-dispatch jobs
+are not cached; successful thin-fetch metadata stays free and cacheable.
+
+No link scanning or preloading is added. One active hover observes subtree
+removals and href changes during dwell, preparation and displayed results,
+validating one captured anchor and relevant records. Document-wide mutation
+observation can still cost CPU on busy pages. Native Chromium port lifetime,
+service-worker suspension/reload, bfcache, layout-event behavior, accessibility
+and physical Windows/Edge Shift/Alt behavior require browser checks; Node fixtures do not attest them.
 
 **Check your connection:** in extension **Settings**, click **Test connection**
 under the model field. It uses the current, unsaved provider/key/model/base URL
@@ -142,7 +250,7 @@ Multi-provider, from one shared layer ([`shared/providers.js`](shared/providers.
 | Together | `together` | openai | meta-llama/Llama-3.3-70B-Instruct-Turbo | `TOGETHER_API_KEY` |
 | NVIDIA (NIM) | `nvidia` | openai | meta/llama-3.3-70b-instruct | `NVIDIA_API_KEY` |
 | Ollama (local) | `ollama` | openai | llama3.1 | — |
-| Custom / OpenAI-compatible (unreleased) | `custom` | openai | explicit, no default | `CUSTOM_API_KEY` (optional) |
+| Custom / OpenAI-compatible | `custom` | openai | explicit, no default | `CUSTOM_API_KEY` (optional) |
 | Codex CLI | `codex` | — (shells out) | — | — |
 
 **CLI auto-selection:** the first provider whose key env var is set, else the
@@ -231,14 +339,15 @@ Full policy: [PRIVACY.md](PRIVACY.md). Chrome Web Store listing material: [store
   provider endpoint you configure — there is no debait server.
 - **What's sent to the provider:** the page's URL, title, meta description, and
   extracted text (capped at ~12,000 characters) of the page you debait (or
-  Alt+hover-preview), so the model can summarize it. Nothing else.
+  link-preview), so the model can summarize it. Nothing else.
 - **Extension host access:** the extension requests broad host permissions
   (`https://*/*`, `http://*/*`) so the background worker can fetch the *target* of
-  a hovered link for preview. It only fetches a page when you Alt+hover or run
-  debait on it.
+  a hovered link for preview. It fetches on eligible saved-mode hover (Shift
+  hold-and-move for new local state; Alt/none selectable) or manual link analysis.
 - **Cost control:** hover previews are rate-limited (one at a time, min interval)
-  with a 429 backoff and a configurable **daily cap**, so bursty hovering can't
-  silently exhaust a provider quota. See each surface's settings.
+  with a 429 backoff and a configurable **daily cap** to limit provider attempts.
+  Interval and cap can be unlimited and do not prevent linked-site contacts.
+  See each surface's settings.
 
 ## Test
 
@@ -295,7 +404,7 @@ Native focus, IME, popovers, shadow behavior and new-tab/noreferrer handling
 still need real-browser checks; no screenshot/manual accessibility claim is made.
 The panel's sole window Escape listener is bubble-phase and never prevents the
 default or stops propagation. Earlier page handlers can veto it; later window
-handlers do not have guaranteed priority. Tooltip/Alt behavior is unchanged.
+handlers do not have guaranteed priority. Userscript Alt behavior is unchanged; extension hover follows its saved mode.
 Closing suppresses late display, not already-dispatched work or incurred usage;
 it does not cancel or refund provider requests.
 
