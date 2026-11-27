@@ -1,40 +1,22 @@
-See what is behind a headline before spending time on the article. debait uses AI to suggest a plain headline, summarize the extracted content, and assess sensational framing.
+debait helps you understand what is behind a headline before spending time on the article. It uses AI to suggest a plain title, summarize key points, and assess clickbait framing with a 0–100 score.
 
-SETUP REQUIRED
-Use your own AI-provider API key, or a configured local model. Hosted provider usage charges may apply. Open Settings, select a provider, enter your key if needed, and save.
+HOW TO USE
+• Analyze the current article from the toolbar button or right-click menu.
+• Preview a link using the hover mode selected in Settings: Shift, Alt, or hovering without a modifier.
+• Right-click a link and choose “debait this link” to preview it without opening it.
 
-Before saving, use “Test connection” to check the current provider, model, base URL and API key. It makes one small generation request, which may consume quota or incur charges. No article content or custom instructions are sent. A successful test means the model returned text; a quota error does not necessarily mean the key is invalid.
+Shift previews require pointer movement; pressing Shift alone does not start a preview. Hovering without a modifier is optional and may fetch linked pages, transmit their content, and consume AI quota without another click.
 
-WHAT YOU GET
-• An honest-title suggestion that describes the article without the hype.
-• A short summary and key points.
-• A 0–100 clickbait score and an explanation of the techniques detected.
-• A content assessment: substantial, thin, or empty, plus a suggestion about whether the full article offers more to read.
-
-TWO WAYS TO USE IT
-On an article: click the toolbar icon and choose “Analyze this page,” or right-click and choose “debait this page.”
-Before opening a link: choose Shift + hover, Alt + hover, or Hover without a modifier in Settings, then Save. Shift previews require pointer movement; pressing Shift alone does not start one. Fresh installations default to Shift; existing choices are preserved under the migration rules. Hovering without a modifier can fetch linked pages and send content to your AI endpoint without another click, using quota or incurring charges. Alternatively, right-click an HTTP/HTTPS link and choose “debait this link” to show a preview in a closable panel without opening the target.
-
-Loading, error and result panels can be closed. Late responses will not reopen a dismissed panel. Panels show the source domain; link previews offer “Open requested article” for an explicit click. Escape dismisses eligible panels while leaving page inputs and dialogs alone.
-
-LANGUAGE AND PREFERENCES
-Choose the summary’s output language and add custom instructions in Settings. Unsaved fields show “Modified”; Save persists your edits and Discard restores this page’s last saved settings, including other provider profiles. Neither Discard nor a successful connection test saves new settings automatically. Interface-language choices include English, Traditional Chinese, and a draft Taiwanese Hokkien mixed-script translation awaiting native-speaker review. Interface and summary languages are separate settings.
-
-USAGE CONTROLS
-Hover previews have an adjustable delay, minimum request interval, and daily cap. They also pause after provider quota errors. Right-click link previews share the same cache, request interval, daily cap and cooldown. These controls reduce requests but do not guarantee that you will stay within your provider’s quota. Cancellation cannot undo linked-site contact or AI requests already sent; a reserved attempt may count even if later canceled. Manual current-page analysis and connection tests are not covered by these preview usage controls.
+SETUP AND CONTROL
+Use your own AI-provider API key or a configured local model. Provider charges may apply. Settings includes a connection test, output-language selection, custom instructions, and preview usage limits. Save applies changes; Discard restores this Settings page’s last saved settings. Connection testing does not save settings.
 
 LIMITATIONS
-Analysis uses the first 12,000 characters of extracted page text, not necessarily the whole article. Preview fetches do not run the target page’s JavaScript; dynamically loaded or paywalled content may be unavailable. If too little text is extracted, the preview shows the target’s meta description or title instead of an AI assessment. Failed requests show an error. Results take time and depend on the provider.
-
-Scores and summaries are AI-generated assessments—not fact-checks, medical advice, or guarantees of accuracy. Check the original sources when accuracy matters.
+Analysis uses up to 12,000 characters of extracted text. Dynamic or paywalled pages may be unreadable. AI scores and summaries are not fact-checks or guarantees of accuracy. Preview limits do not cover manual current-page analysis or connection tests. Cancellation cannot undo requests already sent or their costs; a reserved preview attempt may still count.
 
 PRIVACY
-The selected page’s URL, title, meta description, and extracted text, together with your custom instructions, are sent to your configured AI endpoint. Your key is used to authenticate with that endpoint. There is no developer-operated server processing your analyses.
+Selected page URLs, titles, meta descriptions, extracted text, and custom instructions go to your configured AI endpoint—not a developer-operated analysis server. Keys and preferences may synchronize through your browser’s sync service.
 
-Keys and preferences use chrome.storage.sync and may synchronize through your browser’s sync service when enabled. Preview attempt counts and a non-secret fresh/existing installation marker are stored on your device. The marker keeps hover defaults stable; explicitly saved modes take precedence. The developer does not receive your analysis requests.
+Custom / OpenAI-compatible endpoints require an explicit API base URL and model. Keys are optional for keyless services. Keyless remote HTTP sends content unencrypted; use an endpoint operator you trust. Keyed custom endpoints require HTTPS except for loopback addresses.
 
-Code, user guides, support, and privacy policy:
+Code, guides, support, and privacy policy:
 https://github.com/smailzhu/outsmarting-clickbait
-
-CUSTOM ENDPOINTS
-Custom / OpenAI-compatible endpoint support requires an explicit API base URL and model, with an optional key. Article data and prompts go to the endpoint operator you trust. Keyless remote HTTP is UNENCRYPTED and may be observed or modified in transit. A key requires HTTPS except on loopback. Chat Completions only, no model discovery or automatic retries.

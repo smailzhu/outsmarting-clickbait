@@ -39,8 +39,9 @@ All three descriptions include:
 - Shared **preview-only** cache and usage controls; manual current-page analysis
   and connection tests are outside those controls.
 - The 12,000-character extracted-text limit, preview fallback/errors, and AI accuracy caveats.
-- The transmitted URL/title/meta description/text/instructions, browser sync
-  storage, and local non-secret installation classification.
+- The transmitted URL/title/meta description/text/instructions and browser sync
+  storage. The detailed [privacy policy](../../PRIVACY.md) separately explains
+  local installation metadata, storage, and cancellation behavior.
 
 This is a **listing-text update only**: paste and save the revised descriptions
 in the dashboard and follow its review/submission flow. It does not modify the

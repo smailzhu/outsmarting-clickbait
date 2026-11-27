@@ -47,23 +47,19 @@ gesture or right-click action.
 
 The extension requests only what the single purpose needs:
 
-- **storage** — stores the user's provider-specific key/base URL/model profiles,
-  interface/output languages, custom instructions, hover activation mode and
-  usage limits in browser sync storage. Local storage holds preview attempt/
-  reservation counts and a non-secret fresh/existing installation marker to
-  stabilize hover defaults. Saved choices may sync across the user's devices.
-- **contextMenus** — to add “debait this page” for current-page analysis and
-  “debait this link” for user-requested HTTP/HTTPS target previews without opening
-  the link. Both actions serve the same article summarization purpose.
-- **host permissions `https://*/*` and `http://*/*`** — content scripts detect the
-  hover activation selected and saved by the user (Shift, Alt, or ordinary hover)
-  and display results. A qualifying hover or explicit right-click link preview
-  retrieves that link's HTTP/HTTPS target, which may be on any site. The same
-  access lets the extension contact the user's configured AI endpoint or local
-  model. Ordinary hover is an optional saved setting with a content-transfer and
-  quota warning. The extension does not scan or preload all links or transmit a
-  complete browsing history. Requested URLs and extracted content go to the
-  configured endpoint, as disclosed in the privacy policy.
+- **storage** — saves provider credentials, endpoint/model settings, languages,
+  custom instructions, hover mode, and usage limits. Browser sync storage may
+  synchronize these settings. Local storage holds daily preview counts and a
+  non-secret installation marker used to preserve hover defaults.
+- **contextMenus** — adds “debait this page” for current-page analysis and
+  “debait this link” for previewing a selected link without opening it. Both
+  support article summarization and clickbait assessment.
+- **host permissions `https://*/*` and `http://*/*`** — retrieves articles from
+  user-selected HTTP/HTTPS links and sends their content to the user-configured
+  AI endpoint. Content scripts detect the saved hover mode and display results.
+  Ordinary-hover mode requires explicit selection and Save, with a privacy/cost
+  warning. Arbitrary article and endpoint hosts require broad access; the
+  extension does not scan all links.
 
 (No `activeTab`, `tabs`, or `scripting` permission is requested — the content
 script is statically declared and messaging uses the tab id only.)
