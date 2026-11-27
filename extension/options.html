@@ -76,6 +76,13 @@
 
   <h2 style="font-size:15px;margin:22px 0 4px" data-i18n="optLimitsTitle">Hover preview limits</h2>
   <p class="hint" data-i18n="optLimitsHint">Preview fetches + summarizes a link before you click. These caps stop bursty hovering from blowing your provider quota.</p>
+  <label for="hoverActivation"><span data-i18n="optHoverActivation">Hover preview activation</span> <span id="hoverActivationModified" class="field-modified" aria-hidden="true" hidden data-i18n="optFieldModified">Modified</span></label>
+  <select id="hoverActivation" style="width:100%;padding:8px;border:1px solid #767676;border-radius:6px" disabled aria-describedby="hoverActivationWarning">
+    <option value="shift" data-i18n="optHoverActivationShift">Shift + hover</option>
+    <option value="alt" data-i18n="optHoverActivationAlt">Alt + hover</option>
+    <option value="none" data-i18n="optHoverActivationNone">Hover without a modifier</option>
+  </select>
+  <p class="hint" id="hoverActivationWarning" data-i18n="optHoverActivationWarning">Hold Shift and move over a link; pressing Shift alone will not preview. Hover, do not click: Shift+click can open a new window. Alt release can expose browser menus. Hover without a modifier contacts linked sites and sends page text to your AI endpoint, using quota and potentially costing money, even at 0 ms dwell. Cancellation cannot refund already contacted sites or sent AI work. This setting shares your sync profile and applies only after Save.</p>
   <label for="previewDwellMs"><span data-i18n="optDwell">Hover dwell (ms)</span> <span id="previewDwellMsModified" class="field-modified" aria-hidden="true" hidden data-i18n="optFieldModified">Modified</span> <span class="hint" data-i18n="optDwellHint">before a preview fires</span></label>
   <input id="previewDwellMs" disabled type="number" min="0" step="50" placeholder="500" />
   <label for="previewMinIntervalMs"><span data-i18n="optInterval">Min interval between previews (ms)</span> <span id="previewMinIntervalMsModified" class="field-modified" aria-hidden="true" hidden data-i18n="optFieldModified">Modified</span></label>
@@ -99,6 +106,8 @@
   <script src="i18n-runtime.js"></script>
   <script src="profiles.js"></script>
   <script src="provider-help.js"></script>
+  <script src="hover-activation.js"></script>
+  <script src="hover-provenance.js"></script>
   <script src="options.js"></script>
 </body>
 </html>

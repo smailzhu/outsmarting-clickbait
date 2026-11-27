@@ -15,20 +15,42 @@ function extractPage() {
   return { originalTitle, description, text, url: location.href };
 }
 
-// ---- Alt+hover link preview (debait BEFORE you click) ---------------------
-// Hold Alt and hover a link; after a short dwell we fetch+debait the target in
-// the background worker (cached) and show a tooltip with the honest title +
-// clickbait score. Opt-in via Alt so we never fire LLM calls accidentally.
+// ---- Extension hover preview: saved Shift/Alt/hover-without-a-modifier activation.
+// Shift requires physical movement; withdrawal cannot refund dispatched work.
 const TIP_ID = "debait-tooltip";
-let tipTimer = null;
-let dwellMs = 500; // overridable via Options (previewDwellMs)
-const toDwell = (v) => { const n = Number(v); return Number.isFinite(n) && n >= 0 ? n : 500; };
-chrome.storage.sync.get({ previewDwellMs: 500 }).then((v) => { dwellMs = toDwell(v.previewDwellMs); });
+let tipHost = null;
+const H = globalThis.DebaitHoverActivation;
+let hoverState = H.createState();
+let hoverPolicy = H.policy(hoverState);
+function projectHoverPolicy() {
+  const next = H.policy(hoverState);
+  if (next.ready !== hoverPolicy.ready || next.mode !== hoverPolicy.mode || next.dwellMs !== hoverPolicy.dwellMs) {
+    hoverPolicy = next;
+    cancelHover();
+  }
+}
 chrome.storage.onChanged.addListener((changes, area) => {
-  if (area === "sync" && changes.previewDwellMs) dwellMs = toDwell(changes.previewDwellMs.newValue);
+  hoverState = H.applyChanges(hoverState, area, changes);
+  projectHoverPolicy();
   if (area === "sync" && changes.uiLang) globalThis.DebaitI18n.init();
 });
-let tipAnchor = null;
+for (const area of ["sync", "local"]) {
+  const token = H.beginRead(hoverState, area);
+  chrome.storage[area].get(area === "sync" ? H.SYNC_FIELDS : [H.PROVENANCE_KEY]).then((raw) => {
+    hoverState = H.mergeRead(hoverState, area, token, raw);
+    projectHoverPolicy();
+  }).catch(() => {}); // Read failure never fabricates preference/dwell knowledge.
+}
+let hovered = null;
+let altDown = false;
+let shiftDown = false;
+const pressedKeys = new Set();
+let compositionActive = false;
+let lastScreen = null;
+let movementSeq = 0;
+let consumedMovementSeq = 0;
+let intentToken = 0;
+let hoverIntent = null;
 
 // Tooltip lives in its own Shadow DOM (like the panel) so host-page CSS can't
 // bleed in and make it unreadable.
@@ -41,9 +63,9 @@ const TIP_CSS = `
 .tipwrap * { box-sizing:border-box; margin:0; }
 `;
 function tip() {
-  let host = document.getElementById(TIP_ID);
-  if (host && host.__content) return host.__content;
-  host = document.createElement("div");
+  if (tipHost?.isConnected) return tipHost.__content;
+  const host = document.createElement("div");
+  tipHost = host;
   host.id = TIP_ID;
   host.style.cssText = "all:initial; position:fixed; z-index:2147483647; pointer-events:none;";
   const root = host.attachShadow({ mode: "open" });
@@ -56,7 +78,7 @@ function tip() {
   host.__content = content;
   return content;
 }
-function hideTip() { tipAnchor = null; clearTimeout(tipTimer); document.getElementById(TIP_ID)?.remove(); }
+function hideTip() { tipHost?.remove(); tipHost = null; }
 function placeTip(x, y) {
   const host = tip().getRootNode().host; // the element we control (not a page #debait-tooltip)
   const pad = 14;
@@ -72,16 +94,25 @@ function isPreviewable(a) {
   return true;
 }
 
-async function previewLink(a, x, y) {
-  const url = a.href;
-  placeTip(x, y);
-  tip().innerHTML = `<b style="color:#58a6ff">🪝🚫 ${t("brand")}</b> · ${t("tipReading")}<br><span style="color:#888">${esc(url).slice(0, 80)}</span>`;
-  let resp;
-  try { resp = await chrome.runtime.sendMessage({ type: "debait:preview", url }); }
-  catch (e) { if (tipAnchor === a) tip().innerHTML = `<b style="color:#e5484d">${t("errGeneric")}</b> · ${esc(e?.message || String(e))}`; return; }
-  if (tipAnchor !== a) return; // user moved on
-  if (!resp?.ok) return void (tip().innerHTML = `<b style="color:#e5484d">${t("errGeneric")}</b> · ${esc(resp?.error || t("errUnknown"))}`);
+function validIntent(intent) {
+  return hoverIntent === intent && intent.token === intentToken && !intent.invalid &&
+    hoverPolicy.ready && hoverPolicy.mode === intent.mode && selectedKeyHeld(intent.requiredKey) &&
+    (intent.origin !== "keyboard" || stationaryAltAllowed()) &&
+    foreground() && intent.anchor.isConnected && intent.anchor.href === intent.href &&
+    isPreviewable(intent.anchor) && hovered?.anchor === intent.anchor && hovered.href === intent.href;
+}
+function showHoverError(intent) {
+  if (!validIntent(intent)) { if (hoverIntent === intent) cancelHover(); return; }
+  placeTip(hovered.x, hovered.y);
+  tip().innerHTML = `<b style="color:#e5484d">${esc(t("errGeneric"))}</b>`;
+}
+function renderHoverReply(intent, resp) {
+  if (!validIntent(intent)) { if (hoverIntent === intent) cancelHover(); return; }
+  placeTip(hovered.x, hovered.y);
+  if (!resp?.ok) return showHoverError(intent);
   const r = resp.result;
+  if (r.setup_required)
+    return void (tip().innerHTML = `<b style="color:#58a6ff">${esc(t("tipSetupHeading"))}</b><div style="margin-top:4px">${esc(t("tipSetupBody"))}</div>`);
   if (r.stale) return void (tip().innerHTML = esc(t("errStale")));
   if (r.capped)
     return void (tip().innerHTML = `<b style="color:#ffb224">🪝🚫 ${t("brand")}</b> · ${esc(t("tipCapped", [String(r.used), String(r.cap)]))}`);
@@ -100,22 +131,207 @@ async function previewLink(a, x, y) {
     <div style="color:#bbb;margin-top:4px">${esc(r.summary || "")}</div>`;
 }
 
-document.addEventListener("mouseover", (e) => {
-  if (!e.altKey) return;
-  const a = e.target.closest?.("a[href]");
-  if (!isPreviewable(a)) return;
-  tipAnchor = a;
-  clearTimeout(tipTimer);
-  const { clientX: x, clientY: y } = e;
-  tipTimer = setTimeout(() => previewLink(a, x, y), dwellMs);
-});
-document.addEventListener("mouseout", (e) => {
-  if (e.target.closest?.("a[href]") === tipAnchor) { clearTimeout(tipTimer); tipAnchor = null; hideTip(); }
-});
-window.addEventListener("keyup", (e) => { if (e.key === "Alt") { clearTimeout(tipTimer); hideTip(); } });
-window.addEventListener("scroll", hideTip, { passive: true });
+function foreground() { return document.visibilityState === "visible" && document.hasFocus(); }
+function ownedEvent(e) {
+  const path = e.composedPath?.() || [e.target];
+  return path.some((node) => (tipHost && (node === tipHost || node?.getRootNode?.()?.host === tipHost)) ||
+    (panelHost && (node === panelHost || node?.getRootNode?.()?.host === panelHost)));
+}
+function cancelHover() {
+  intentToken++; // Invalidate before touching timers or transport.
+  consumedMovementSeq = movementSeq;
+  const intent = hoverIntent;
+  hoverIntent = null;
+  if (intent) {
+    intent.invalid = true;
+    clearTimeout(intent.timer);
+    intent.observer.disconnect();
+    closeTransport(intent);
+  }
+  hideTip();
+}
+function closeTransport(intent) {
+  const port = intent.port;
+  intent.port = null;
+  intent.localDisconnect = true;
+  if (port) {
+    port.onMessage.removeListener(intent.onReply);
+    port.onDisconnect.removeListener(intent.onDisconnect);
+    try { port.disconnect(); } catch {}
+  }
+}
+function startHover(origin = "movement") {
+  consumedMovementSeq = movementSeq;
+  const intent = { token: ++intentToken, anchor: hovered.anchor, href: hovered.href,
+    requiredKey: hoverPolicy.mode === "shift" ? "Shift" : hoverPolicy.mode === "alt" ? "Alt" : null,
+    mode: hoverPolicy.mode, origin, timer: null, port: null, invalid: false,
+    received: false, localDisconnect: false, observer: null };
+  hoverIntent = intent;
+  intent.observer = new MutationObserver((records) => {
+    if (hoverIntent !== intent) return;
+    const changed = records.some((record) =>
+      (record.type === "attributes" && record.target === intent.anchor && record.attributeName === "href") ||
+      (record.type === "childList" && [...record.removedNodes].some((node) => node === intent.anchor || node.contains?.(intent.anchor))));
+    if (changed || !validIntent(intent)) cancelHover();
+  });
+  intent.observer.observe(document, { subtree: true, childList: true, attributes: true, attributeFilter: ["href"] });
+  intent.timer = setTimeout(() => {
+    if (!validIntent(intent)) { if (hoverIntent === intent) cancelHover(); return; }
+    placeTip(hovered.x, hovered.y);
+    tip().innerHTML = `<b style="color:#58a6ff">🪝🚫 ${esc(t("brand"))}</b> · ${esc(t("tipReading"))}<br><span style="color:#888">${esc(intent.href).slice(0, 80)}</span>`;
+    try {
+      const port = chrome.runtime.connect({ name: "debait:hover" });
+      intent.port = port;
+      intent.onReply = (resp) => {
+        if (intent.received || intent.invalid) return;
+        intent.received = true;
+        renderHoverReply(intent, resp);
+        closeTransport(intent);
+      };
+      intent.onDisconnect = () => {
+        // Reading lastError suppresses Chromium's unchecked-disconnect warning.
+        void chrome.runtime.lastError;
+        if (intent.localDisconnect || intent.received || intent.invalid) return;
+        closeTransport(intent);
+        showHoverError(intent);
+      };
+      port.onMessage.addListener(intent.onReply);
+      port.onDisconnect.addListener(intent.onDisconnect);
+      port.postMessage({ type: "start", url: intent.href });
+    } catch {
+      closeTransport(intent);
+      showHoverError(intent);
+    }
+  }, hoverPolicy.dwellMs);
+}
+function sampleScreen(e, credit = true) {
+  if (!Number.isFinite(e.screenX) || !Number.isFinite(e.screenY)) return;
+  if (credit && lastScreen && (lastScreen.x !== e.screenX || lastScreen.y !== e.screenY)) movementSeq++;
+  lastScreen = { x: e.screenX, y: e.screenY };
+}
+function trackMouse(e) {
+  if (!e.isTrusted) return;
+  const anchor = ownedEvent(e) ? null : e.target.closest?.("a[href]");
+  const href = anchor?.href;
+  if (anchor !== hovered?.anchor || href !== hovered?.href) {
+    cancelHover(); // Consume prior credit BEFORE sampling the entering event.
+    hovered = null;
+  }
+  sampleScreen(e);
+  altDown = !!e.altKey;
+  shiftDown = !!e.shiftKey;
+  if (!isPreviewable(anchor) || !anchor.isConnected || !foreground() || (!hoverPolicy.ready || !selectedKeyHeld())) {
+    cancelHover();
+    // An eligible stationary link may still be used by a fresh Alt keydown.
+    hovered = isPreviewable(anchor) && anchor.isConnected && foreground() ? { anchor, href, x: e.clientX, y: e.clientY } : null;
+    return;
+  }
+  hovered = { anchor, href, x: e.clientX, y: e.clientY };
+  if (hoverIntent && !validIntent(hoverIntent)) cancelHover();
+  if (hoverIntent) { consumedMovementSeq = movementSeq; return; }
+  if (movementSeq > consumedMovementSeq) startHover();
+}
+// Observe before page bubble handlers can hide movement or cancellation.
+for (const type of ["mouseover", "mousemove"]) window.addEventListener(type, trackMouse, { capture: true });
+window.addEventListener("mouseout", (e) => {
+  if (!e.isTrusted || !hovered || e.target.closest?.("a[href]") !== hovered.anchor) return;
+  if (hovered.anchor.contains(e.relatedTarget)) return;
+  cancelHover(); hovered = null;
+}, { capture: true });
+function selectedKeyHeld(key = hoverPolicy.mode === "shift" ? "Shift" : hoverPolicy.mode === "alt" ? "Alt" : null) {
+  return key === "Shift" ? shiftDown : key === "Alt" ? altDown : true;
+}
+const modifierKeys = new Set(["Shift", "Alt", "Control", "Meta", "AltGraph"]);
+function readHoverFocus(event) {
+  // Bounded focus/path checks only, not the panel's page-wide overlay scan.
+  try {
+    if (document.designMode === "on") return false;
+    const path = event ? event.composedPath() : [document];
+    if (!Array.isArray(path) || !path.length || path.length > 100 || !path.every((node) => node !== null && (typeof node === "object" || typeof node === "function"))) return false;
+    const readable = (node) => !["INPUT", "TEXTAREA", "SELECT", "IFRAME", "FRAME", "OBJECT", "EMBED"].includes(String(node.tagName).toUpperCase()) && !node.isContentEditable;
+    if (!path.every(readable)) return false;
+    let active = document.activeElement;
+    if (active === undefined) return false;
+    const seen = new Set();
+    while (active) {
+      if (seen.has(active) || seen.size >= 100 || !readable(active)) return false;
+      seen.add(active);
+      const shadow = active.shadowRoot;
+      if (String(active.tagName).includes("-") && shadow === null) return false;
+      const deeper = shadow ? shadow.activeElement : null;
+      if (!deeper) break;
+      active = deeper;
+    }
+    return true;
+  } catch { return false; }
+}
+function stationaryAltAllowed(event) {
+  return !shiftDown && !compositionActive && pressedKeys.size === 0 && readHoverFocus(event);
+}
+function cancelTypingInterest() {
+  if (hoverIntent?.requiredKey === "Shift" || hoverIntent?.origin === "keyboard") cancelHover();
+}
+function altChord(event) {
+  try {
+    return event.shiftKey || event.ctrlKey || event.metaKey || shiftDown ||
+      pressedKeys.has("Control") || pressedKeys.has("Meta") || pressedKeys.has("AltGraph") ||
+      event.getModifierState?.("AltGraph");
+  } catch { return true; }
+}
+window.addEventListener("keydown", (e) => {
+  if (!e.isTrusted) return;
+  const previousAlt = altDown;
+  if (e.key === "Alt") altDown = true;
+  if (e.key === "Shift") shiftDown = true;
+  if (!["Alt", "Shift"].includes(e.key)) pressedKeys.add(e.key);
+  const composing = e.isComposing || e.keyCode === 229;
+  if (composing) compositionActive = true;
+  if (composing || !modifierKeys.has(e.key)) cancelTypingInterest();
+  if (hoverIntent?.origin === "keyboard" && (e.key !== "Alt" && modifierKeys.has(e.key) || altChord(e))) cancelHover();
+  // Shift keydown NEVER consumes/revives movement credit or schedules work.
+  if (e.key !== "Alt" || previousAlt || e.repeat || composing || altChord(e) || !stationaryAltAllowed(e)) return;
+  if (ownedEvent(e)) { consumedMovementSeq = movementSeq; return; }
+  if (!hoverPolicy.ready || hoverPolicy.mode !== "alt" || hoverIntent || !hovered) return;
+  if (!foreground() || !hovered.anchor.isConnected || hovered.anchor.href !== hovered.href || !isPreviewable(hovered.anchor)) {
+    cancelHover(); hovered = null; return;
+  }
+  startHover("keyboard");
+}, { capture: true });
+window.addEventListener("keyup", (e) => {
+  if (!e.isTrusted) return;
+  if (e.key === "Alt") altDown = false;
+  if (e.key === "Shift") shiftDown = false;
+  pressedKeys.delete(e.key);
+  if (hoverIntent?.requiredKey === e.key) cancelHover();
+}, { capture: true });
+for (const type of ["compositionstart", "compositionupdate", "compositionend", "beforeinput", "input"]) window.addEventListener(type, (e) => {
+  if (!e.isTrusted) return;
+  if (type === "compositionend") { compositionActive = false; return; }
+  if (type === "compositionstart" || type === "compositionupdate" || e.isComposing || ["insertCompositionText", "deleteCompositionText", "insertFromComposition"].includes(e.inputType)) {
+    compositionActive = true;
+    cancelTypingInterest();
+  }
+}, { capture: true });
+window.addEventListener("focus", (e) => {
+  if (e.isTrusted && e.target !== window && !readHoverFocus(e)) cancelTypingInterest();
+}, { capture: true });
+for (const type of ["pointerdown", "click", "contextmenu"]) window.addEventListener(type, (e) => {
+  if (!e.isTrusted) return;
+  cancelHover(); hovered = null;
+  if (type === "pointerdown") sampleScreen(e, false);
+}, { capture: true });
+function leaveForeground(resetScreen) {
+  cancelHover(); hovered = null; altDown = false; shiftDown = false;
+  pressedKeys.clear(); compositionActive = false;
+  if (resetScreen) lastScreen = null;
+}
+window.addEventListener("scroll", () => leaveForeground(false), { capture: true, passive: true });
+window.addEventListener("blur", (e) => { if (e.target === window) leaveForeground(true); }, { capture: true });
+window.addEventListener("pagehide", () => leaveForeground(true), { capture: true });
+window.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") leaveForeground(true); }, { capture: true });
 
 const PANEL_ID = "debait-panel-host";
+let panelHost = null;
 const esc = (s) => String(s ?? "").replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
 const scoreColor = (n) => (n >= 60 ? "#ff6b6e" : n >= 30 ? "#ffc14d" : "#4ac97e");
 // Model output is untrusted: coerce the score to a finite int in [0,100] so it
@@ -224,7 +440,6 @@ function readPanelEscapeContext(host, event) {
   return facts;
 }
 
-let panelHost = null;
 function detachPanelKey(host) {
   if (host?.__onKey) {
     window.removeEventListener("keydown", host.__onKey, false);
@@ -361,6 +576,7 @@ async function runLink(url) {
     if (!resp?.ok) throw new Error(resp?.error || t("errUnknown"));
     const r = resp.result;
     if (!r || typeof r !== "object") throw new Error(t("errParse"));
+    if (r.setup_required) return render(`<b style="color:#58a6ff">${esc(t("tipSetupHeading"))}</b><div style="margin-top:4px">${esc(t("tipSetupBody"))}</div>`, source, true);
     if (r.stale) return render(esc(t("errStale")), source, true);
     if (r.capped) return render(esc(t("tipCapped", [String(r.used), String(r.cap)])), source, true);
     if (r.rate_limited) return render(esc(t("linkRateLimited", [String(r.retryIn)])), source, true);

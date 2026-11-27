@@ -25,6 +25,7 @@ for (const [lang, source] of [
     const messages = JSON.parse(readFileSync(new URL(source, import.meta.url), "utf8"));
     const hints = hintKeys.map((key) => ({ dataset: { i18n: key }, textContent: "" }));
     const actions = { go: { addEventListener() {} }, opts: { addEventListener() {} } };
+    const storageReads = [];
     const context = vm.createContext({
       document: {
         documentElement: {},
@@ -33,7 +34,7 @@ for (const [lang, source] of [
       },
       chrome: {
         i18n: { getUILanguage: () => "en-US" },
-        storage: { sync: { get: async () => ({ uiLang: lang }) } },
+        storage: { sync: { get: async (defaults) => { storageReads.push(defaults); return { uiLang: lang }; } } },
       },
     });
     for (const file of ["messages.gen.js", "i18n-runtime.js", "popup.js"]) {
@@ -44,7 +45,10 @@ for (const [lang, source] of [
       assert.ok(messages[key]?.message, `${lang}/${key} missing from source`);
       assert.equal(hints[index].textContent, messages[key].message, `${lang}/${key} is untranslated or stale`);
     }
-    assert.ok(hints[1].textContent.includes("Alt"));
+    assert.ok(!hints[1].textContent.includes("Alt"));
+    assert.ok(hints[1].textContent.includes("debait"));
+    for (const topic of lang === "en" ? ["chosen hover mode", "Settings", "right-click"] : ["設定", "右鍵"]) assert.ok(hints[1].textContent.includes(topic));
+    assert.ok(storageReads.every((defaults) => !Object.hasOwn(defaults, "requireAltForHover")));
     assert.ok(hints[2].textContent.includes("API"));
   });
 }

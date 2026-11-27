@@ -91,7 +91,7 @@ test("options.html actual hint and all normal field borders meet light-surface c
   contrast(inputBorder, surface, 3, "Settings input boundary");
 
   const fields = [...options.html.matchAll(/<(input|select|textarea)\b[^>]*>/g)];
-  assert.equal(fields.length, 10, "Check every current editable field");
+  assert.equal(fields.length, 11, "Check every current editable field, including the activation selector");
   const inlineIds = [];
   for (const [tag, type] of fields) {
     const id = tag.match(/\bid="([^"]+)"/)?.[1];
@@ -105,7 +105,7 @@ test("options.html actual hint and all normal field borders meet light-surface c
     assert.equal(color, "#767676", `${id} normal border palette`);
     contrast(color, surface, 3, `${id} field boundary`);
   }
-  assert.deepEqual(inlineIds, ["uiLang", "provider", "customInstructions"]);
+  assert.deepEqual(inlineIds, ["uiLang", "provider", "customInstructions", "hoverActivation"]);
 });
 
 test("options.html actual status/marker/Discard and decorative Save bar palettes stay unchanged", () => {

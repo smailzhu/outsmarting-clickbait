@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { createHoverStorage } from "./helpers/hover-storage.js";
 import vm from "node:vm";
 import { isOptionsSender } from "../extension/connection-test.js";
 
@@ -11,10 +12,11 @@ test("background rejects page senders and serializes Settings connection tests",
   const runtime = {
     id: "test-extension", getURL: (path) => `chrome-extension://test-extension/${path}`,
     onMessage: { addListener: (fn) => { listener = fn; } },
-    onInstalled: { addListener() {} },
+    onConnect: { addListener() {} }, onInstalled: { addListener() {} },
   };
-  const context = vm.createContext({
-    chrome: { runtime, storage: { onChanged: { addListener() {} } },
+  const backend = createHoverStorage();
+  const context = vm.createContext({ navigator: backend.navigator,
+    chrome: { runtime, storage: backend.storage,
       contextMenus: { onClicked: { addListener() {} } } },
     isOptionsSender,
     testConnection: () => {
@@ -25,6 +27,7 @@ test("background rejects page senders and serializes Settings connection tests",
   // Evaluate the actual worker listener with imports replaced by test doubles.
   const source = readFileSync(new URL("../extension/background.js", import.meta.url), "utf8")
     .replace(/^import .*;\r?\n/gm, "");
+  for (const file of ["hover-activation.js", "hover-provenance.js"]) vm.runInContext(readFileSync(new URL(`../extension/${file}`, import.meta.url), "utf8"), context);
   vm.runInContext(source, context);
   const request = { type: "debait:testConnection", settings: { key: "unsaved" } };
   const sender = { id: runtime.id, url: runtime.getURL("options.html") };

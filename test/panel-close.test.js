@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import vm from "node:vm";
 
 import { setupPanel as setup } from "./helpers/panel-page.js";
+import { createWorker } from "./helpers/hover-worker.js";
+import { loadPreviewLocale, setupOnly, maliciousSetup } from "./helpers/preview-locales.js";
 
 test("extension: right-click link uses the preview path and displays a dismissible result", async () => {
   const page = setup("extension");
@@ -24,7 +26,7 @@ test("extension: right-click link uses the preview path and displays a dismissib
 test("extension: link quota/fallback/error states all stay dismissible", async () => {
   for (const result of [
     { capped: true, used: 200, cap: 200 }, { rate_limited: true, retryIn: 30 },
-    { throttled: true }, { stale: true }, { thin_fetch: true, description: "<metadata>" },
+    { throttled: true }, { stale: true }, { setup_required: true }, { thin_fetch: true, description: "<metadata>" },
     { parse_error: true, raw: "<invalid>" },
   ]) {
     const page = setup("extension");
@@ -148,3 +150,37 @@ for (const kind of ["extension", "userscript"]) {
     assert.ok(!page.content().innerHTML.includes("Older title"));
   });
 }
+
+for (const lang of ["en", "zh_TW", "nan-Hanlo"]) test(`extension: setup ${lang} manual panel priority, real escaping and unchanged source action`, async () => {
+  for (const overrides of [{}, maliciousSetup]) {
+    const p = setup("extension", { full: true }); const i18n = await loadPreviewLocale(p, lang, overrides);
+    const run = p.api.runLink("https://article.example/a"); await p.flush(); p.finishPreview(0, setupOnly()); await run;
+    const content = p.content(), html = content.innerHTML;
+    assert.ok(content.textContent.includes(i18n.t("tipSetupHeading"))); assert.ok(content.textContent.includes(i18n.t("tipSetupBody")));
+    assert.ok(!html.includes("tipSetupHeading")); assert.ok(!html.includes("tipSetupBody"));
+    assert.equal(content.querySelectorAll("button").length, 1); assert.equal(content.querySelectorAll("a").length, 1);
+    for (const tag of ["img", "svg"]) assert.equal(content.querySelectorAll(tag).length, 0);
+    assert.equal(content.querySelectorAll(".source").length, 1);
+    const link = content.querySelector(".source-open"); assert.equal(link.href, "https://article.example/a");
+    assert.equal(link.target, "_blank"); assert.equal(link.rel, "noopener noreferrer"); assert.equal(p.navigations.length, 0);
+    if (overrides === maliciousSetup) { assert.ok(html.includes("&lt;img")); assert.ok(html.includes("&amp;")); }
+    p.close(); assert.equal(p.hosts.size, 0);
+  }
+});
+test("extension: worker no-fetch setup result reaches dismissible manual link panel", async () => {
+  const worker = createWorker({ initial: { provider: "openai", profiles: { openai: { key: "" } } } });
+  const page = setup("extension", { full: true }); const i18n = await loadPreviewLocale(page, "en");
+  page.context.chrome.runtime.sendMessage = ({ type, url }) => { assert.equal(type, "debait:preview"); return worker.manual(url); };
+  await page.api.runLink("https://article.example/a");
+  assert.ok(page.content().textContent.includes(i18n.t("tipSetupBody"))); assert.equal(worker.fetchCalls.length, 0);
+  assert.equal(worker.providerCalls.length, 0); assert.equal(worker.count(), 0); assert.equal(worker.inspect.CACHE.size, 0);
+  page.close(); assert.equal(page.hosts.size, 0);
+});
+test("extension: late setup cannot reopen dismissed manual panel or overwrite newer result", async () => {
+  const p = setup("extension", { full: true });
+  const dismissed = p.api.runLink("https://article.example/a"); await p.flush(); p.close(); p.finishPreview(0, setupOnly()); await dismissed;
+  assert.equal(p.hosts.size, 0);
+  const old = p.api.runLink("https://article.example/a"); await p.flush(); const fresh = p.api.runLink("https://article.example/b"); await p.flush();
+  p.finishPreview(2, { honest_title: "Fresh title" }); await fresh; p.finishPreview(1, setupOnly()); await old;
+  assert.ok(p.content().innerHTML.includes("Fresh title")); assert.ok(!p.content().innerHTML.includes("tipSetupHeading"));
+});

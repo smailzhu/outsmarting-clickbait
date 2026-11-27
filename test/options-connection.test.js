@@ -110,6 +110,7 @@ test("Options delayed initial read blocks switching/save/testing without replaci
   page.nodes.provider.value = "gemini";
   await page.nodes.provider.dispatch("change");
   const expected = structuredClone(page.store);
+  expected.hoverActivation = "alt"; expected.requireAltForHover = true;
   expected.keys.gemini = initial.key; // Save maintains the active legacy key map, too.
   await page.nodes.save.dispatch("click");
   assert.equal(page.writes.length, 2);
@@ -134,7 +135,7 @@ for (const stage of ["beforeRead", "beforeWrite", "beforeI18n", "beforeUsage"]) 
   test(`Options initialization failure at ${stage} keeps handlers and controls locked`, async () => {
     const page = createPage({ [stage]: () => { throw new Error("private storage failure sentinel"); } });
     await page.flush();
-    assert.equal(page.nodes.status.textContent, "optLoadFailed");
+    assert.equal(page.nodes.status.textContent, stage === "beforeRead" ? "optHoverInitFailed" : "optLoadFailed");
     await assertEarlyActionsIgnored(page);
     assert.equal(page.store.key, "saved-key");
     assert.equal(page.messages.length, 0);

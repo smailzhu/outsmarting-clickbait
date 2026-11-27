@@ -116,3 +116,15 @@ for (const [lang, path] of Object.entries(files)) test(`field marker messages in
   }
   assert.equal(JSON.parse(readFileSync(new URL(path, import.meta.url), "utf8")).optOtherProvidersModified.message, generated[lang].optOtherProvidersModified.message);
 });
+
+for (const [lang, path] of Object.entries(files)) test(`setup guidance ${lang} exists, is translated and matches generated runtime`, async () => {
+  const messages = JSON.parse(readFileSync(new URL(path, import.meta.url), "utf8"));
+  const context = vm.createContext({ chrome: { i18n: { getUILanguage: () => "en" }, storage: { sync: { get: async () => ({ uiLang: lang }) } } } });
+  for (const source of ["messages.gen.js", "i18n-runtime.js"]) vm.runInContext(readFileSync(new URL(`../extension/${source}`, import.meta.url), "utf8"), context);
+  await context.DebaitI18n.init();
+  for (const key of ["tipSetupHeading", "tipSetupBody"]) {
+    assert.ok(messages[key].message.trim()); assert.equal(context.DebaitI18n.t(key), messages[key].message);
+    assert.notEqual(context.DebaitI18n.t(key), key); assert.doesNotMatch(messages[key].message, /https?:|valid key|sk-|\$|onclick|onerror/);
+    if (lang !== "en") assert.notEqual(messages[key].message, JSON.parse(readFileSync(new URL(files.en, import.meta.url), "utf8"))[key].message);
+  }
+});

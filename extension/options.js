@@ -2,7 +2,7 @@
 // Active mirrors and the legacy key map remain compatible with older consumers.
 const DEFAULTS = {
   provider: "openai", base: "", model: "", key: "", keys: {}, profiles: {}, language: "",
-  previewDwellMs: 500, previewMinIntervalMs: 1500, dailyCap: 200, customInstructions: "", uiLang: "",
+  hoverActivation: "shift", previewDwellMs: 500, previewMinIntervalMs: 1500, dailyCap: 200, customInstructions: "", uiLang: "",
 };
 const intOr = (v, d) => { if (v === "" || v == null) return d; const n = Math.round(Number(v)); return Number.isFinite(n) && n >= 0 ? n : d; };
 const $ = (id) => document.getElementById(id);
@@ -29,6 +29,21 @@ let settingsReady = false;
 let saving = false;
 let testingConnection = false;
 let loadFailed = false;
+let hoverInitFailed = false;
+let hoverWriterToken = null;
+const H = globalThis.DebaitHoverActivation;
+const P = globalThis.DebaitHoverProvenance;
+let hoverState = H.createState();
+const activationValue = () => H.MODES.includes($("hoverActivation").value) ? $("hoverActivation").value : "shift";
+function lockForReload() {
+  hoverInitFailed = true;
+  setSettingsReady(false);
+  renderSaveStatus();
+}
+chrome.storage.onChanged.addListener((changes, area) => {
+  hoverState = H.applyChanges(hoverState, area, changes);
+  if (hoverWriterToken && !P.isApplicable(hoverWriterToken)) lockForReload();
+});
 let dirty = false;
 let saveFailed = false;
 let savedRefreshWarning = false;
@@ -41,7 +56,7 @@ let connectionResult = null;
 let testedTuple = null;
 let connectionGeneration = 0;
 const SETTINGS_CONTROLS = ["uiLang", "provider", "key", "base", "model", "language", "customInstructions",
-  "previewDwellMs", "previewMinIntervalMs", "dailyCap", "save", "discard", "testConnection"];
+  "hoverActivation", "previewDwellMs", "previewMinIntervalMs", "dailyCap", "save", "discard", "testConnection"];
 
 // The editable projection is shared by load, comparison and Save. Mirrors never
 // participate; sorted profile ids make insertion order irrelevant to comparison.
@@ -51,6 +66,7 @@ function buildDraft() {
   return {
     provider: $("provider").value, uiLang: $("uiLang").value,
     language: $("language").value.trim(), customInstructions: $("customInstructions").value.trim(),
+    hoverActivation: activationValue(),
     previewDwellMs: intOr($("previewDwellMs").value, 500),
     previewMinIntervalMs: intOr($("previewMinIntervalMs").value, 1500),
     dailyCap: intOr($("dailyCap").value, 200), profiles,
@@ -63,12 +79,13 @@ function applySnapshotToForm(snapshot, owner) {
   const profile = normalizeProfile(snapshot.profiles[owner]);
   for (const id of ["key", "base", "model"]) $(id).value = profile[id];
   for (const id of ["uiLang", "language", "customInstructions"]) $(id).value = snapshot[id];
+  $("hoverActivation").value = snapshot.hoverActivation;
   for (const id of ["previewDwellMs", "previewMinIntervalMs", "dailyCap"]) $(id).value = String(snapshot[id]);
 }
 function canonical(snapshot) {
   return JSON.stringify({
     provider: snapshot.provider, uiLang: snapshot.uiLang, language: snapshot.language, customInstructions: snapshot.customInstructions,
-    previewDwellMs: snapshot.previewDwellMs, previewMinIntervalMs: snapshot.previewMinIntervalMs, dailyCap: snapshot.dailyCap,
+    hoverActivation: snapshot.hoverActivation, previewDwellMs: snapshot.previewDwellMs, previewMinIntervalMs: snapshot.previewMinIntervalMs, dailyCap: snapshot.dailyCap,
     profiles: Object.fromEntries(Object.keys(snapshot.profiles).sort().map((id) => [id, normalizeProfile(snapshot.profiles[id])])),
   });
 }
@@ -85,10 +102,10 @@ function setText(el, text) {
   if (el.textContent !== text) el.textContent = text;
 }
 function renderSaveStatus() {
-  const key = loadFailed ? "optLoadFailed" : saving ? "optSaving" : saveFailed ? "optSaveFailed" : dirty ? "optUnsaved"
+  const key = hoverInitFailed ? "optHoverInitFailed" : loadFailed ? "optLoadFailed" : saving ? "optSaving" : saveFailed ? "optSaveFailed" : dirty ? "optUnsaved"
     : savedRefreshWarning ? "optSavedRefreshWarning" : discardedNotice ? "optDiscarded" : savedFlash ? "optSaved" : null;
   setText($("status"), key ? t(key) : "");
-  $("status").dataset.state = loadFailed || saveFailed || (!saving && !dirty && savedRefreshWarning) ? "error"
+  $("status").dataset.state = hoverInitFailed || loadFailed || saveFailed || (!saving && !dirty && savedRefreshWarning) ? "error"
     : key === "optSaved" ? "success" : key === "optUnsaved" ? "warning" : "neutral";
 }
 function warnBeforeUnload(event) {
@@ -96,7 +113,7 @@ function warnBeforeUnload(event) {
   event.returnValue = "";
 }
 const GLOBAL_MARKER_FIELDS = ["uiLang", "provider", "language", "customInstructions",
-  "previewDwellMs", "previewMinIntervalMs", "dailyCap"];
+  "hoverActivation", "previewDwellMs", "previewMinIntervalMs", "dailyCap"];
 const PROFILE_MARKER_FIELDS = ["key", "base", "model"];
 const scalarEqual = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 function describeModified(control, id, visible) {
@@ -134,10 +151,12 @@ function renderFieldMarkers() {
   describeModified($("provider"), "otherProvidersModified", otherModified);
 }
 function recomputeDirty() {
-  if (!settingsReady) { renderFieldMarkers(); return; }
+  if (!baseline) { renderFieldMarkers(); return; }
+  // A removed provenance epoch locks actions, not the immutable Save baseline
+  // or its unload guard (an already-invoked Save can still complete).
   dirty = canonical(buildDraft()) !== canonical(baseline);
   renderFieldMarkers();
-  const desired = settingsReady && dirty;
+  const desired = dirty;
   if (desired !== unloadAttached) {
     window[desired ? "addEventListener" : "removeEventListener"]("beforeunload", warnBeforeUnload);
     unloadAttached = desired;
@@ -284,10 +303,21 @@ $("testConnection").addEventListener("click", async () => {
 });
 
 async function load() {
-  const stored = { ...DEFAULTS, ...(await chrome.storage.sync.get(DEFAULTS)) };
+  try { hoverWriterToken = await P.ensureInitialized(); }
+  catch { lockForReload(); await globalThis.DebaitI18n.init(); applyI18n(); return; }
+  async function read(area) {
+    const token = H.beginRead(hoverState, area);
+    const raw = await chrome.storage[area].get(area === "sync" ? H.SYNC_FIELDS : [H.PROVENANCE_KEY]);
+    hoverState = H.mergeRead(hoverState, area, token, raw);
+  }
+  try { await Promise.all([read("sync"), read("local")]); }
+  catch { lockForReload(); await globalThis.DebaitI18n.init(); applyI18n(); return; }
+  if (!P.isApplicable(hoverWriterToken) || !H.policy(hoverState).ready) { lockForReload(); return; }
+  const stored = { ...DEFAULTS, ...hoverState.sync.raw };
   const state = globalThis.DebaitProfiles.migrate(stored, ["openai", "anthropic", "gemini", "groq", "openrouter", "deepseek", "xai", "mistral", "together", "nvidia", "ollama", "custom"]);
   draftProvider = state.provider;
   draftProfiles = clone(state.profiles);
+  if (!P.isApplicable(hoverWriterToken)) { lockForReload(); return; }
   if (JSON.stringify(stored) !== JSON.stringify(state)) await chrome.storage.sync.set({
     profiles: state.profiles, key: state.key, base: state.base, model: state.model,
   });
@@ -299,6 +329,10 @@ async function load() {
   for (const id of ["key", "base", "model", "language", "customInstructions"]) $(id).value = state[id] || "";
   for (const id of ["previewDwellMs", "previewMinIntervalMs", "dailyCap"]) $(id).value = state[id];
   await renderUsage(state.dailyCap);
+  if (!P.isApplicable(hoverWriterToken) || !H.policy(hoverState).ready) { lockForReload(); return; }
+  const policy = H.policy(hoverState);
+  $("hoverActivation").value = policy.mode;
+  $("previewDwellMs").value = String(policy.dwellMs);
   baseline = frozenCopy(buildDraft());
   baselineOwner = draftProvider;
   const active = baseline.profiles[baseline.provider];
@@ -341,7 +375,7 @@ $("save").addEventListener("click", async () => {
     provider, key: active.key, keys: { ...committed.keys, [provider]: active.key }, profiles,
     base: active.base, model: active.model, language: snapshot.language,
     customInstructions: snapshot.customInstructions, uiLang: snapshot.uiLang,
-    previewDwellMs: snapshot.previewDwellMs, previewMinIntervalMs: snapshot.previewMinIntervalMs, dailyCap: snapshot.dailyCap,
+    hoverActivation: snapshot.hoverActivation, requireAltForHover: snapshot.hoverActivation !== "none", previewDwellMs: snapshot.previewDwellMs, previewMinIntervalMs: snapshot.previewMinIntervalMs, dailyCap: snapshot.dailyCap,
   });
   saving = true;
   invalidateSavedFlash();
@@ -352,6 +386,7 @@ $("save").addEventListener("click", async () => {
   let refreshSucceeded = false;
   try {
     try {
+      if (!P.isApplicable(hoverWriterToken)) { lockForReload(); return; }
       await chrome.storage.sync.set(payload);
     } catch {
       saveFailed = true;

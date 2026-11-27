@@ -71,7 +71,7 @@ for (const stage of ["beforeRead", "beforeWrite", "beforeI18n", "beforeApply", "
     }
     assert.equal(page.nodes.save.disabled, reject);
     if (reject) {
-      assert.equal(page.nodes.status.textContent, "optLoadFailed");
+      assert.equal(page.nodes.status.textContent, stage === "beforeRead" ? "optHoverInitFailed" : "optLoadFailed");
       // Catch must clear stale owned state without trying to build an unready draft.
       page.nodes.key.dataset.modified = "true"; page.nodes.keyModified.hidden = false;
       page.nodes.key.setAttribute("aria-describedby", "hint keyModified keyModified");
@@ -194,7 +194,7 @@ for (const fail of [false, true]) test(`options.js pending Save keeps markers; w
   }
   markers(page); membership(page); assert.equal(page.document.activeElement, page.nodes.save);
   assert.equal(page.store.profiles.gemini.key, ""); assert.equal(page.store.keys.gemini, "legacy-dormant");
-  assert.equal(page.calls.syncSet, fail ? 2 : 1); assert.equal(page.calls.i18nInit, 2); assert.equal(page.calls.localGet, 2);
+  assert.equal(page.calls.syncSet, fail ? 2 : 1); assert.equal(page.calls.i18nInit, 2); assert.equal(page.calls.localGet, 5);
   assert.equal(page.messages.length, 0); safeFeedback(page);
 });
 
@@ -334,8 +334,9 @@ function assertStructure(page) {
     assert.equal(marker.hidden, true);
     for (let ancestor = label; ancestor; ancestor = ancestor.parentElement) assert.equal(ancestor.hasAttribute?.("data-i18n") || false, false);
     const children = label.children.filter((node) => node.tagName);
-    assert.equal(children[1], marker, `${id} marker immediately follows primary translation`);
-    assert.ok(children[0].dataset.i18n);
+    const translationIndex = 0;
+    assert.equal(children[translationIndex + 1], marker, `${id} marker immediately follows primary translation`);
+    assert.ok(children[translationIndex].dataset.i18n);
   }
   const provider = page.nodes.provider, note = page.nodes.otherProvidersModified;
   const siblings = provider.parentElement.children.filter((node) => node.tagName);
@@ -387,7 +388,7 @@ test("options.html parsed CSS is contrast-safe amber border only, preserves inli
   assert.deepEqual(rules.filter((rule) => /:focus/.test(rule.selector)), [
     { selector: '#keyHelpLink:focus-visible', declarations: 'outline: 2px solid #0969da; outline-offset: 2px;' },
   ], "only the approved help-anchor ring; control/marker native focus remains unchanged");
-  assert.doesNotMatch(html, /requireAltForHover|outline\s*:\s*(?:none|0)/);
+  assert.doesNotMatch(html, /outline\s*:\s*(?:none|0)/);
 });
 
 test("options.js clean pending Save and clean write failure keep all markers off independently of status", async () => {

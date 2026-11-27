@@ -9,6 +9,8 @@ import { buildPrompt, parseResult } from "./prompt.esm.js";
 import { extractArticle } from "./extract.js";
 import { isOptionsSender, testConnection } from "./connection-test.js";
 import "./profiles.js";
+import "./hover-activation.js";
+import "./hover-provenance.js";
 import "./messages.gen.js";
 import "./i18n-runtime.js";
 
@@ -20,14 +22,20 @@ const DEFAULTS = {
   customInstructions: "",
 };
 
+// Caught startup attempt establishes provenance even without opening Options.
+const hoverInitialization = globalThis.DebaitHoverProvenance.ensureInitialized().catch(() => null);
+
 let configurationGeneration = 0;
 let settingsMigration;
 function migrateSettings() {
   if (!settingsMigration) settingsMigration = (async () => {
+    const token = await hoverInitialization;
+    if (!globalThis.DebaitHoverProvenance.isApplicable(token)) return;
     const stored = await chrome.storage.sync.get(DEFAULTS);
     const s = globalThis.DebaitProfiles.migrate({ ...DEFAULTS, ...stored }, Object.keys(PROVIDERS));
     if (JSON.stringify(stored.profiles) !== JSON.stringify(s.profiles) ||
         ["key", "base", "model"].some((field) => stored[field] !== s[field])) {
+      if (!globalThis.DebaitHoverProvenance.isApplicable(token)) return;
       await chrome.storage.sync.set({ profiles: s.profiles, key: s.key, base: s.base, model: s.model });
     }
   })();
@@ -79,9 +87,9 @@ async function complete(prompt) {
 }
 
 // ---- preview: fetch a target URL, extract, debait, cache ------------------
-const CACHE = new Map(); // url -> { at, result }
+const CACHE = new Map(); // generation + URL -> { at, result }
 const CACHE_TTL = 30 * 60 * 1000; // 30 min
-const inflight = new Map(); // url -> Promise
+const inflight = new Map(); // generation + URL -> owner-aware job
 
 // Rate limiting so bursty hovering can't exceed provider quota (esp. free
 // tiers): one LLM preview at a time, a min spacing between them, a per-day cap,
@@ -104,85 +112,221 @@ async function getUsage() {
   if (debaitUsage.day !== todayKey()) return { day: todayKey(), count: 0 };
   return debaitUsage;
 }
-async function fetchAndExtract(url) {
+async function fetchAndExtract(url, { signal, checkpoint }) {
   const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), 15000);
+  const abort = () => ctrl.abort();
+  signal.addEventListener("abort", abort);
+  if (signal.aborted) abort();
+  const timer = setTimeout(abort, 15000);
   try {
     const res = await fetch(url, { redirect: "follow", signal: ctrl.signal, credentials: "omit" });
+    let stopped = checkpoint();
+    if (stopped) return stopped;
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const ct = res.headers.get("content-type") || "";
     if (!/text\/html|application\/xhtml/i.test(ct) && ct) throw new Error(`not HTML (${ct.split(";")[0]})`);
-    return extractArticle(await res.text(), url);
+    const body = await res.text();
+    stopped = checkpoint();
+    return stopped || extractArticle(body, url);
+  } catch (e) {
+    const stopped = checkpoint();
+    if (stopped) return stopped;
+    throw e;
   } finally {
-    clearTimeout(t);
+    // Also close unread bodies on stale checkpoints or HTTP/type errors.
+    // Aborting after a fully read response is harmless.
+    ctrl.abort();
+    clearTimeout(timer);
+    signal.removeEventListener("abort", abort);
   }
 }
 
-async function preview(url) {
-  await globalThis.DebaitI18n.init();
-  await migrateSettings();
-  const generation = configurationGeneration;
-  const stale = () => generation !== configurationGeneration;
-  const discarded = () => ({ stale: true, url });
-  const s = await settings();
-  if (stale()) return discarded();
-  // Non-secret, memory-only generation isolates key/profile changes too.
-  const cacheKey = `${generation}\n${url}`;
-  const hit = CACHE.get(cacheKey);
+function checkpoint(job) {
+  if (job.canceled || (!job.dispatched && job.subscribers.size === 0)) return { canceled: true };
+  if (job.generation !== configurationGeneration) return { stale: true, url: job.url };
+  return null;
+}
+function releaseBusy(job) {
+  if (job.ownsBusy) { job.ownsBusy = false; previewBusy = false; }
+}
+function withdraw(owner) {
+  owner.active = false;
+  const job = owner.job;
+  owner.job = null;
+  if (!job) return;
+  job.subscribers.delete(owner.subscriber);
+  if (job.subscribers.size || job.dispatched) return;
+  job.canceled = true;
+  job.abort.abort();
+  if (inflight.get(job.key) === job) inflight.delete(job.key);
+  // An unabortable usage read cannot write after its checkpoint. A pending
+  // durable reservation must retain serialization until the write settles.
+  if (!job.reservationPending) releaseBusy(job);
+}
+
+async function preparePreview(job) {
+  const { url } = job;
+  const check = () => checkpoint(job);
+  let stopped = check();
+  if (stopped) return stopped;
+  const stored = await chrome.storage.sync.get(DEFAULTS);
+  stopped = check();
+  if (stopped) return stopped;
+  const s = globalThis.DebaitProfiles.migrate({ ...DEFAULTS, ...stored }, Object.keys(PROVIDERS));
+  const hit = CACHE.get(job.key);
   if (hit && Date.now() - hit.at < CACHE_TTL) return hit.result;
-  if (inflight.has(cacheKey)) return inflight.get(cacheKey);
-  if (Date.now() < cooldownUntil) {
-    return { rate_limited: true, retryIn: Math.ceil((cooldownUntil - Date.now()) / 1000), url };
+  let setupRequired = false;
+  try { configuration(s); } catch { setupRequired = true; }
+  stopped = check();
+  if (stopped) return stopped;
+  if (setupRequired) return { setup_required: true };
+  if (Date.now() < cooldownUntil) return { rate_limited: true, retryIn: Math.ceil((cooldownUntil - Date.now()) / 1000), url };
+  stopped = check();
+  if (stopped) return stopped;
+  const article = await fetchAndExtract(url, { signal: job.abort.signal, checkpoint: check });
+  stopped = check();
+  if (stopped) return stopped;
+  if (article.canceled || article.stale) return article;
+  if (!article.text || article.text.length < 200) {
+    return { thin_fetch: true, originalTitle: article.originalTitle, description: article.description, url };
   }
-  const p = (async () => {
-    const article = await fetchAndExtract(url);
-    if (stale()) return discarded();
-    if (!article.text || article.text.length < 200) {
-      return { thin_fetch: true, originalTitle: article.originalTitle, description: article.description, url };
+  if (previewBusy || Date.now() - lastPreviewAt < (s.previewMinIntervalMs || 0)) {
+    return { throttled: true, originalTitle: article.originalTitle, url };
+  }
+  previewBusy = true;
+  job.ownsBusy = true;
+  try {
+    const cfg = configuration(s);
+    const usage = await getUsage();
+    stopped = check();
+    if (stopped) return stopped;
+    if (Date.now() < cooldownUntil) return { rate_limited: true, retryIn: Math.ceil((cooldownUntil - Date.now()) / 1000), url };
+    if (s.dailyCap > 0 && usage.count >= s.dailyCap) {
+      return { capped: true, used: usage.count, cap: s.dailyCap, originalTitle: article.originalTitle, url };
     }
-    if (previewBusy || Date.now() - lastPreviewAt < (s.previewMinIntervalMs || 0)) {
-      return { throttled: true, originalTitle: article.originalTitle, url };
-    }
-    previewBusy = true;
-    try {
-      const cfg = configuration(s); // no count for invalid/missing settings
-      const usage = await getUsage(); // cap rechecked under single-call protection
-      if (stale()) return discarded();
-      if (Date.now() < cooldownUntil) return { rate_limited: true, retryIn: Math.ceil((cooldownUntil - Date.now()) / 1000), url };
-      if (s.dailyCap > 0 && usage.count >= s.dailyCap) {
-        return { capped: true, used: usage.count, cap: s.dailyCap, originalTitle: article.originalTitle, url };
-      }
-      const prompt = buildPrompt(article, { language: s.language, customInstructions: s.customInstructions });
-      lastPreviewAt = Date.now();
-      // Durable reservation before sending. Fail closed on storage failure;
-      // cancellation after reservation conservatively consumes one unit.
-      await chrome.storage.local.set({ debaitUsage: { day: usage.day, count: usage.count + 1 } });
-      if (stale()) return discarded();
-      const text = await callProvider(cfg, prompt, { browser: true });
-      if (stale()) return discarded();
-      const result = parseResult(text);
-      if (cfg.id === "custom" && (!result || typeof result !== "object" || Array.isArray(result) || result.parse_error)) throw customError("response");
-      return { ...result, originalTitle: article.originalTitle, url };
-    } catch (e) {
-      if (stale()) return discarded();
+    const prompt = buildPrompt(article, { language: s.language, customInstructions: s.customInstructions });
+    stopped = check();
+    if (stopped) return stopped;
+    lastPreviewAt = Date.now();
+    job.reservationPending = true;
+    // A committed reservation cannot be undone reliably, even if interest
+    // disappears during this await. No rollback or post-dispatch refund.
+    await chrome.storage.local.set({ debaitUsage: { day: usage.day, count: usage.count + 1 } });
+    job.reservationPending = false;
+    stopped = check();
+    if (stopped) return stopped;
+    job.dispatched = true;
+    let text;
+    try { text = await callProvider(cfg, prompt, { browser: true }); }
+    catch (e) {
+      stopped = check();
+      if (stopped) return stopped;
       if (e.status === 429 || /\b429\b|quota|rate|RESOURCE_EXHAUSTED/i.test(String(e?.message))) {
         cooldownUntil = Date.now() + (e.retryAfterMs || backoffMsFrom(e.message));
       }
-      if (s.provider === "custom" && e.message === globalThis.DebaitI18n.t("errCustomSettings")) throw e;
       throw providerFailure(e, s);
-    } finally { previewBusy = false; }
-  })();
-  inflight.set(cacheKey, p);
-  try {
-    const result = await p;
-    if (stale()) return discarded();
-    if (!result.stale && !result.throttled && !result.rate_limited && !result.capped) CACHE.set(cacheKey, { at: Date.now(), result });
-    return result;
+    }
+    stopped = check();
+    if (stopped) return stopped;
+    const result = parseResult(text);
+    if (cfg.id === "custom" && (!result || typeof result !== "object" || Array.isArray(result) || result.parse_error)) throw customError("response");
+    return { ...result, originalTitle: article.originalTitle, url };
   } catch (e) {
-    if (stale()) return discarded();
+    stopped = check();
+    if (stopped) return stopped;
+    if (s.provider === "custom" && e.message !== globalThis.DebaitI18n.t("errCustomSettings")) throw providerFailure(e, s);
     throw e;
-  } finally { inflight.delete(cacheKey); }
+  } finally {
+    job.reservationPending = false;
+    releaseBusy(job);
+  }
 }
+
+async function previewOwned(url, owner) {
+  try {
+    await globalThis.DebaitI18n.init();
+    if (!owner.active) return { canceled: true };
+    await migrateSettings();
+    if (!owner.active) return { canceled: true };
+    // Migration can publish configuration changes. Capture only afterward.
+    const generation = configurationGeneration;
+    const key = `${generation}\n${url}`;
+    let job = inflight.get(key);
+    if (!job) {
+      job = { key, url, generation, subscribers: new Set(), abort: new AbortController(),
+        dispatched: false, canceled: false, promise: null, ownsBusy: false, reservationPending: false };
+      inflight.set(key, job);
+      // Install and attach before preparation can reach its first await.
+      job.promise = Promise.resolve().then(() => preparePreview(job)).then((result) => {
+        const stopped = checkpoint(job);
+        if (stopped) return stopped;
+        if (!result.canceled && !result.stale && !result.throttled && !result.rate_limited && !result.capped && !result.setup_required && CACHE.get(key)?.result !== result) {
+          CACHE.set(key, { at: Date.now(), result });
+        }
+        return result;
+      }).catch((e) => {
+        const stopped = checkpoint(job);
+        if (stopped) return stopped;
+        throw e;
+      }).finally(() => {
+        if (inflight.get(key) === job) inflight.delete(key);
+        releaseBusy(job);
+      });
+    }
+    owner.job = job;
+    job.subscribers.add(owner.subscriber);
+    const result = await job.promise;
+    return owner.active ? result : { canceled: true };
+  } catch (e) {
+    if (!owner.active) return { canceled: true };
+    throw e;
+  } finally {
+    owner.job?.subscribers.delete(owner.subscriber);
+    owner.job = null;
+  }
+}
+function preview(url) {
+  // A manual token stays interested until this call settles; hover withdrawal
+  // can never cancel a manual request, in either arrival order.
+  return previewOwned(url, { subscriber: {}, active: true, job: null });
+}
+
+function httpURL(value) {
+  if (typeof value !== "string") return null;
+  try { const u = new URL(value); return ["http:", "https:"].includes(u.protocol) ? u.href : null; }
+  catch { return null; }
+}
+chrome.runtime.onConnect.addListener((port) => {
+  const owner = { subscriber: port, active: true, job: null };
+  let used = false, replied = false;
+  const detach = () => {
+    port.onMessage.removeListener(onMessage);
+    port.onDisconnect.removeListener(onDisconnect);
+  };
+  const onDisconnect = () => { withdraw(owner); detach(); };
+  const close = () => { onDisconnect(); try { port.disconnect(); } catch {} };
+  const reply = (message) => {
+    if (replied || !owner.active) return;
+    replied = true;
+    try { port.postMessage(message); } catch {}
+  };
+  const reject = () => { reply({ ok: false, error: globalThis.DebaitI18n.t("errGeneric") }); close(); };
+  const onMessage = (message) => {
+    if (used) return reject();
+    used = true;
+    if (!message || typeof message !== "object" || Array.isArray(message) ||
+        Object.keys(message).length !== 2 || Object.keys(message).some((key) => !["type", "url"].includes(key)) || message.type !== "start" || !httpURL(message.url)) return reject();
+    previewOwned(httpURL(message.url), owner).then((result) => {
+      if (!result.canceled) reply({ ok: true, result });
+    }).catch(() => reply({ ok: false, error: globalThis.DebaitI18n.t("errGeneric") })).finally(close);
+  };
+  // Attach before validation/initialization: pending cold owners are cancelable.
+  port.onDisconnect.addListener(onDisconnect);
+  port.onMessage.addListener(onMessage);
+  const sender = port.sender;
+  if (port.name !== "debait:hover" || sender?.id !== chrome.runtime.id ||
+      !Number.isInteger(sender?.tab?.id) || sender.frameId !== 0 || !httpURL(sender.url)) reject();
+});
 
 let connectionTestBusy = false;
 

@@ -113,7 +113,7 @@ export function setupPanel(kind, { full = false, lang = "en", spoofLauncher = fa
     snapshot: () => ({}), configuration: (s) => s, stale: () => false,
     DebaitI18n: { init: async () => {}, t: translate, verdict: (v) => v },
     DebaitPrompt: { buildPrompt: (a) => { messages.push({ article: a }); return "prompt"; }, parseResult: JSON.parse },
-    chrome: { storage: { sync: { get: async () => ({}) }, onChanged: { addListener() {} } },
+    chrome: { storage: { sync: { get: async () => ({}) }, local: { get: async () => ({}) }, onChanged: { addListener() {} } },
       runtime: { sendMessage: request, onMessage: { addListener() {} } } },
     GM_getValue: (key, fallback) => Object.hasOwn(store, key) ? structuredClone(store[key]) : fallback,
     GM_setValue: (key, value) => { writes.push(key); store[key] = structuredClone(value); },
@@ -131,6 +131,7 @@ export function setupPanel(kind, { full = false, lang = "en", spoofLauncher = fa
     const end = source.indexOf(kind === "extension" ? "chrome.runtime.onMessage.addListener" : "// ---- Alt+hover link preview", start);
     source = source.slice(start, end) + "\n" + hooks;
   }
+  if (kind === "extension") vm.runInContext(readFileSync(new URL("../../extension/hover-activation.js", import.meta.url), "utf8"), context);
   vm.runInContext(source, context);
   const hosts = { get: (id) => document.getElementById(id), get size() { return ["debait-panel-host", "debait-tooltip"].filter((id) => document.getElementById(id)).length; } };
   const content = () => hosts.get("debait-panel-host")?.__content;

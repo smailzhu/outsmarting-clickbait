@@ -6,6 +6,7 @@ import { resolveProvider, callProvider, PROVIDERS, validateConfiguration, provid
 import { buildPrompt, parseResult } from "../shared/prompt.js";
 import { extractArticle } from "../shared/extract.js";
 import "../shared/profiles.js";
+import { createHoverStorage } from "./helpers/hover-storage.js";
 import { panelDom } from "./helpers/panel-page.js";
 
 const output = JSON.stringify({ choices: [{ message: { content: '{"honest_title":"Fixture"}' } }] });
@@ -52,15 +53,15 @@ function userscript(values = initial(), { info = { scriptHandler: "Tampermonkey"
 }
 
 function extension(values = initial(), fetchImpl = async () => response()) {
-  const store = structuredClone(values), local = {}, fetchCalls = []; let changed;
+  const backend = createHoverStorage({ sync: values }), store = backend.sync, local = backend.local, fetchCalls = [];
+  const changed = (...args) => backend.emit(...args);
   const context = vm.createContext({ URL, AbortController, setTimeout, clearTimeout, resolveProvider, callProvider, PROVIDERS, validateConfiguration, providerCapabilities, customError, buildPrompt, parseResult, extractArticle,
-    DebaitProfiles: globalThis.DebaitProfiles, DebaitI18n: { init: async () => {}, t: (key) => key },
+    navigator: backend.navigator, DebaitProfiles: globalThis.DebaitProfiles, DebaitI18n: { init: async () => {}, t: (key) => key },
     fetch: async (...args) => { fetchCalls.push(args); return fetchImpl(...args); },
-    chrome: { storage: { sync: { get: async (defaults) => ({ ...defaults, ...structuredClone(store) }), set: async (s) => { const changes = Object.fromEntries(Object.entries(s).filter(([key, value]) => JSON.stringify(store[key]) !== JSON.stringify(value)).map(([key, value]) => [key, { newValue: value }])); Object.assign(store, structuredClone(s)); if (Object.keys(changes).length) await changed(changes, "sync"); } },
-      local: { get: async (defaults) => ({ ...defaults, ...structuredClone(local) }), set: async (s) => Object.assign(local, structuredClone(s)) },
-      onChanged: { addListener: (fn) => changed = fn } },
-      runtime: { onMessage: { addListener() {} }, onInstalled: { addListener() {} } }, contextMenus: { onClicked: { addListener() {} } } },
+    chrome: { storage: backend.storage,
+      runtime: { onMessage: { addListener() {} }, onConnect: { addListener() {} }, onInstalled: { addListener() {} } }, contextMenus: { onClicked: { addListener() {} } } },
   });
+  for (const file of ["hover-activation.js", "hover-provenance.js"]) vm.runInContext(readFileSync(new URL(`../extension/${file}`, import.meta.url), "utf8"), context);
   const source = readFileSync(new URL("../extension/background.js", import.meta.url), "utf8").replace(/^import .*;\r?\n/gm, "");
   vm.runInContext(source + '\nglobalThis.api = { preview, settings, CACHE, inflight };', context);
   return { api: context.api, context, store, local, fetchCalls, count: () => local.debaitUsage?.count || 0,
@@ -70,9 +71,14 @@ function extension(values = initial(), fetchImpl = async () => response()) {
 async function app(kind, values = initial(), provider = async () => response(), article = async () => ({ ok: true, headers: { get: () => "text/html" }, text: async () => articleHtml })) {
   if (kind === "userscript") return userscript(values, { fetchImpl: provider });
   const old = globalThis.fetch; globalThis.fetch = provider;
-  const p = extension(values, article); await p.api.settings(); // complete migration before testing preview
-  p.restore = () => globalThis.fetch = old;
-  return p;
+  try {
+    const p = extension(values, article); await p.api.settings(); // complete migration before testing preview
+    p.restore = () => globalThis.fetch = old;
+    return p;
+  } catch (error) {
+    globalThis.fetch = old;
+    throw error;
+  }
 }
 
 for (const kind of ["extension", "userscript"]) {
@@ -92,7 +98,13 @@ for (const kind of ["extension", "userscript"]) {
     try { await assert.rejects(p.api.preview("https://article.example/a"), (e) => !e.message.includes("SECRET")); assert.equal(p.count(), 1); assert.equal((await p.api.preview("https://article.example/b")).capped, true); } finally { p.restore?.(); }
     const invalid = initial(); invalid.profiles.custom.model = "";
     p = await app(kind, invalid, () => assert.fail("invalid should not send"));
-    try { await assert.rejects(p.api.preview("https://article.example/a")); assert.equal(p.count(), 0); } finally { p.restore?.(); }
+    try {
+      if (kind === "extension") {
+        assert.deepEqual(structuredClone(await p.api.preview("https://article.example/a")), { setup_required: true });
+        assert.equal(p.fetchCalls.length, 0); assert.equal(p.api.CACHE.size, 0);
+      } else await assert.rejects(p.api.preview("https://article.example/a"));
+      assert.equal(p.count(), 0);
+    } finally { p.restore?.(); }
     p = await app(kind, initial(), async () => ({ ok: false, status: 429, headers: { get: () => "5" }, text: () => assert.fail("error body not read") }));
     try { await assert.rejects(p.api.preview("https://article.example/a"), (e) => e.status === 429); assert.equal(p.count(), 1); assert.equal((await p.api.preview("https://article.example/b")).rate_limited, true); assert.equal(p.count(), 1); } finally { p.restore?.(); }
   });
@@ -311,4 +323,10 @@ test("actual userscript: thin target never spends a provider request or usage un
   const p=userscript(initial());
   p.context.DOMParser=class { parseFromString(){ return { querySelector:()=>null, body:{textContent:'thin',querySelectorAll:()=>[]} }; } };
   assert.equal((await p.api.preview('https://article.example/a')).thin_fetch,true); assert.equal(p.count(),0); assert.equal(p.fetchCalls.length,0);
+});
+
+test("custom application fixture restores original Fetch if extension initialization throws", async () => {
+  const original = globalThis.fetch;
+  await assert.rejects(app("extension", { invalid: () => {} }), { name: "DataCloneError" });
+  assert.equal(globalThis.fetch, original);
 });

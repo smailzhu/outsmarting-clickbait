@@ -7,6 +7,7 @@ import { dirname, join } from "node:path";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const copies = [
+  ["shared/hover-activation.js", "extension/hover-activation.js"],
   ["shared/profiles.js", "extension/profiles.js"],
   ["shared/providers.js", "extension/providers.js"],
   ["shared/prompt.js", "extension/prompt.esm.js"],

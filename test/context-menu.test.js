@@ -1,27 +1,31 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { createHoverStorage } from "./helpers/hover-storage.js";
 import vm from "node:vm";
 
 function worker() {
   const created = [], sent = [], updated = [], events = {};
   let optionsOpened = 0;
   const on = (name) => ({ addListener: (fn) => { events[name] = fn; } });
-  const context = vm.createContext({ URL,
+  const backend = createHoverStorage();
+  const context = vm.createContext({ URL, navigator: backend.navigator,
     DebaitI18n: { init: async () => {}, t: (key) => `translated:${key}` },
     chrome: {
-      runtime: { onMessage: on("message"), onInstalled: on("install"), openOptionsPage: () => { optionsOpened++; } },
+      runtime: { onMessage: on("message"), onConnect: { addListener() {} }, onInstalled: on("install"), openOptionsPage: () => { optionsOpened++; } },
       contextMenus: {
         create: (item) => created.push(item),
         update: async (id, item) => updated.push({ id, ...item }),
         onClicked: on("click"),
       },
-      storage: { onChanged: on("change") },
+      storage: backend.storage,
       tabs: { sendMessage: async (...args) => { sent.push(args); } },
     },
   });
+  for (const file of ["hover-activation.js", "hover-provenance.js"]) vm.runInContext(readFileSync(new URL(`../extension/${file}`, import.meta.url), "utf8"), context);
   const src = readFileSync(new URL("../extension/background.js", import.meta.url), "utf8").replace(/^import .*;\r?\n/gm, "");
   vm.runInContext(src, context);
+  events.change = (...args) => backend.emit(...args);
   return { created, sent, updated, events, context, optionsOpened: () => optionsOpened };
 }
 
@@ -58,6 +62,7 @@ test("page/link actions target one top-frame panel without opening the target", 
 test("both context menu titles update when interface language changes", async () => {
   const w = worker();
   await w.events.change({ uiLang: { newValue: "zh_TW" } }, "sync");
+  await new Promise((resolve) => setImmediate(resolve));
   assert.equal(w.updated.length, 2);
   assert.equal(w.updated[0].title, "translated:ctxDebaitPage");
   assert.equal(w.updated[1].title, "translated:ctxDebaitLink");

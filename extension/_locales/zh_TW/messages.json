@@ -65,15 +65,6 @@
   "optSave": {
     "message": "儲存"
   },
-  "optDiscard": {
-    "message": "捨棄變更"
-  },
-  "optDiscardHint": {
-    "message": "捨棄會還原此頁面上次儲存的設定（不是預設值）。"
-  },
-  "optDiscarded": {
-    "message": "已捨棄變更。"
-  },
   "optSaved": {
     "message": "已儲存 ✓"
   },
@@ -288,7 +279,7 @@
     "message": "分析目前正在閱讀的文章。"
   },
   "popupHintLinks": {
-    "message": "預覽連結：按住 Alt 並懸停，或按右鍵 → debait 這個連結。"
+    "message": "預覽連結：使用您在設定選擇的懸停方式，或按右鍵 → debait 此連結。"
   },
   "popupHintSetup": {
     "message": "第一次使用？請到下方設定選擇供應商，並視需要填入 API 金鑰。"
@@ -335,12 +326,6 @@
   "customRequiredHint": {
     "message": "（自訂必填，無預設值）"
   },
-  "optFieldModified": {
-    "message": "已修改"
-  },
-  "optOtherProvidersModified": {
-    "message": "其他供應商的設定也有尚未儲存的變更。"
-  },
   "optUnsaved": {
     "message": "尚未儲存的變更"
   },
@@ -355,6 +340,21 @@
   },
   "connectionSaveReminder": {
     "message": "請儲存設定，才能使用這組設定。"
+  },
+  "optDiscard": {
+    "message": "捨棄變更"
+  },
+  "optDiscardHint": {
+    "message": "捨棄會還原此頁面上次儲存的設定（不是預設值）。"
+  },
+  "optDiscarded": {
+    "message": "已捨棄變更。"
+  },
+  "optFieldModified": {
+    "message": "已修改"
+  },
+  "optOtherProvidersModified": {
+    "message": "其他供應商的設定也有尚未儲存的變更。"
   },
   "keyHelpLinkLabel": {
     "message": "去哪裡取得 API 金鑰？"
@@ -386,5 +386,29 @@
         "content": "$1"
       }
     }
+  },
+  "optHoverActivation": {
+    "message": "懸停預覽啟動方式"
+  },
+  "optHoverActivationShift": {
+    "message": "Shift + 懸停"
+  },
+  "optHoverActivationAlt": {
+    "message": "Alt + 懸停"
+  },
+  "optHoverActivationNone": {
+    "message": "不按修飾鍵懸停"
+  },
+  "optHoverActivationWarning": {
+    "message": "按住 Shift 並移動到連結上；只按 Shift 不會預覽。請懸停而非點擊：Shift+點擊可能開啟新視窗；放開 Alt 可能顯示瀏覽器選單。Alt 也可在非編輯欄位、無快捷鍵時重新按下來啟動靜止預覽。不按修飾鍵懸停會連線至連結網站，並將網頁文字傳送到您的 AI 端點，使用配額且可能產生費用，即使停留時間為 0 毫秒也一樣。取消無法撤回已連線的網站、已送出的 AI 工作或費用。此設定會隨同步設定檔共享，僅在儲存後套用。Shift 不能避開所有瀏覽器或系統快捷鍵。"
+  },
+  "optHoverInitFailed": {
+    "message": "無法安全初始化懸停設定。請等儲存操作結束後重新載入設定；編輯、儲存與測試連線暫時停用。手動／右鍵分析仍可使用。"
+  },
+  "tipSetupHeading": {
+    "message": "設定您的 AI 供應商"
+  },
+  "tipSetupBody": {
+    "message": "開啟 debait 的工具列選單 → 設定（API 金鑰）。選擇供應商並儲存設定；除非支援免金鑰存取，否則須填入 API 金鑰。"
   }
 }

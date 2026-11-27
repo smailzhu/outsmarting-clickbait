@@ -11,7 +11,7 @@ assert.ok(start >= 0 && end > start, "Expected production status renderer");
 function statusFor(flags = {}) {
   const status = { textContent: "", dataset: {} };
   const context = vm.createContext({
-    loadFailed: false, saving: false, saveFailed: false, dirty: false,
+    hoverInitFailed: false, loadFailed: false, saving: false, saveFailed: false, dirty: false,
     savedRefreshWarning: false, discardedNotice: false, savedFlash: false, ...flags,
     $: () => status, t: (key) => key,
     setText: (el, text) => { el.textContent = text; },

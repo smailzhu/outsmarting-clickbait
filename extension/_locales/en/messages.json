@@ -65,15 +65,6 @@
   "optSave": {
     "message": "Save"
   },
-  "optDiscard": {
-    "message": "Discard changes"
-  },
-  "optDiscardHint": {
-    "message": "Discard restores your last saved settings on this page (not defaults)."
-  },
-  "optDiscarded": {
-    "message": "Changes discarded."
-  },
   "optSaved": {
     "message": "Saved ✓"
   },
@@ -288,7 +279,7 @@
     "message": "Analyze the article you're viewing."
   },
   "popupHintLinks": {
-    "message": "Preview a link: hold Alt and hover, or right-click → debait this link."
+    "message": "Preview a link using your chosen hover mode (Settings), or right-click → debait this link."
   },
   "popupHintSetup": {
     "message": "First use? Set your provider and API key (if needed) in Settings below."
@@ -335,12 +326,6 @@
   "customRequiredHint": {
     "message": "(required for Custom — no default)"
   },
-  "optFieldModified": {
-    "message": "Modified"
-  },
-  "optOtherProvidersModified": {
-    "message": "Other provider settings also have unsaved changes."
-  },
   "optUnsaved": {
     "message": "Unsaved changes"
   },
@@ -355,6 +340,21 @@
   },
   "connectionSaveReminder": {
     "message": "Save settings to use this configuration."
+  },
+  "optDiscard": {
+    "message": "Discard changes"
+  },
+  "optDiscardHint": {
+    "message": "Discard restores your last saved settings on this page (not defaults)."
+  },
+  "optDiscarded": {
+    "message": "Changes discarded."
+  },
+  "optFieldModified": {
+    "message": "Modified"
+  },
+  "optOtherProvidersModified": {
+    "message": "Other provider settings also have unsaved changes."
   },
   "keyHelpLinkLabel": {
     "message": "Where do I get an API key?"
@@ -386,5 +386,29 @@
         "content": "$1"
       }
     }
+  },
+  "optHoverActivation": {
+    "message": "Hover preview activation"
+  },
+  "optHoverActivationShift": {
+    "message": "Shift + hover"
+  },
+  "optHoverActivationAlt": {
+    "message": "Alt + hover"
+  },
+  "optHoverActivationNone": {
+    "message": "Hover without a modifier"
+  },
+  "optHoverActivationWarning": {
+    "message": "Hold Shift and move over a link; pressing Shift alone will not preview. Hover, do not click: Shift+click can open a new window; Alt release can expose browser menus. Alt also supports a fresh stationary press outside editable focus/shortcuts. Hover without a modifier contacts linked sites and sends page text to your AI endpoint, using quota and potentially costing money, even at 0 ms dwell. Cancellation cannot undo a linked-site contact, sent AI work or its cost. This setting shares your sync profile and applies only after Save. Shift does not eliminate all browser/OS shortcuts."
+  },
+  "optHoverInitFailed": {
+    "message": "Hover settings could not initialize safely. Reload Settings after storage operations settle; editing, Save and connection testing stay disabled. Manual/right-click analysis remains available."
+  },
+  "tipSetupHeading": {
+    "message": "Set up your AI provider"
+  },
+  "tipSetupBody": {
+    "message": "Open debait's toolbar menu → Settings (API key). Choose a provider and save its settings. Add an API key unless it supports keyless access."
   }
 }

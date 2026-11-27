@@ -6,7 +6,7 @@ const kinds = ["extension", "userscript"];
 const event = { isTrusted: true, key: "Escape" };
 const neutral = { uncertain: false, overlay: false, fullscreen: false, neutralFocus: true, panelPath: false, launcherFocus: false };
 const eventVetoes = [{ isTrusted: false }, { isTrusted: undefined }, { key: "Enter" }, { repeat: true }, { defaultPrevented: true }, { isComposing: true }, { keyCode: 229 }, ...["altKey", "ctrlKey", "metaKey", "shiftKey"].map((k) => ({ [k]: true }))];
-const activeKeys = (p) => p.window.listeners.get("keydown")?.size || 0;
+const activeKeys = (p) => [...(p.window.listeners.get("keydown") || [])].filter((fn) => fn.name === "onPanelKey").length;
 const open = (p) => p.api.render("Reading", p.api.safeSourceUrl(p.context.location.href));
 const panelPath = (p) => ({ composedPath: () => [p.content().closeButton, p.content(), p.hosts.get("debait-panel-host").shadowRoot, p.hosts.get("debait-panel-host"), p.document.body, p.document, p.window] });
 
@@ -95,8 +95,8 @@ for (const kind of kinds) {
 
   test(`${kind} one bubble listener per owner; rerender/close/reopen/external removal/replacement detach`, () => {
     const p = setupPanel(kind, { full: true });
-    const keyAdds = () => p.window.added.filter((e) => e.type === "keydown");
-    const keyRemoves = () => p.window.removed.filter((e) => e.type === "keydown");
+    const keyAdds = () => p.window.added.filter((e) => e.type === "keydown" && e.fn.name === "onPanelKey");
+    const keyRemoves = () => p.window.removed.filter((e) => e.type === "keydown" && e.fn.name === "onPanelKey");
     assert.equal(activeKeys(p), 0); open(p); assert.equal(keyAdds().length, 1); assert.equal(keyAdds()[0].phase, false);
     for (let i = 0; i < 3; i++) open(p);
     assert.equal(keyAdds().length, 1); assert.equal(p.document.added.filter((e) => e.type === "keydown").length, 0);
@@ -182,4 +182,18 @@ for (const kind of kinds) test(`${kind} exact root/node budgets allow completed 
   widget.shadowRoot.activeElement = inner; inner.shadowRoot.activeElement = input; p.document.activeElement = widget;
   p.key({ composedPath: () => [input, inner.shadowRoot, inner, widget.shadowRoot, widget, p.document.body, p.document] });
   assert.ok(p.content());
+});
+
+test("extension: manual setup panel uses existing close and every safe Escape focus path", async () => {
+  for (const close of ["button", "neutral-Escape", "panel-Escape"]) {
+    const p = setupPanel("extension", { full: true }); const run = p.api.runLink("https://article.example/a"); await p.flush();
+    p.finishPreview(0, { setup_required: true }); await run;
+    assert.equal(activeKeys(p), 1); assert.equal(p.content().querySelectorAll(".x").length, 1);
+    if (close === "button") p.close(); else p.key(close === "panel-Escape" ? panelPath(p) : {});
+    assert.equal(p.content(), undefined); assert.equal(activeKeys(p), 0);
+  }
+});
+test("extension: Escape during pending link setup suppresses late marker", async () => {
+  const p = setupPanel("extension", { full: true }); const run = p.api.runLink("https://article.example/a"); await p.flush();
+  p.key(); p.finishPreview(0, { setup_required: true }); await run; assert.equal(p.content(), undefined); assert.equal(activeKeys(p), 0);
 });

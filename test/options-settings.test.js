@@ -85,10 +85,10 @@ for (const stage of ["beforeRead", "beforeWrite", "beforeI18n", "beforeUsage"]) 
     assert.equal(page.attempts.length, attempts); assert.equal(page.messages.length, 0); assert.equal(unloadCount(page), 0);
     if (reject) gate.reject(new Error(secrets.slice(3).join(" "))); else gate.resolve();
     await page.flush();
-    locked(page, reject); feedback(page, reject ? "optLoadFailed" : ""); assert.equal(unloadCount(page), 0);
+    locked(page, reject); feedback(page, reject ? (stage === "beforeRead" ? "optHoverInitFailed" : "optLoadFailed") : ""); assert.equal(unloadCount(page), 0);
     const settledBefore = discardCheckpoint(page), settledGeneration = connectionGenerationOf(page);
     await page.nodes.discard.dispatch("click"); unchangedDiscardState(page, settledBefore);
-    assert.equal(connectionGenerationOf(page), settledGeneration); feedback(page, reject ? "optLoadFailed" : "");
+    assert.equal(connectionGenerationOf(page), settledGeneration); feedback(page, reject ? (stage === "beforeRead" ? "optHoverInitFailed" : "optLoadFailed") : "");
     assert.equal(page.writes.length, reject && ["beforeRead", "beforeWrite"].includes(stage) ? 0 : 1);
   });
 }
@@ -97,7 +97,7 @@ for (const uiLang of ["fr", "auto"]) test(`options.js normalized form baseline s
   const page = await ready({ initial });
   assert.equal(page.nodes.uiLang.value, ""); assert.equal(page.nodes.dailyCap.value, "");
   assert.deepEqual(plain(readState(page, "baseline")), { provider: "openai", uiLang: "", language: "English", customInstructions: "instructions",
-    previewDwellMs: 15, previewMinIntervalMs: 1500, dailyCap: 200, profiles: initial.profiles });
+    hoverActivation: "alt", previewDwellMs: 15, previewMinIntervalMs: 1500, dailyCap: 200, profiles: initial.profiles });
   assert.equal(page.attempts.length, 0); assert.equal(unloadCount(page), 0);
   for (const [id, value] of [["dailyCap", ""], ["previewDwellMs", "15.49"], ["previewMinIntervalMs", "-3"]]) { await page.edit(id, value); feedback(page, ""); }
 });
@@ -177,9 +177,9 @@ test("options.js detached pending Save captures exact full payload, guards doubl
   assert.equal(page.attempts.length, 1); assert.equal(page.writes.length, 0);
   const expected = { provider: snapshot.provider, ...snapshot.profiles.openai, keys: { openai: "new-key", gemini: "legacy-dormant" }, profiles: snapshot.profiles,
     language: snapshot.language, customInstructions: snapshot.customInstructions, uiLang: snapshot.uiLang,
-    previewDwellMs: snapshot.previewDwellMs, previewMinIntervalMs: snapshot.previewMinIntervalMs, dailyCap: snapshot.dailyCap };
+    hoverActivation: snapshot.hoverActivation, requireAltForHover: snapshot.hoverActivation !== "none", previewDwellMs: snapshot.previewDwellMs, previewMinIntervalMs: snapshot.previewMinIntervalMs, dailyCap: snapshot.dailyCap };
   assert.deepEqual(page.attempts[0].data, expected);
-  assert.deepEqual(Object.keys(page.attempts[0].data).sort(), ["provider", "key", "keys", "profiles", "base", "model", "language", "customInstructions", "uiLang", "previewDwellMs", "previewMinIntervalMs", "dailyCap"].sort());
+  assert.deepEqual(Object.keys(page.attempts[0].data).sort(), ["provider", "key", "keys", "profiles", "base", "model", "language", "customInstructions", "uiLang", "hoverActivation", "requireAltForHover", "previewDwellMs", "previewMinIntervalMs", "dailyCap"].sort());
   const drafts = plain(readState(page, "draftProfiles")), generation = connectionGenerationOf(page);
   await page.nodes.save.dispatch("click"); await page.nodes.testConnection.dispatch("click"); await page.nodes.discard.dispatch("click");
   for (const id of editableControls) {
@@ -489,7 +489,8 @@ test("options.js Discard restores all hidden/active profiles and globals, includ
   for (const [id, value] of Object.entries(dirtyEdits).filter(([id]) => id !== "provider")) await page.edit(id, value);
   await discard(page);
   assert.deepEqual(plain(readState(page, "draftProfiles")), initial.profiles);
-  for (const id of editableControls.filter((id) => id !== "provider")) assert.equal(page.nodes[id].value, String(initial[id]), id);
+  for (const id of editableControls.filter((id) => !["provider", "hoverActivation"].includes(id))) assert.equal(page.nodes[id].value, String(initial[id]), id);
+  assert.equal(page.nodes.hoverActivation.value, "alt");
   assert.equal(page.nodes.provider.value, "openai");
   await page.switchTo("gemini"); for (const id of ["key", "base", "model"]) assert.equal(page.nodes[id].value, "");
   await page.switchTo("openai"); feedback(page, "");
