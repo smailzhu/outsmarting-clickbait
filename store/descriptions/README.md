@@ -19,9 +19,10 @@ The name, short summary, and other submission fields remain in
 [../STORE_LISTING.md](../STORE_LISTING.md). These description files deliberately
 avoid long provider-brand lists (the prior Yellow Argon keyword-spam finding).
 
-These descriptions match the **v0.3.0 GitHub release** feature set. Use this copy
-when submitting the v0.3.0 package, not to advertise custom endpoints for an older
-store-installed build. GitHub publication does not itself update either store.
+These descriptions match the **v0.4.0 GitHub release** feature set. Use this copy
+when submitting the v0.4.0 package, not to advertise its activation selector or
+other new behavior for an older store-installed build. GitHub publication does
+not itself update either store.
 
 All three descriptions include:
 - The API-key/local-model requirement and possible provider fees.
@@ -29,13 +30,17 @@ All three descriptions include:
   authentication, endpoint trust, and keyless HTTP content-transfer risks.
 - **Test connection** for unsaved settings: one small potentially billable request,
   without article content or custom instructions.
-- Current-page analysis, deliberate **Alt+hover** preview, and **right-click link previews**.
-- Closable loading/error/result panels that stay closed after late responses.
+- Current-page analysis, saved **Shift / Alt / no-modifier** hover activation,
+  and **right-click link previews**. Ordinary-hover content transmission and fees
+  are disclosed; Shift alone while stationary does not start a preview.
+- Closable loading/error/result panels, source context, and cautious Escape dismissal.
+- Save/Discard and unsaved-field markers; connection tests do not save settings.
 - Separate interface/output-language settings and custom instructions.
 - Shared **preview-only** cache and usage controls; manual current-page analysis
   and connection tests are outside those controls.
 - The 12,000-character extracted-text limit, preview fallback/errors, and AI accuracy caveats.
-- The transmitted URL/title/meta description/text/instructions and Chrome Sync storage.
+- The transmitted URL/title/meta description/text/instructions, browser sync
+  storage, and local non-secret installation classification.
 
 This is a **listing-text update only**: paste and save the revised descriptions
 in the dashboard and follow its review/submission flow. It does not modify the

@@ -1,8 +1,9 @@
 # Chrome Web Store listing — debait
 
-Copy/paste material for submitting the extension to the Chrome Web Store
-(and Edge Add-ons / Firefox AMO, which have similar fields). Replace the
-screenshot placeholders with real captures before publishing.
+Copy/paste material for submitting **v0.4.0** to the Chrome Web Store.
+Edge Add-ons has similar fields but its image requirements differ. Firefox AMO
+requires a separately compatible build; these documents do not establish one.
+Replace screenshot placeholders with real captures before publishing.
 
 ---
 
@@ -38,27 +39,31 @@ Avoid duplicating the full descriptions here so future edits cannot leave a stal
 second copy.
 
 ## Single purpose (required field)
-debait has a single purpose: to summarize a web article and rate how
-clickbait-y it is, either for the current page or for a link the user hovers.
+debait summarizes web articles and assesses clickbait framing, either for the
+current page or for a link preview requested through the user's configured hover
+gesture or right-click action.
 
 ## Permission justifications
 
 The extension requests only what the single purpose needs:
 
-- **storage** — to save your provider, API key, output language, and
-  rate-limit/daily-cap settings, and to track the daily preview count.
+- **storage** — stores the user's provider-specific key/base URL/model profiles,
+  interface/output languages, custom instructions, hover activation mode and
+  usage limits in browser sync storage. Local storage holds preview attempt/
+  reservation counts and a non-secret fresh/existing installation marker to
+  stabilize hover defaults. Saved choices may sync across the user's devices.
 - **contextMenus** — to add “debait this page” for current-page analysis and
   “debait this link” for user-requested HTTP/HTTPS target previews without opening
   the link. Both actions serve the same article summarization purpose.
-- **host permissions `https://*/*` and `http://*/*`** — two things need
-  all-sites access: (1) a content script runs on the page to detect Alt+hover and
-  draw the result overlay/tooltip, and (2) when you hover a link, the background
-  worker fetches *that link's target page* (which can be on any site) so it can be
-  summarized before you click. The same all-sites access also lets the extension
-  send the article text to whichever AI provider you configure (e.g.
-  api.openai.com) and reach a local Ollama at http://localhost. The extension only
-  acts on pages you explicitly debait or hover; it does not otherwise read or
-  transmit your browsing.
+- **host permissions `https://*/*` and `http://*/*`** — content scripts detect the
+  hover activation selected and saved by the user (Shift, Alt, or ordinary hover)
+  and display results. A qualifying hover or explicit right-click link preview
+  retrieves that link's HTTP/HTTPS target, which may be on any site. The same
+  access lets the extension contact the user's configured AI endpoint or local
+  model. Ordinary hover is an optional saved setting with a content-transfer and
+  quota warning. The extension does not scan or preload all links or transmit a
+  complete browsing history. Requested URLs and extracted content go to the
+  configured endpoint, as disclosed in the privacy policy.
 
 (No `activeTab`, `tabs`, or `scripting` permission is requested — the content
 script is statically declared and messaging uses the tab id only.)
@@ -68,14 +73,23 @@ script is statically declared and messaging uses the tab id only.)
 - Does the extension collect user data? **Only to provide the feature, sent to a
   third-party AI provider the user configures.** No data is sent to the developer.
 - Personally identifiable info: **No**
-- Health info: **No**
-- Financial info: **No**
+- Health / financial info: **Not independently collected as separate datasets.**
+  Articles chosen by the user may contain such information; assess the dashboard
+  definitions honestly rather than treating these as blanket absence claims.
 - Authentication info: **The user's own AI provider API key, stored in
-  `chrome.storage.sync` (may synchronize through Chrome Sync) and used to
+  `chrome.storage.sync` (may synchronize through the browser's sync service) and used to
   authenticate with their configured AI endpoint.**
-- Personal communications / web history / location / user activity: **No**
+- Web history: **Selected page URLs are transmitted with analysis requests.**
+  Disclose this under the dashboard's URL/browsing-data category as applicable;
+  do not claim that no URLs leave the device merely because the extension does
+  not record a complete browsing history.
+- Personal communications / location / user activity: **Not independently
+  collected or tracked.** User-selected website content can contain sensitive
+  information; do not interpret this as a guarantee that submitted content is
+  free of personal, health, financial or communication data.
 - Website content: **Yes — the URL, title, meta description, and text of pages
-  the user chooses to debait/preview, sent to the user-configured AI provider only.**
+  requested through manual actions or the saved hover gesture, together with
+  custom instructions, sent to the user-configured AI endpoint.**
 - Sold to third parties: **No**
 - Used for purposes unrelated to the single purpose: **No**
 - Used to determine creditworthiness / lending: **No**
@@ -95,8 +109,8 @@ https://github.com/smailzhu/outsmarting-clickbait/blob/master/PRIVACY.md
 - [x] Small promo tile 440×280 — `store/promo-tile-440x280.png`
 - [x] Marquee promo 1400×560 — `store/promo-marquee-1400x560.png`
 - [ ] At least one screenshot 1280×800 (or 640×400; PNG/JPEG, no alpha) — **capture from a real
-      browser**: toolbar popup, a result panel on an article, and an Alt+hover
-      tooltip. (`store/screenshot-mockup-1280x800.png` is a design mockup — replace
+      browser**: toolbar popup, the v0.4.0 activation selector, a result panel,
+      and a configured-hover tooltip. (`store/screenshot-mockup-1280x800.png` is a design mockup — replace
       it with a real capture before publishing.)
 
 ## Build the upload package

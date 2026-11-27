@@ -13,15 +13,15 @@ WHAT YOU GET
 
 TWO WAYS TO USE IT
 On an article: click the toolbar icon and choose “Analyze this page,” or right-click and choose “debait this page.”
-Before opening a link: hold Alt and hover over it. debait fetches the target page in the background and shows a preview in a tooltip. Alternatively, right-click an HTTP/HTTPS link and choose “debait this link” to show the preview in a closable panel without opening the target.
+Before opening a link: choose Shift + hover, Alt + hover, or Hover without a modifier in Settings, then Save. Shift previews require pointer movement; pressing Shift alone does not start one. Fresh installations default to Shift; existing choices are preserved under the migration rules. Hovering without a modifier can fetch linked pages and send content to your AI endpoint without another click, using quota or incurring charges. Alternatively, right-click an HTTP/HTTPS link and choose “debait this link” to show a preview in a closable panel without opening the target.
 
-Loading, error and result panels can be closed. Late responses will not reopen a dismissed panel.
+Loading, error and result panels can be closed. Late responses will not reopen a dismissed panel. Panels show the source domain; link previews offer “Open requested article” for an explicit click. Escape dismisses eligible panels while leaving page inputs and dialogs alone.
 
 LANGUAGE AND PREFERENCES
-Choose the summary’s output language and add custom instructions in Settings. Interface-language choices include English, Traditional Chinese, and a draft Taiwanese Hokkien mixed-script translation awaiting native-speaker review. Interface and summary languages are separate settings.
+Choose the summary’s output language and add custom instructions in Settings. Unsaved fields show “Modified”; Save persists your edits and Discard restores this page’s last saved settings, including other provider profiles. Neither Discard nor a successful connection test saves new settings automatically. Interface-language choices include English, Traditional Chinese, and a draft Taiwanese Hokkien mixed-script translation awaiting native-speaker review. Interface and summary languages are separate settings.
 
 USAGE CONTROLS
-Hover previews have an adjustable delay, minimum request interval, and daily cap. They also pause after provider quota errors. Right-click link previews share the same cache, request interval, daily cap and cooldown. These controls reduce requests but do not guarantee that you will stay within your provider’s quota. Manual current-page analysis and connection tests are not covered by these preview usage controls.
+Hover previews have an adjustable delay, minimum request interval, and daily cap. They also pause after provider quota errors. Right-click link previews share the same cache, request interval, daily cap and cooldown. These controls reduce requests but do not guarantee that you will stay within your provider’s quota. Cancellation cannot undo linked-site contact or AI requests already sent; a reserved attempt may count even if later canceled. Manual current-page analysis and connection tests are not covered by these preview usage controls.
 
 LIMITATIONS
 Analysis uses the first 12,000 characters of extracted page text, not necessarily the whole article. Preview fetches do not run the target page’s JavaScript; dynamically loaded or paywalled content may be unavailable. If too little text is extracted, the preview shows the target’s meta description or title instead of an AI assessment. Failed requests show an error. Results take time and depend on the provider.
@@ -31,7 +31,7 @@ Scores and summaries are AI-generated assessments—not fact-checks, medical adv
 PRIVACY
 The selected page’s URL, title, meta description, and extracted text, together with your custom instructions, are sent to your configured AI endpoint. Your key is used to authenticate with that endpoint. There is no developer-operated server processing your analyses.
 
-Keys and preferences use chrome.storage.sync and may synchronize through Chrome Sync when enabled. Preview counts are stored on your device. The developer does not receive your analysis requests.
+Keys and preferences use chrome.storage.sync and may synchronize through your browser’s sync service when enabled. Preview attempt counts and a non-secret fresh/existing installation marker are stored on your device. The marker keeps hover defaults stable; explicitly saved modes take precedence. The developer does not receive your analysis requests.
 
 Code, user guides, support, and privacy policy:
 https://github.com/smailzhu/outsmarting-clickbait
