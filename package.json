@@ -1,6 +1,6 @@
 {
   "name": "outsmarting-clickbait",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "An honest-title summarizer: strips the bait out of clickbait by producing a dispassionate title, summary, and a clickbait score for any article URL.",
   "type": "module",
   "bin": {
