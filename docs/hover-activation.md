@@ -29,7 +29,7 @@ has passed.
 - This is LOCAL first-successful snapshot history, not global installation history.
   Fresh ignores later evidence-only writes, including automatic profile migration.
   Published 0.3.0 Save had **no legacy hover preference** (that field came from
-  unpublished v0.4 work). If its evidence-only sync arrives after fresh classification,
+  the v0.4.0 release). If its evidence-only sync arrives after fresh classification,
   mode stays Shift: explicitly choose Alt and Save to sync an authoritative preference.
 - Another device/reinstall/local clear uses the then-visible snapshot: configuration
   visible -> existing; settled empty -> fresh. Sync clear keeps local fallback.

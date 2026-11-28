@@ -1,11 +1,9 @@
 # outsmarting-clickbait 🪝🚫
 
-> **New in v0.3.0 (GitHub/source release; store rollout is separate):** Custom / OpenAI-compatible
-> requires an explicit base URL and model; key optional. Keyless remote HTTP
-> sends article content and prompts **UNENCRYPTED**. Trust the endpoint operator.
-> See the [custom setup, security and userscript compatibility guide](docs/custom-provider.md).
-> Userscript custom is limited to Tampermonkey ≥4.18 on Chromium with the
-> DOM-isolated sandbox and CORS-compatible direct Fetch; no GM/page fallback.
+> **Current GitHub release: v0.4.0.** It includes saved Shift/Alt/ordinary-hover
+> activation and Settings safeguards. Store rollout is separate. For custom
+> endpoint security and restricted userscript support, see
+> [the custom-provider guide](docs/custom-provider.md).
 
 
 [![CI](https://github.com/smailzhu/outsmarting-clickbait/actions/workflows/ci.yml/badge.svg)](https://github.com/smailzhu/outsmarting-clickbait/actions/workflows/ci.yml)
@@ -39,7 +37,7 @@ The prompt + result parsing live once in [`shared/prompt.js`](shared/prompt.js);
 the browser builds reuse it. **Most named hosted providers require their own API
 key; local Ollama and custom endpoints can be keyless** — the `codex` CLI backend is CLI-only.
 
-`debait` fetches an article, reads the whole thing with an LLM, and prints:
+`debait` analyzes up to **12,000 characters of extracted article text** with an LLM and returns:
 
 - an **honest title** (no hype, no curiosity gap),
 - a short **summary** + **key points**,
@@ -88,113 +86,28 @@ opening it. Results appear in a closable panel; the action shares hover previews
 cache and usage limits. Right-clicking the page still offers **debait this page**
 for current-page analysis. See [right-click menu details](extension/README.md#right-click-menu).
 
-## Hover consent and cancellation (v0.4.0)
+## Hover previews (v0.4.0)
 
-This source feature is **extension-only**, not a store-rollout claim. Choose
-**Shift + hover**, **Alt + hover**, or **Hover without a modifier** in Settings,
-then **Save**. New local state without visible saved configuration starts Shift;
-existing raw configuration visible at first initialization keeps Alt, and saved
-legacy literal `false` keeps Hover without a modifier. Unsaved edits/failed Saves
-never change content policy; Discard restores the loaded or successfully saved
-selection.
-The userscript remains separately **Alt+hover**; manual/right-click is independent.
+In Settings, choose **Shift + hover**, **Alt + hover**, or **Hover without a
+modifier**, then **Save**. Fresh installations default to Shift; existing visible
+preferences are preserved under the [migration rules](docs/hover-activation.md).
+Hold Shift and move over a link—pressing Shift alone does not start a preview.
+The userscript still uses its separate Alt gesture.
 
-Missing or invalid local AI configuration shows plain Settings guidance before
-any target fetch, provider call or preview quota work; this transient outcome is
-not cached. With **Hover without a modifier**, each otherwise eligible,
-movement/dwell-qualified link hover may show the setup tooltip until configured.
-There is no scanning, preloading, automatic Settings opening or linked-site
-contact for this outcome. Keyless providers can pass local preflight and still
-fail generically on hover when unreachable; saving settings does not validate a
-key. The manual right-click link action shares the dismissible setup outcome.
-The owner confirmed the main Shift checks on Windows/Edge, and three-locale
-setup-tooltip layout passed in Chromium. Advanced lifecycle, failure-injection,
-and assistive-technology coverage remain incomplete; see
-[documented verification risks](docs/hover-activation.md).
+Ordinary-hover mode may fetch linked pages and send their content to your AI
+endpoint without another click. Keep a deliberate delay; provider charges may
+apply. Missing configuration shows setup guidance without fetching the article.
 
-Hold Shift and **move physically over a link**. Pressing Shift alone NEVER starts
-preview, even at dwell 0, while typing, or with a resting pointer. Alt alone can
-start on a recorded stationary link only on a trusted fresh release/repress,
-nonrepeat, with readable noneditable focus and no observed shortcut/composition.
-Shift/Alt movement uses only the selected key (mixed modifiers remain allowed).
-Observed typing/composition or focus entering editable/uncertain contexts cancels
-Shift interests and keyboard-origin Alt, without reviving movement credit.
-Deliberate subsequent new Shift movement can start again even in editable focus.
-No key interception or focus movement: hover, do not click. **Shift+click may open
-a new window**; Alt release can expose menus. Shift does not remove every OS shortcut.
+Moving away or losing foreground focus cancels preparation when no other owner
+needs it. Cancellation cannot undo website contact, an AI request already sent,
+or its cost; a reserved attempt may still count. Successful previews are cached
+for up to 30 minutes in worker memory. Errors are not successful cached answers.
+Manual link previews share usage controls; manual current-page analysis and
+connection tests do not. No mode scans every page link.
 
-Preferences resolve exact case-sensitive `hoverActivation: shift|alt|none` first;
-any malformed present canonical value safely requires Shift, not Hover without a
-modifier. Without
-canonical, legacy `requireAltForHover` literal false means none; every other present
-value means Alt. Explicit Save writes canonical plus the legacy mirror
-`requireAltForHover: mode !== "none"` together. Older builds interpret saved Shift
-as Alt. Legacy-only updates cannot override a present canonical preference.
-
-Fallback uses **local first-successful snapshot provenance**, not global install
-history. A non-secret, write-once local `hoverActivationProvenanceV1` marker is set
-under an extension-origin exclusive Web Lock before Options/background automatic
-four-field profile migration. Load can write this metadata and existing provider
-migration, but NEVER either activation preference. Raw own saved preferences or
-provider/profiles/keys/key/base/model/language/customInstructions/uiLang/dwell/
-interval/cap classify existing regardless of emptiness; defaults/unrelated usage
-are not evidence. Fresh stays Shift after automatic migration and later evidence-
-only sync. In particular published **0.3.0 Save had no legacy hover preference**:
-if its evidence-only configuration arrives AFTER this device classified fresh,
-it stays Shift; choose Alt and Save explicitly to sync an authoritative preference.
-Another device/reinstall/local clear classifies its then-visible snapshot anew.
-
-Sync-only clear keeps local fallback. Local-only clear leaves explicit sync
-preferences authoritative but missing fallback UNKNOWN; genuine Settings reload
-or worker startup can classify again. Full clear with settled empty storage is
-fresh. Marker removal cancels fallback hover and locks Options, without automatic
-retry/revival/repair. Reload after storage operations settle; external clear during
-an already-invoked migration/Save is not cross-area atomic or guaranteed safe.
-Malformed present markers are preserved and require Shift. Missing Web Locks,
-failed read/write/lock or invalidated epoch skips ONLY worker persistent migration;
-manual/right-click/current-page analysis still uses existing in-memory provider
-normalization. Options editing/Save/Discard/Test Connection stays disabled with
-reload guidance. Automatic fallback hover stays silently disabled without known
-provenance; explicit known preference plus known dwell can still work independently.
-No polling, per-request retries, secret logging or fallback preference writes.
-
-With **Hover without a modifier**, ordinary movement-qualified hover can contact
-a linked site and send its URL, title, description and extracted text to your AI endpoint,
-using quota and potentially costing money. Keep a comfortable dwell (500 ms is
-the default): low dwell, including **0 ms**, can start as soon as eligible movement
-rests on a link; 0 is not a cost/privacy bypass and still uses an async timer.
-Fetching precedes AI throttle checks; unlimited limits cannot prevent all contacts.
-This choice syncs to your sync profile and applies only after Save.
-
-Hover requires a **visible, focused page**, known saved mode/dwell and trusted
-input. First positional sample only establishes a screen-position baseline;
-child/layout events at equal screen coordinates never start/restart a dwell.
-Selected-key release cancels dwell, connected work and displayed success/error;
-unrelated release does not. None ignores incidental modifier/typing/focus rules.
-Lifecycle/settings changes consume movement credit and never auto-start/retry.
-Move again, or use guarded fresh Alt in legacy mode. Browser-reported screen
-movement is **not hardware-action attestation** or a prediction of future keys.
-
-Moving away, changing/removing the link, scroll, pointerdown/contextmenu, blur,
-hidden visibility and pagehide withdraw only that hover port's interest. The
-worker aborts target preparation if its last owner leaves before AI dispatch;
-another hover or manual owner of the same URL keeps shared work alive. It checks
-interest after awaited preparation and before provider invocation. This is
-**worker-observed cancellation**: a disconnect still in IPC transit can lose the
-dispatch race. It cannot undo a linked-site contact, a sent AI request or cost.
-Cancellation during a durable quota reservation can still consume one unit and
-the interval slot even with no AI call; no rollback/refund is promised. After
-dispatch, work continues: successful, nonstale results can be cached for 30 minutes
-even after all hover owners leave, so a later same-configuration cache hit needs
-no new target fetch, AI request or quota. Errors/stale/canceled-pre-dispatch jobs
-are not cached; successful thin-fetch metadata stays free and cacheable.
-
-No link scanning or preloading is added. One active hover observes subtree
-removals and href changes during dwell, preparation and displayed results,
-validating one captured anchor and relevant records. Document-wide mutation
-observation can still cost CPU on busy pages. Native Chromium port lifetime,
-service-worker suspension/reload, bfcache, layout-event behavior, accessibility
-and physical Windows/Edge Shift/Alt behavior require browser checks; Node fixtures do not attest them.
+See [hover behavior, migration and remaining browser risks](docs/hover-activation.md)
+for the detailed contract. The main Shift checks were confirmed on Windows/Edge;
+advanced lifecycle, accessibility and live-provider coverage remain incomplete.
 
 **Check your connection:** in extension **Settings**, click **Test connection**
 under the model field. It uses the current, unsaved provider/key/model/base URL
@@ -274,8 +187,9 @@ DEBAIT_LANG="繁體中文" debait <url>
 ```
 **Custom instructions.** Steer the model with your own text, appended to the
 prompt — e.g. “be harsher on sensational framing”, “focus on political spin”,
-“add a one-line TL;DR”. The required JSON output shape is always preserved
-(instructions are sandwiched + capped at 2,000 chars), so parsing never breaks.
+“add a one-line TL;DR”. Instructions are capped at 2,000 characters and surrounded
+by reminders to keep the requested JSON schema. Model compliance is not guaranteed:
+invalid output can still occur. This is prompt guidance, not a security sandbox.
 
 ```bash
 debait <url> --instructions "Be harsher. Add a one-line TL;DR."
@@ -315,19 +229,17 @@ Extraction is deliberately dependency-free and heuristic (strip
 `script/style/nav/aside/footer`, prefer `<article>`). For production you'd swap
 in Readability + a headless browser for JS-rendered pages.
 
-## UI language (i18n)
+## Languages
 
-Two independent things:
+- **Output language:** choose the language of titles/summaries with Settings or
+  `--lang`; `auto` matches the article. JSON keys and verdict enums stay English.
+- **Interface language:** extension Settings → **Interface language** offers
+  Auto, English, 繁體中文, and the 台語（漢羅）draft. It is independent of output
+  language; native manifest/store fields still follow browser/store locale.
+- The userscript's English/繁體中文 UI follows `navigator.language`; it does not
+  share the extension's selector or Taiwanese interface table.
 
-- **Output language** (the honest title + summary) — chosen by you, any
-  language, via the `language` setting / `--lang` (see Providers above).
-- **Interface language** (buttons, labels, tooltips) — the extension uses
-  Chrome's native i18n and currently ships **English** and **繁體中文**
-  (`extension/_locales/`); it follows your browser UI language. The userscript
-  overlay auto-selects en/zh_TW from `navigator.language`.
-
-Add a locale by copying `extension/_locales/en/messages.json` to
-`extension/_locales/<code>/messages.json` and translating the values.
+To add an extension locale, see [locales-extra/README.md](locales-extra/README.md).
 
 ## Privacy & keys
 
@@ -338,8 +250,8 @@ Full policy: [PRIVACY.md](PRIVACY.md). Chrome Web Store listing material: [store
   the userscript stores it via your userscript manager. It is sent only to the
   provider endpoint you configure — there is no debait server.
 - **What's sent to the provider:** the page's URL, title, meta description, and
-  extracted text (capped at ~12,000 characters) of the page you debait (or
-  link-preview), so the model can summarize it. Nothing else.
+  extracted text (capped at 12,000 characters), custom instructions and output
+  language are sent to your configured endpoint to provide the analysis.
 - **Extension host access:** the extension requests broad host permissions
   (`https://*/*`, `http://*/*`) so the background worker can fetch the *target* of
   a hovered link for preview. It fetches on eligible saved-mode hover (Shift
@@ -362,51 +274,24 @@ No GitHub account? Email the author at **cusp-preacher-blot [at] duck [dot] com*
 [issue](https://github.com/smailzhu/outsmarting-clickbait/issues). In the extension,
 see **Options** for a one-click contact link.
 
-## Setup help, source context and dismissal
+## Setup help and panels
 
-Settings offers static, opt-in official API-key help links for Anthropic, Gemini,
-Groq, OpenRouter, xAI, Together and NVIDIA. OpenAI, DeepSeek and Mistral currently
-have local dashboard/documentation guidance instead of unverified links. Custom
-endpoints get operator/key-optional guidance; local Ollama needs no key. Help
-follows the visible selection, including unsaved switches. Clicking a help link
-opens a new tab; merely viewing/switching/rerendering help does not navigate,
-collect keys, save settings or make a provider request. Sign-in/key acquisition
-workflows have not been authenticated or browser-validated, and official URLs
-and redirects can change.
+Settings provides click-only official key-help links where verified, and local
+instructions for other endpoints. Viewing help does not acquire a key or make an
+AI request. Official URLs and sign-in flows can change.
 
-Current-page extension/userscript panels show the captured requested hostname
-only, not a duplicate-page link. An extension's explicit link analysis also has
-**Open requested article**: a normal new-tab link to the captured requested URL,
-not a model URL or a verified final origin/publisher. Fetches and navigation may
-redirect. Labels never include credentials, paths or query/fragment values; the
-navigation URL retains legitimate query/fragment values already present (which
-may themselves contain tokens). No stored/form secrets are appended. If source
-validation rejects a URL, only this decorative row/link is hidden; existing
-preview eligibility, canonical request URLs and analysis remain unchanged.
+Panels show the requested source domain. Link-analysis panels offer **Open
+requested article**, which opens only when clicked and does not verify the final
+redirect destination. The ✕ button closes every panel state. Escape also closes
+eligible panels but yields to page inputs, dialogs and uncertain focus contexts;
+use ✕ if Escape does nothing. Closing suppresses late display, not requests or
+charges already incurred. See [extension instructions](extension/README.md).
 
-The ✕ button remains available in every panel state. Trusted, unmodified Escape
-can also dismiss when focus is on the panel or neutral document body/root (or
-no element); the userscript additionally recognizes only the launcher button it
-actually created, by identity. Other page buttons, links, editors and widgets
-are ineligible. Chromium right-click can leave focus on the requested page link,
-so Escape may do nothing until focus becomes eligible; use ✕ or Tab into the
-panel. No focus trap, autofocus or explicit focus restoration is added.
+## Releases and store submission
 
-Fullscreen, open dialogs, any `[aria-modal="true"]` (even hidden/stale), and open
-popovers in the document/reachable open shadow roots veto Escape, including
-panel/launcher focus. Read-only checks stop at 10,000 elements, 100 roots (the
-document counts as one), and 100 focused elements: exhausted budgets, unsupported
-popover selectors or access errors disable Escape for that event. Hidden/stale
-modal markers can disable it indefinitely. Closed shadow overlays cannot all be
-inspected; focused opaque custom roots are vetoed. Top-frame Escape does not
-handle iframe events. ✕ is the fallback for all these conservative limits.
-Native focus, IME, popovers, shadow behavior and new-tab/noreferrer handling
-still need real-browser checks; no screenshot/manual accessibility claim is made.
-The panel's sole window Escape listener is bubble-phase and never prevents the
-default or stops propagation. Earlier page handlers can veto it; later window
-handlers do not have guaranteed priority. Userscript Alt behavior is unchanged; extension hover follows its saved mode.
-Closing suppresses late display, not already-dispatched work or incurred usage;
-it does not cancel or refund provider requests.
+Use `npm run pack` to build the extension ZIP. For versioning and the current
+publishing status, see [PUBLISHING.md](PUBLISHING.md). The bundled V1 publishing
+CLI is outdated; use the dashboard until a reviewed V2 migration is available.
 
 ## License
 

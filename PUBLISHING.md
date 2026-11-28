@@ -1,70 +1,69 @@
-# Publishing the extension from the CLI
+# Packaging and publishing
 
-> Uses the Chrome Web Store API **v1.1** (supported until 2026-10-15; migrate when Google ships the successor).
+## Current status: bundled CLI is outdated
 
-The Chrome Web Store has a **publishing API**, so you can upload a new package and
-publish from the command line (or CI) with `scripts/publish.mjs` (dependency-free).
+**Do not rely on `npm run publish:cws` for current store submissions.**
+`scripts/publish.mjs` still uses Chrome Web Store API V1 endpoints. Google's
+[official V1 reference](https://developer.chrome.com/docs/webstore/api/v1)
+states that support ended on **October 15, 2026**. The supported successor,
+[Chrome Web Store API V2](https://developer.chrome.com/docs/webstore/api), already
+exists and supports OAuth and service accounts.
 
-**What it automates:** uploading the packaged `.zip` and (optionally) submitting it
-for publish.
-**What it does NOT:** the listing text, screenshots, and privacy/permission
-disclosures — those are editable only in the dashboard.
+The old script is retained for historical reference, not as a tested V2 client.
+Migrating its endpoints, upload-processing checks and publish-status handling
+requires a separately reviewed implementation. This documentation update does
+not migrate the script or establish whether retired endpoints still respond.
 
-## One-time setup (you must do this; the tokens are secrets)
+## Publish using the dashboard
 
-1. **Google Cloud Console** → create a project → **APIs & Services → Library** →
-   enable **“Chrome Web Store API”**.
-2. **APIs & Services → Credentials → Create credentials → OAuth client ID** →
-   application type **Desktop app**. Note the **Client ID** and **Client secret**.
-   (You may need to configure the OAuth consent screen and add yourself as a test
-   user.)
-3. **Get a refresh token once** (interactive consent). Use a **loopback redirect**
-   (Google no longer supports the old `oob` flow). The redirect URI must be
-   **identical** in the auth URL and the token exchange.
-   - Open this URL in a browser (replace `CLIENT_ID`) and approve access:
-     ```
-     https://accounts.google.com/o/oauth2/auth?response_type=code&scope=https://www.googleapis.com/auth/chromewebstore&access_type=offline&prompt=consent&redirect_uri=http://localhost:8818&client_id=CLIENT_ID
-     ```
-     The browser will redirect to `http://localhost:8818/?code=...` (the page may
-     fail to load — that's fine; copy the `code` value from the address bar).
-   - Exchange the `code` for a refresh token (same `redirect_uri`):
-     ```bash
-     curl -s https://oauth2.googleapis.com/token \
-       -d client_id=CLIENT_ID -d client_secret=CLIENT_SECRET \
-       -d code=THE_CODE -d grant_type=authorization_code \
-       -d redirect_uri=http://localhost:8818
-     ```
-   - Save the `refresh_token` from the response.
+1. Run tests and build a release package:
+   ```bash
+   npm test
+   npm run pack
+   ```
+2. Upload `dist/debait-extension-v<version>.zip` to the store dashboard.
+3. Use the matching copy in [store/STORE_LISTING.md](store/STORE_LISTING.md) and
+   [store/descriptions/](store/descriptions/). Review privacy declarations and
+   real screenshots before submitting.
+4. Submit for review. Creating a GitHub release does not publish to a store.
 
-## Use it
+For an already-published extension, use a higher manifest version for a new
+package. Preserve old GitHub tags and assets rather than replacing them.
+
+## Prepare a new version
 
 ```bash
-export CWS_CLIENT_ID=...          # from step 2
-export CWS_CLIENT_SECRET=...
-export CWS_REFRESH_TOKEN=...      # from step 3
-# CWS_EXTENSION_ID defaults to this item's id; override if needed.
-
-npm run pack                      # build dist/debait-extension-v<version>.zip
-npm run publish:cws               # upload as a DRAFT (safe default)
-npm run publish:cws -- --publish  # upload AND submit for publish
+npm run release -- minor       # or patch, major, or an exact version
+npm run release -- 0.5.0 --dry  # preview without changing files
 ```
 
-## Security
+The helper updates **package.json and extension/manifest.json**, synchronizes
+shared code and builds the ZIP. It prints commit/tag/push/release commands; it
+does not execute them.
 
-- **Never commit** the client secret or refresh token. Use env vars locally, or
-  encrypted **GitHub Actions secrets** in CI.
-- The refresh token = long-lived access to publish this item. Treat it like a
-  password; revoke it in Google Cloud if leaked.
+**Userscript versioning is separate:** if you are releasing the userscript,
+update its `// @version` header in `userscript/debait.user.js` before the release
+commit. The helper does not update this header automatically. Check all intended
+version fields and run tests after preparing a release.
 
-## CI (optional)
+## Future API automation
 
-You can publish on a tag by adding a workflow that runs `npm run pack` then
-`npm run publish:cws` with the three `CWS_*` values stored as repo **Secrets**.
-Keep it a separate, manually-triggered or tag-gated workflow so a routine push
-never publishes.
+Follow Google's [V2 API documentation](https://developer.chrome.com/docs/webstore/api)
+and [OAuth setup guidance](https://developer.chrome.com/docs/webstore/using-api).
+Do not reuse the retired V1 endpoint examples from older instructions.
+Keep client secrets, refresh tokens and service-account credentials out of source
+control and public logs. Use private environment variables or CI secrets.
+
+Any automated publication should be a separate explicit action, not a side effect
+of routine pushes, test runs, or package builds. Never paste publishing credentials
+into issue reports or public documentation.
 
 ## Other stores
 
-Edge Add-ons and Firefox AMO have their own publishing APIs. A multi-store tool
-like `PlasmoHQ/bpp` (Browser Platform Publisher) can target Chrome + Edge + Firefox
-from one CI step if you later want that.
+Edge Add-ons uses Microsoft Partner Center and its own publication API. Test the
+package in Edge and verify Microsoft's current listing/image requirements; Chrome
+approval does not imply Edge approval.
+
+Firefox AMO requires a separately compatible build and validation. This repo does
+not currently establish a Firefox extension release; userscript support has its
+own [manager and transport restrictions](userscript/README.md).

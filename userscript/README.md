@@ -32,25 +32,27 @@ target URL** (via `GM_xmlhttpRequest`, cross-origin), extracts and debaits it, a
 shows a tooltip with the honest title, clickbait score, verdict, *worth clicking*,
 and summary — before you open the page. Cached per URL (30 min).
 
-- All **provider API hosts** are declared with explicit `@connect` tags, so the
-  debait calls themselves trigger **no connect dialog**.
-- **Preview** fetches whatever link you hover — arbitrary hosts that can't be
-  pre-listed — so it needs the wildcard `@connect *`. Tampermonkey shows a
-  one-time "connect to any domain" prompt for `*` by design; that's the only
-  dialog, and it can't be narrowed without dropping preview.
-  *If you don't want the wildcard:* delete the `// @connect *` line (and the
-  Alt+hover preview block) to keep only current-page debaiting, or replace `*`
-  with explicit `@connect <host>` tags for the sites you actually browse.
-- Server-rendered pages only; JS-rendered/paywalled targets fall back to the
-  link's meta description.
-- Alt-gated on purpose so it never fires LLM calls accidentally.
+- Named native-provider hosts are declared with explicit `@connect` tags.
+  Permission prompts depend on your manager, its version and settings; neither
+  an absence of prompts nor a one-time-only confirmation is guaranteed.
+- Preview fetches arbitrary hovered targets using `GM_xmlhttpRequest`, hence
+  `@connect *`. To narrow access, replace it with explicit hosts you want to
+  preview; other targets may be blocked or require approval. Remove the wildcard
+  and preview code if you want current-page analysis only.
+- Target JavaScript is not executed. If extracted text is under 200 characters,
+  the preview shows target metadata/title instead of an AI assessment. HTTP or
+  network failures show errors; paywalls/JS pages do not invariably trigger a
+  metadata fallback.
+- Alt makes previews deliberate, but does not guarantee against unintended
+  requests. A canceled or already-dispatched request may still use quota.
 
 ## Notes
 
 - Native providers use GM transport; custom has the isolated Fetch restrictions above.
-- Native calls use `GM_xmlhttpRequest` (bypasses page CORS); custom uses direct Fetch,
-  which requires endpoint CORS and does not use `@connect` as a bypass. the `@connect` grants list each
-  provider host — add your own if you use a custom base URL.
+- Native calls use `GM_xmlhttpRequest` with manager-dependent cross-origin access;
+  custom uses direct Fetch, requires endpoint CORS, and does not use `@connect`
+  as a CORS bypass. It is restricted to the documented Tampermonkey/Chromium
+  isolated environment; unsupported managers fail closed for custom requests.
 - Key/base/model profiles are stored locally per provider via `GM_setValue`.
 - Anthropic is called with `anthropic-dangerous-direct-browser-access: true`.
 - Click the floating button to debait the **current** page; Alt+hover to preview **other** pages.

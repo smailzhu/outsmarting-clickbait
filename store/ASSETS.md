@@ -1,7 +1,8 @@
 # Store assets — specs & checklist
 
-All files live in `store/` unless noted. Specs chosen to pass Chrome Web Store
-(and Edge Add-ons) image requirements.
+All files live in `store/` unless noted. These dimensions target Chrome Web
+Store requirements; verify Edge Add-ons requirements separately before upload.
+Format checks alone do not establish store acceptance or faithful screenshots.
 
 | Asset | Required size | Format | File | Status |
 |-------|---------------|--------|------|--------|
@@ -20,14 +21,18 @@ All files live in `store/` unless noted. Specs chosen to pass Chrome Web Store
 
 ## Screenshots to capture (real browser, then crop/resize to 1280×800, flatten)
 1. Result panel on a real clickbait article (honest title, score bar, summary).
-2. Alt+hover link preview tooltip over a link in a feed.
+2. Configured hover preview over a link (prefer the v0.4.0 Shift gesture).
 3. Toolbar popup ("Analyze this page" + Settings).
-4. Options page (provider dropdown, API key, output language, daily cap).
+4. Options page showing the Shift/Alt/no-modifier selector, Test connection,
+   and unsaved-field/Save/Discard feedback. Hide keys and private endpoints.
 5. (optional) 繁體中文 UI, or a low-score vs high-score comparison.
 
 Tips: use a genuine example page, keep personal data out of frame, export PNG
 without alpha (flatten onto a solid background).
 
 ## Regenerate the icons/promo art
-See the ImageMagick commands in the git history (commits adding
-`extension/icons/` and `store/`), or ask to re-run them.
+The original artwork commands were run during development and are not provided
+as a reproducible checked-in generator. Keep the original assets or add a reviewed
+asset-generation script before promising repeatable regeneration. The existing
+ETtoday-style image is a constructed illustration, not a verified analysis of
+that article; replace both mockups with genuine v0.4.0 browser captures.
