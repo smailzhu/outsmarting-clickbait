@@ -1,7 +1,9 @@
 # debait — Chromium extension (MV3)
 
-> **v0.4.0 GitHub/source release.** Store rollout is separate. Custom endpoints
-> require an explicit base URL/model; keys may be optional. Read the
+> **v0.4.0 is live on the [Chrome Web Store](https://chromewebstore.google.com/detail/pcjbpicieggjfjldoekdeglnjhcdhjla?hl=en) and GitHub.**
+> Public store version verified **2026-11-28**; Edge Add-ons publication is unverified.
+> Future releases require separate store submission. Custom endpoints require an
+> explicit base URL/model; keys may be optional. Read the
 > [custom endpoint security guide](../docs/custom-provider.md) before use.
 
 
@@ -100,7 +102,8 @@ Each page compares against its own loaded/saved baseline, not live sync: another
 Options tab or synced device may overwrite settings, and full Save is
 last-writer-wins, including dormant profiles. Clearing an authoritative profile
 prevents legacy mirrors from restoring it, but does not erase dormant legacy
-`keys` entries. GitHub release availability does not establish store rollout.
+`keys` entries. Chrome Web Store v0.4.0 is confirmed live as of 2026-11-28;
+future GitHub releases do not automatically update store installations.
 
 ## Right-click menu
 

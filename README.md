@@ -1,8 +1,9 @@
 # outsmarting-clickbait 🪝🚫
 
-> **Current GitHub release: v0.4.0.** It includes saved Shift/Alt/ordinary-hover
-> activation and Settings safeguards. Store rollout is separate. For custom
-> endpoint security and restricted userscript support, see
+> **v0.4.0 is available on GitHub and the [Chrome Web Store](https://chromewebstore.google.com/detail/pcjbpicieggjfjldoekdeglnjhcdhjla?hl=en).**
+> Public store version verified **2026-11-28**. Future GitHub releases still require
+> separate store submission; Edge Add-ons publication has not been verified.
+> For custom endpoint security and restricted userscript support, see
 > [the custom-provider guide](docs/custom-provider.md).
 
 

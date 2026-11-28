@@ -1,10 +1,10 @@
 # Custom / OpenAI-compatible — v0.3.0
 
-Custom endpoints are supported in the **v0.3.0 GitHub/source release**. Store
-installations receive this feature only after v0.3.0 is separately submitted,
-reviewed, and published in the relevant store; this guide does not establish
-that the live store listing has been updated. Existing v0.1.0/v0.2.0 releases
-remain unchanged.
+Custom endpoints were introduced in the **v0.3.0 GitHub/source release** and are
+included in **v0.4.0**. The public Chrome Web Store listing reports v0.4.0, verified
+on **2026-11-28**. Edge Add-ons publication has not been verified. Future GitHub
+releases still require separate store submission and approval; older installations
+may need time to receive an update. Existing earlier releases remain unchanged.
 
 ## Explicit setup
 

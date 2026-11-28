@@ -1,6 +1,6 @@
 # outsmarting-clickbait 🪝🚫
 
-> **v0.4.0 GitHub版本；商店更新需另行送審發布。** 自訂端點及使用者腳本限制見[自訂端點指南（英文）](docs/custom-provider.md)。
+> **v0.4.0 已在 GitHub 與 [Chrome 線上應用程式商店](https://chromewebstore.google.com/detail/pcjbpicieggjfjldoekdeglnjhcdhjla?hl=zh-TW)發布。** 於 **2026-11-28**確認公開商店版本。未來 GitHub 新版仍需另行送審；Edge Add-ons 發布狀態尚未確認。自訂端點及使用者腳本限制見[自訂端點指南（英文）](docs/custom-provider.md)。
 
 
 [English](README.md) | **繁體中文** | [台語（漢羅）](README.tai-gi.md)
@@ -81,7 +81,7 @@ debait 使用**你自己的 AI 供應商與 API 金鑰**，費用與模型由你
 
 Shift+點擊可能開新視窗，放開 Alt 可能讓瀏覽器選單取得焦點。預覽是懸停，不是點擊。
 使用者腳本仍用獨立的 Alt 懸停。完整移轉／取消規則與未完成驗證見
-[懸停指南（英文）](docs/hover-activation.md)。GitHub發布不代表商店已更新。
+[懸停指南（英文）](docs/hover-activation.md)。Chrome 商店 v0.4.0 已確認發布；未來 GitHub 更新不會自動更新商店。
 
 ## 省錢與配額
 
