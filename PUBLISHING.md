@@ -60,10 +60,6 @@ into issue reports or public documentation.
 
 ## Other stores
 
-Edge Add-ons uses Microsoft Partner Center and its own publication API. Test the
-package in Edge and verify Microsoft's current listing/image requirements; Chrome
-approval does not imply Edge approval.
-
 Firefox AMO requires a separately compatible build and validation. This repo does
 not currently establish a Firefox extension release; userscript support has its
 own [manager and transport restrictions](userscript/README.md).

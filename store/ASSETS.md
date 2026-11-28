@@ -1,7 +1,7 @@
 # Store assets — specs & checklist
 
 All files live in `store/` unless noted. These dimensions target Chrome Web
-Store requirements; verify Edge Add-ons requirements separately before upload.
+Store requirements.
 Format checks alone do not establish store acceptance or faithful screenshots.
 
 | Asset | Required size | Format | File | Status |

@@ -1,8 +1,8 @@
 # Chrome Web Store listing — debait
 
 Copy/paste material for submitting **v0.4.0** to the Chrome Web Store.
-Edge Add-ons has similar fields but its image requirements differ. Firefox AMO
-requires a separately compatible build; these documents do not establish one.
+Firefox AMO requires a separately compatible build; these documents do not
+establish one.
 Replace screenshot placeholders with real captures before publishing.
 
 ---
@@ -96,7 +96,7 @@ https://github.com/smailzhu/outsmarting-clickbait/blob/master/PRIVACY.md
 ## Homepage / support
 - Homepage: https://github.com/smailzhu/outsmarting-clickbait
 - Support email: cusp-preacher-blot [at] duck [dot] com
-  (put the PLAIN address in Partner Center's "Support email" field; keep it
+  (put the PLAIN address in the store dashboard's "Support email" field; keep it
   obfuscated as above in any public-facing description text)
 - Support (GitHub, optional): https://github.com/smailzhu/outsmarting-clickbait/issues
 

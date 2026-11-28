@@ -1,7 +1,7 @@
 # debait — Chromium extension (MV3)
 
 > **v0.4.0 is live on the [Chrome Web Store](https://chromewebstore.google.com/detail/pcjbpicieggjfjldoekdeglnjhcdhjla?hl=en) and GitHub.**
-> Public store version verified **2026-11-28**; Edge Add-ons publication is unverified.
+> Public Chrome Web Store version verified **2026-11-28**.
 > Future releases require separate store submission. Custom endpoints require an
 > explicit base URL/model; keys may be optional. Read the
 > [custom endpoint security guide](../docs/custom-provider.md) before use.
@@ -203,7 +203,7 @@ npm run pack   # -> dist/debait-extension-v<version>.zip
 
 `pack` re-syncs the shared modules first, then writes a dependency-free zip
 (Node `zlib`). Load it unpacked for testing, or upload the zip to the Chrome Web
-Store / Edge Add-ons.
+Store.
 
 See [publishing/version instructions](../PUBLISHING.md). The bundled V1 upload CLI
 is outdated; package generation still works, but store submission should use the

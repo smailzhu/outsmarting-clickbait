@@ -2,9 +2,9 @@
 
 This feature is included in the v0.4.0 GitHub release and the
 [Chrome Web Store v0.4.0 listing](https://chromewebstore.google.com/detail/pcjbpicieggjfjldoekdeglnjhcdhjla?hl=en),
-whose public version was verified on **2026-11-28**. Edge Add-ons publication has
-not been verified. Future GitHub publication does not automatically update store
-installations; each store requires separate submission and approval. The extension
+whose public version was verified on **2026-11-28**. Future GitHub publication
+does not automatically update Chrome Web Store installations; updates require
+separate submission and approval. The extension
 supports Shift, Alt, and ordinary hover; the userscript retains its separate Alt behavior.
 
 The owner authorized release with the documented remaining risks below after

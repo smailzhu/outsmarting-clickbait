@@ -1,6 +1,6 @@
 # outsmarting-clickbait 🪝🚫
 
-> **v0.4.0 已在 GitHub 與 [Chrome 線上應用程式商店](https://chromewebstore.google.com/detail/pcjbpicieggjfjldoekdeglnjhcdhjla?hl=zh-TW)發布。** 於 **2026-11-28**確認公開商店版本。未來 GitHub 新版仍需另行送審；Edge Add-ons 發布狀態尚未確認。自訂端點及使用者腳本限制見[自訂端點指南（英文）](docs/custom-provider.md)。
+> **v0.4.0 已在 GitHub 與 [Chrome 線上應用程式商店](https://chromewebstore.google.com/detail/pcjbpicieggjfjldoekdeglnjhcdhjla?hl=zh-TW)發布。** 於 **2026-11-28**確認公開商店版本。未來 GitHub 新版仍需另行送審。自訂端點及使用者腳本限制見[自訂端點指南（英文）](docs/custom-provider.md)。
 
 
 [English](README.md) | **繁體中文** | [台語（漢羅）](README.tai-gi.md)
